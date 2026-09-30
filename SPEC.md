@@ -53,7 +53,7 @@ The receipt hash is `receiptHash = sha256(JCS(body))`, and it's the value every 
 | Host | `ES256` (ECDSA P-256) | Cloud KMS, an HSM, or a TEE. Intel's quoting enclave signs with NIST P-256. | P256VERIFY precompile at `0x0100` |
 | Host (AntSeed-style) | `ES256K` (secp256k1, EIP-191 with a domain tag) | The node key. AntSeed peers use "a secp256k1 private key" and `personal_sign` | `ecrecover` |
 | Requester | WebAuthn assertion (P-256), challenge = `receiptHash` | The user's passkey | Parse `authenticatorData` and `clientDataJSON`, then P256VERIFY |
-| Requester (unlinkable) | secp256k1 key derived from the passkey's PRF output (Mera `getPasskeyPrfOutput`) with a per-app salt | Nowhere. It's re-derived from the passkey each time | `ecrecover` |
+| Requester (unlinkable) | secp256k1 key derived from the passkey's PRF output (Mera `getPasskeyPrfOutput`) with a per-app salt. See section 7, note 3 | Nowhere. It's re-derived from the passkey each time | `ecrecover` |
 
 P256VERIFY takes 160 bytes (`hash ‖ r ‖ s ‖ x ‖ y`) and returns 1 on success.
 
@@ -108,3 +108,13 @@ ES384 keys aren't supported. NVIDIA's attestation tokens use ES384, and Monad ha
 
 Hosts get no privacy. They are public by design, and only requesters can stay private.
 
+## 7. Implementation notes (v0.1)
+
+These notes pin down details that the sections above leave open. They come from running the libraries and the Monad testnet precompile directly.
+
+1. Signatures must use low `s`. WebCrypto and passkeys return a high `s` roughly half the time, and OpenZeppelin's `P256` rejects those. The SDK sets `s = N - s` before anything goes onchain.
+2. User verification is required. OpenZeppelin's `WebAuthn.verify` defaults to `requireUV = true` and Mera's PRF always requires it, so test vectors use flags `0x05` (UP and UV).
+3. Mera per-app requester keys are secp256k1, since Mera's signing sessions don't offer P-256. The key follows Mera's documented BIP-39/BIP-32 path from a per-app PRF salt `sha256("assay:requester:<appId>")`, and the contract checks it with `ecrecover` over an EIP-191 digest of `receiptHash`.
+4. Merkle leaves use OpenZeppelin's `StandardMerkleTree` with leaf type `["bytes32"]`. Each leaf is `keccak256(bytes.concat(keccak256(abi.encode(receiptHash))))`, which matches OpenZeppelin's `MerkleProof`.
+5. The anchor message is `abi.encode(keccak256("assay-anchor/0"), chainid, anchorContract, agentId, root, count)`. The host signs it with ES256, so the contract verifies against `sha256(message)`. Including the chain ID and contract address stops a signature from being replayed on another chain or deployment.
+6. For hosts that sign with an Assay key, `hostKey = keccak256(abi.encode(qx, qy))`. Graded endpoints without a key, such as every OpenRouter endpoint, use `keccak256(abi.encodePacked("openrouter:", tag))`.
