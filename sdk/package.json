@@ -1,0 +1,13 @@
+{
+  "name": "@assay/receipts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen:vectors": "node scripts/gen-vectors.mjs"
+  },
+  "dependencies": {
+    "@openzeppelin/merkle-tree": "1.0.8",
+    "viem": "^2.57.1"
+  }
+}
