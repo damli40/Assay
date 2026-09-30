@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.jwk.json
+host/.keys/
+host/data/
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+harness/assay_out/
+indexer/generated/
+private/
+.DS_Store
+*:Zone.Identifier
+
