@@ -26,6 +26,20 @@ The full format is in [SPEC.md](SPEC.md).
 
 Agents and apps that buy inference from hosts they don't control can attach receipts and check grades before they pay. Marketplaces and gateways like AntSeed, Surplus and Glama can route on grades without building their own testing team. Open-weight labs get neutral coverage of every host, including the ones they never got around to testing. And anyone publishing AI output gets a receipt that still works after the text is copied somewhere else.
 
+## Status (30 Sep 2026)
+
+| Piece | State |
+|---|---|
+| Grader (`harness/assay_probe.py`) | Works |
+| Report v0 | Published in [report/](report/REPORT_v0.md) |
+| P256 precompile tests (`0x0100`, EIP-7951) | 6 passing |
+| WebAuthn co-sign tests (OpenZeppelin 5.7.0) | 12 passing |
+| Precompile check on Monad testnet | Passed, see [evidence](docs/evidence/day1-precompile-testnet.txt) |
+| ReceiptAnchor (host keys, anchoring, Merkle proofs) | In progress |
+| VerifierRegistry and testnet deploy | Planned |
+| `@assay/receipts` SDK and reference host | Planned |
+| Envio indexer and verify page | Planned |
+
 ## Repo layout
 
 ```
