@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Who's Actually Serving Your Model?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#F3F4F1;
+  --surface:#FFFFFF;
+  --surface-2:#EAECE7;
+  --ink:#171B1A;
+  --ink-2:#4B5350;
+  --ink-3:#727A76;
+  --rule:#D9DCD5;
+  --rule-2:#C3C8BF;
+  --accent:#1F4E5F;
+  --accent-soft:#E0EAEC;
+  --good:#2E6B4F;
+  --good-soft:#DFEDE5;
+  --warn:#8A5518;
+  --warn-soft:#F3E8D8;
+  --crit:#8E2F2A;
+  --crit-soft:#F4E0DE;
+  --shadow:0 1px 2px rgba(23,27,26,.06), 0 8px 24px -16px rgba(23,27,26,.28);
+  --display:"Fraunces", Georgia, "Times New Roman", serif;
+  --body:"Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#101413;
+    --surface:#171C1B;
+    --surface-2:#1E2423;
+    --ink:#E8EBE7;
+    --ink-2:#AFB7B2;
+    --ink-3:#848D88;
+    --rule:#2A312F;
+    --rule-2:#3A423F;
+    --accent:#7FC2D0;
+    --accent-soft:#16292F;
+    --good:#7FC29B;
+    --good-soft:#15251D;
+    --warn:#D9A566;
+    --warn-soft:#2A2013;
+    --crit:#E08A83;
+    --crit-soft:#2C1917;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101413;
+  --surface:#171C1B;
+  --surface-2:#1E2423;
+  --ink:#E8EBE7;
+  --ink-2:#AFB7B2;
+  --ink-3:#848D88;
+  --rule:#2A312F;
+  --rule-2:#3A423F;
+  --accent:#7FC2D0;
+  --accent-soft:#16292F;
+  --good:#7FC29B;
+  --good-soft:#15251D;
+  --warn:#D9A566;
+  --warn-soft:#2A2013;
+  --crit:#E08A83;
+  --crit-soft:#2C1917;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:20px;padding-block:0}
+
+/* ---------- nav ---------- */
+nav.jump{
+  position:sticky;
+  top:env(safe-area-inset-top, 0px);
+  z-index:20;
+  background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--rule);
+}
+nav.jump .wrap{display:flex;gap:4px;overflow-x:auto;padding-block:8px;scrollbar-width:thin}
+nav.jump a{
+  flex:none;
+  font-family:var(--mono);
+  font-size:11.5px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  text-decoration:none;
+  padding:5px 9px;
+  border-radius:4px;
+  white-space:nowrap;
+}
+nav.jump a:hover{color:var(--accent);background:var(--accent-soft)}
+nav.jump a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---------- masthead ---------- */
+header.mast{border-bottom:2px solid var(--ink);}
+header.mast .wrap{padding-block:56px 28px}
+.eyebrow{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 20px;
+}
+h1{
+  font-family:var(--display);
+  font-weight:600;
+  font-size:clamp(42px,8vw,76px);
+  line-height:1.02;
+  letter-spacing:-.02em;
+  margin:0 0 6px;
+  text-wrap:balance;
+}
+.h1sub{
+  font-family:var(--display);
+  font-size:clamp(20px,3.6vw,30px);
+  font-weight:400;
+  font-style:italic;
+  color:var(--ink-3);
+  margin:0 0 26px;
+  line-height:1.25;
+}
+.standfirst{max-width:66ch;font-size:19px;color:var(--ink-2);margin:0 0 28px}
+.standfirst strong{color:var(--ink);font-weight:600}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px 28px;
+  font-family:var(--mono);font-size:12px;color:var(--ink-3);
+  border-top:1px solid var(--rule);padding-top:16px;
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* ---------- sections ---------- */
+section{border-bottom:1px solid var(--rule)}
+section > .wrap{padding-block:52px}
+.sechead{display:flex;gap:16px;align-items:baseline;margin-bottom:8px}
+.secnum{
+  font-family:var(--mono);font-size:12px;color:var(--accent);
+  letter-spacing:.08em;flex:none;padding-top:6px;
+}
+h2{
+  font-family:var(--display);font-weight:600;
+  font-size:clamp(27px,4.6vw,38px);line-height:1.12;letter-spacing:-.015em;
+  margin:0;text-wrap:balance;
+}
+.deck{max-width:68ch;color:var(--ink-2);margin:0 0 30px 0;font-size:17.5px}
+h3{
+  font-family:var(--body);font-weight:700;font-size:17px;
+  letter-spacing:.005em;margin:34px 0 10px;
+}
+h4{
+  font-family:var(--mono);font-weight:600;font-size:12px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);
+  margin:26px 0 10px;
+}
+p{max-width:70ch;margin:0 0 15px}
+ul,ol{max-width:70ch;padding-left:20px;margin:0 0 15px}
+li{margin-bottom:7px}
+a{color:var(--accent)}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.88em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+
+/* ---------- confidence tags ---------- */
+.tag{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 6px;border-radius:3px;white-space:nowrap;
+  vertical-align:.08em;
+}
+.t-cert{background:var(--good-soft);color:var(--good)}
+.t-like{background:var(--warn-soft);color:var(--warn)}
+.t-guess{background:var(--crit-soft);color:var(--crit)}
+.t-nf{background:var(--surface-2);color:var(--ink-3)}
+
+/* ---------- callouts ---------- */
+.call{
+  background:var(--surface);border:1px solid var(--rule);
+  border-left:3px solid var(--accent);
+  border-radius:0 6px 6px 0;padding:20px 22px;margin:26px 0;box-shadow:var(--shadow);
+}
+.call.hot{border-left-color:var(--crit)}
+.call.win{border-left-color:var(--good)}
+.call .lab{
+  font-family:var(--mono);font-size:11px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:8px;
+}
+.call p:last-child{margin-bottom:0}
+
+/* ---------- tables ---------- */
+.tbox{overflow-x:auto;margin:20px 0 26px;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.5px}
+th{
+  text-align:left;font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);
+  padding:11px 14px;border-bottom:1px solid var(--rule-2);white-space:nowrap;
+}
+td{padding:11px 14px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--surface-2)}
+.win-row td{background:var(--accent-soft)}
+.win-row:hover td{background:var(--accent-soft)}
+
+/* ---------- timeline ---------- */
+.tl{list-style:none;padding:0;margin:26px 0 0;max-width:none}
+.tl > li{
+  display:grid;grid-template-columns:118px 1fr;gap:22px;
+  padding:20px 0;border-top:1px solid var(--rule);margin:0;
+}
+.tl > li:last-child{border-bottom:1px solid var(--rule)}
+.tl .when{
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-3);
+  letter-spacing:.03em;padding-top:3px;
+}
+.tl .what h3{margin:0 0 6px;font-size:17px}
+.tl .what p{margin:0 0 8px;max-width:64ch}
+.tl .verdict{
+  font-family:var(--mono);font-size:11.5px;display:inline-block;
+  padding:3px 8px;border-radius:3px;
+}
+.v-dead{background:var(--crit-soft);color:var(--crit)}
+.v-live{background:var(--good-soft);color:var(--good)}
+.v-hold{background:var(--warn-soft);color:var(--warn)}
+
+/* ---------- grids ---------- */
+.grid{display:grid;gap:16px;margin:24px 0}
+.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+.card{
+  background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:18px 20px;
+}
+.card h3{margin:0 0 8px;font-size:15.5px}
+.card p{font-size:14.5px;color:var(--ink-2);margin:0 0 8px;max-width:none}
+.card p:last-child{margin-bottom:0}
+.card ul{font-size:14.5px;color:var(--ink-2);margin-bottom:0;max-width:none}
+
+.stat{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px}
+.stat .n{
+  font-family:var(--display);font-weight:600;font-size:30px;line-height:1.05;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;display:block;margin-bottom:4px;
+}
+.stat .l{font-size:13.5px;color:var(--ink-2);line-height:1.35;display:block}
+.stat .s{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);display:block;margin-top:7px}
+
+/* ---------- mermaid ---------- */
+.diagram{
+  background:var(--surface);border:1px solid var(--rule);border-radius:6px;
+  padding:18px;margin:24px 0;overflow-x:auto;
+}
+pre.mermaid{margin:0;text-align:center}
+
+/* ---------- ascii / code block ---------- */
+pre.plain{
+  background:var(--surface);border:1px solid var(--rule);border-radius:6px;
+  padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;
+  line-height:1.55;color:var(--ink-2);margin:20px 0;
+}
+
+/* ---------- checklist ---------- */
+.checks{list-style:none;padding:0;margin:20px 0;max-width:none}
+.checks li{
+  display:grid;grid-template-columns:26px 1fr;gap:10px;
+  padding:12px 0;border-bottom:1px solid var(--rule);margin:0;
+}
+.checks li:first-child{border-top:1px solid var(--rule)}
+.box{
+  width:15px;height:15px;border:1.5px solid var(--rule-2);border-radius:3px;margin-top:5px;
+}
+.checks .body{font-size:15px}
+.checks .body b{display:block;font-weight:600;margin-bottom:2px}
+.checks .body span{color:var(--ink-2);font-size:14.5px}
+
+footer{background:var(--surface-2)}
+footer .wrap{padding-block:40px 56px}
+footer p{font-size:14px;color:var(--ink-3);max-width:70ch}
+.srcs{columns:2;column-gap:32px;font-size:13.5px;line-height:1.5}
+.srcs li{break-inside:avoid;margin-bottom:8px;color:var(--ink-2)}
+
+@media (max-width:640px){
+  body{font-size:16px}
+  .tl > li{grid-template-columns:1fr;gap:6px}
+  .tl .when{padding-top:0}
+  .srcs{columns:1}
+  section > .wrap{padding-block:40px}
+  header.mast .wrap{padding-block:40px 24px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">Open-weight hosting · Report v0 · 26 Sep 2026 data</p>
+    <h1>Who's actually serving your model?</h1>
+    <p class="h1sub">What buyers can and can't see when they call an open-weight model through a third-party host</p>
+    <p class="standfirst">When you call GLM-5.3, DeepSeek V4 or Kimi K3 through a router, you usually aren't calling the lab. You're calling one of dozens of hosts running their own copy of the weights. This report shows what those hosts say about themselves, what independent teams measured, and what nobody can check yet.</p>
+    <div class="meta">
+      <span><b>Endpoints read</b> 735 distinct</span>
+      <span><b>Models</b> 140 open-weight</span>
+      <span><b>Providers</b> 56</span>
+      <span><b>Snapshot</b> 26 Sep 2026, 17:25 UTC</span>
+      <span><b>By</b> Rudransh · Assay</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="secnum">01</span><h2>Summary</h2></div>
+    <ul>
+      <li><strong>Many listings don't state a precision.</strong> For 289 of 735 endpoints (39%), OpenRouter's API lists precision as <span class="m">unknown</span>. 107 (15%) declare a 4-bit format.</li>
+      <li><strong>Popular models come in many variants.</strong> GLM-5.3 has 37 endpoints: 16 with no stated precision and 8 declaring 4-bit. Output prices run from $1.19 to $8.80 per million tokens, and advertised context from 262K to 1.31M tokens.</li>
+      <li><strong>Labels don't predict quality.</strong> Independent teams measured the same weights scoring 90% at one host and 75% at another, and a provider declaring fp4 outscoring one declaring fp8.</li>
+      <li><strong>The checks that exist stay where they were made.</strong> They cover one platform, one lab's models, or one point in time. Nothing travels with the output.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="secnum">02</span><h2>How this was measured</h2></div>
+    <p>We called <span class="m">GET https://openrouter.ai/api/v1/models/{model}/endpoints</span> for every open-weight model OpenRouter lists from 11 author namespaces (DeepSeek, Moonshot, Z.ai, Qwen, OpenAI gpt-oss, Meta, Mistral, MiniMax, NVIDIA, Google Gemma, THUDM). The call is public and needs no key.</p>
+    <p>Every field in sections 3 and 4 is what the provider reports to OpenRouter. None of it was tested. Some endpoint tags appear twice in the listing (746 listings, 735 distinct), and the counts use distinct endpoints. The raw JSON ships with the report in the Assay repo.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="secnum">03</span><h2>What hosts say about precision</h2></div>
+    <div class="tbox"><table>
+      <thead><tr><th>Declared precision</th><th class="num">Endpoints</th><th class="num">Share</th></tr></thead>
+      <tbody>
+        <tr><td>not stated (<span class="m">unknown</span>)</td><td class="num">289</td><td class="num">39.3%</td></tr>
+        <tr><td>fp8</td><td class="num">285</td><td class="num">38.8%</td></tr>
+        <tr><td>fp4</td><td class="num">81</td><td class="num">11.0%</td></tr>
+        <tr><td>bf16</td><td class="num">51</td><td class="num">6.9%</td></tr>
+        <tr><td>int4</td><td class="num">17</td><td class="num">2.3%</td></tr>
+        <tr><td>nvfp4</td><td class="num">5</td><td class="num">0.7%</td></tr>
+        <tr><td>mxfp4</td><td class="num">4</td><td class="num">0.5%</td></tr>
+        <tr><td>fp16</td><td class="num">3</td><td class="num">0.4%</td></tr>
+      </tbody>
+    </table></div>
+    <p>For 14 of the 56 providers, OpenRouter's API lists no precision on any endpoint: Google (17), DigitalOcean (15), Fireworks (14), Together (12), Wafer (9), Amazon Bedrock (8), Friendli (7), Reka (7), Groq (6), Mara (5), DeepSeek (2), Azure (2), PrimeIntellect (1), Cohere (1).</p>
+    <p>A missing precision field is not evidence of a problem. It only means a buyer can't tell from the listing.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="secnum">04</span><h2>Same model, many versions</h2></div>
+    <div class="tbox"><table>
+      <thead><tr><th>Model</th><th class="num">Endpoints</th><th class="num">Not stated</th><th class="num">4-bit</th><th>Output $/M</th><th>Advertised context</th></tr></thead>
+      <tbody>
+        <tr><td>z-ai/glm-5.3</td><td class="num">37</td><td class="num">16</td><td class="num">8</td><td>$1.19 to $8.80 (7.4x)</td><td>262K to 1.31M</td></tr>
+        <tr><td>z-ai/glm-5.2</td><td class="num">30</td><td class="num">9</td><td class="num">8</td><td>$1.54 to $8.00 (5.2x)</td><td>131K to 1.05M</td></tr>
+        <tr><td>deepseek/deepseek-v4-flash-0731</td><td class="num">30</td><td class="num">11</td><td class="num">5</td><td>$0.13 to $1.32 (10.0x)</td><td>262K to 1.31M</td></tr>
+        <tr><td>openai/gpt-oss-120b</td><td class="num">23</td><td class="num">9</td><td class="num">5</td><td>$0.17 to $0.95 (5.6x)</td><td>128K to 131K</td></tr>
+        <tr><td>deepseek/deepseek-v4-pro-0813</td><td class="num">22</td><td class="num">11</td><td class="num">2</td><td>$0.75 to $4.95 (6.6x)</td><td>1.00M to 1.05M</td></tr>
+        <tr><td>moonshotai/kimi-k3</td><td class="num">19</td><td class="num">9</td><td class="num">7</td><td>$9.04 to $22.50 (2.5x)</td><td>1.05M (all)</td></tr>
+        <tr><td>moonshotai/kimi-k2.6</td><td class="num">19</td><td class="num">5</td><td class="num">10</td><td>$1.72 to $4.60 (2.7x)</td><td>256K to 262K</td></tr>
+        <tr><td>qwen/qwen3.8-27b</td><td class="num">16</td><td class="num">7</td><td class="num">1</td><td>$1.80 to $4.40 (2.4x)</td><td>262K to 1.00M</td></tr>
+      </tbody>
+    </table></div>
+    <p>A 4-bit label doesn't automatically mean a worse model. Some releases are trained to run at low precision, and section 5 shows labels failing to predict scores in both directions. That's why the next step is measurement, not labels.</p>
+    <p>Only 311 of the 746 listings advertise logprobs. Most black-box checks therefore have to work from the output text alone.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="secnum">05</span><h2>What others have measured</h2></div>
+    <div class="tbox"><table>
+      <thead><tr><th>Who</th><th>Model</th><th>Finding</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Olly (18M messages)</td><td>DeepSeek V4 Flash</td><td>90% GPQA and 81% TAU on DeepSeek's own API. 75% and 58% on DigitalOcean.</td><td><a href="https://mmoustafa.com/blog/so-you-want-to-use-openrouter/">mmoustafa.com</a>, 7 Sep 2026</td></tr>
+        <tr><td>Coverage of Olly's data</td><td>same</td><td>A provider declaring fp4 scored 89.1% on GPQA. A different provider declaring fp8 scored 70.5%.</td><td>Pinggy and umesh-malik.com, Sep 2026</td></tr>
+        <tr><td>Cline</td><td>GLM-5.2</td><td>74.2% on CoreWeave, 61.8% on OpenRouter's default routing. New providers get traffic only if "its eval score is on par with the others".</td><td><a href="https://cline.bot/blog/open-sourcing-evals-for-open-weight-agents">cline.bot</a>, 18 Aug 2026</td></tr>
+        <tr><td>Moonshot K2 Vendor Verifier</td><td>Kimi K2 Thinking</td><td>Tool-call schema accuracy from 100% (official API, Fireworks) down to 86.91% (DeepInfra)</td><td><a href="https://github.com/MoonshotAI/K2-Vendor-Verifier">GitHub</a></td></tr>
+        <tr><td>OpenRouter Auto Exacto</td><td>GLM-5, GLM-4.7</td><td>Routing to better hosts cut tool-call errors by 88% and 80%, from about 8% to about 1%</td><td><a href="https://openrouter.ai/blog/announcements/auto-exacto/">openrouter.ai</a>, 12 Mar 2026</td></tr>
+        <tr><td>Metaculus</td><td>33 open-weight bots</td><td>Pinned each bot to specific endpoints because "the model behind an open-weight bot can change from run to run"</td><td><a href="https://github.com/Metaculus/forecasting-tools/pull/351">PR #351</a>, 25 Sep 2026</td></tr>
+        <tr><td>Glama (AI gateway)</td><td>all third-party hosts</td><td>"we had to delist all third-party providers because some of them are obviously lying about their quantization"</td><td><a href="https://news.ycombinator.com/item?id=47844798">HN</a>, 21 Apr 2026</td></tr>
+        <tr><td>CISPA</td><td>17 unofficial resale APIs</td><td>Identity checks failed in 45.83% of fingerprint tests, with performance gaps up to 47.21%</td><td><a href="https://arxiv.org/abs/2603.01919">arXiv 2603.01919</a>, Mar 2026</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="secnum">06</span><h2>What's missing</h2></div>
+    <p>Each existing check stops somewhere:</p>
+    <ul>
+      <li><strong>OpenRouter</strong> grades hosts continuously, but only for traffic inside OpenRouter.</li>
+      <li><strong>Moonshot, MiniMax and OpenAI</strong> publish verifiers, each for its own models. Moonshot's K3 table covers 7 vendors, while OpenRouter lists 17 providers for kimi-k3.</li>
+      <li><strong>Artificial Analysis</strong> grades endpoints against official weights, but as dated snapshots, and it didn't list GLM-5.3 when we checked.</li>
+      <li><strong>Marketplaces that sell from strangers</strong> say they don't measure this yet. Surplus: quantization "not measured". AntSeed: signed responses "prove who served which bytes", not the model.</li>
+    </ul>
+    <p>None of these results travel with the output. Someone who receives a piece of AI-generated text can't check where it came from.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="secnum">07</span><h2>What comes next</h2></div>
+    <p><strong>Report v1 (by 11 Oct)</strong> grades every GLM-5.3 endpoint against Z.ai's own endpoint with an open harness. It checks tool-call correctness, parameter handling, context length and black-box identity, with 95% confidence intervals and raw logs. Any endpoint below the reference gets its logs and 7 days to respond before publication.</p>
+    <p><strong>Assay receipts</strong> give every response a certificate of origin: the host's P-256 signature, an optional passkey co-signature from the requester, and salted hashes of the prompt and output anchored on Monad. Each receipt links to the host's latest grade from open verifiers.</p>
+    <div class="call">
+      <div class="lab">Limits of this report</div>
+      <p>Sections 3 and 4 are self-reported fields captured at one moment, and listings change daily. Section 5 quotes other people's measurements, linked so you can check them, and we didn't re-run them. Nothing here claims a named provider serves a degraded model. It shows what a buyer can and can't see today.</p>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
