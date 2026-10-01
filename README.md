@@ -114,10 +114,33 @@ python3 assay_probe.py --model z-ai/glm-5.3 --reference z-ai --repeats 10
 
 You need Node 22 or newer, pnpm (`corepack enable`) and Foundry 1.7 or newer.
 
+```bash
+git clone --recurse-submodules https://github.com/trudransh/Assay.git
+cd Assay
+pnpm install
+
+# contracts
+cd contracts && forge test -vv && cd ..
+
+# SDK
+pnpm --filter @assay/receipts test
+pnpm --filter @assay/receipts typecheck
 ```
-git clone --recurse-submodules git@github.com:trudransh/Assay.git
-cd Assay/contracts && forge test -vv
+
+The Solidity tests read vectors that the SDK generates, so the two sides can't drift apart. After changing anything about hashing, signing or Merkle trees, regenerate them and run both suites:
+
+```bash
+pnpm --filter @assay/receipts gen:vectors
+cd contracts && forge test
 ```
+
+Three tests run against the real ERC-8004 registry on a fork of Monad testnet. They're skipped in a plain `forge test` and run with:
+
+```bash
+cd contracts && forge test --match-path "test/fork/*" --fork-url monad_testnet -vv
+```
+
+To deploy your own copy, follow the steps in [docs/deployments.md](docs/deployments.md). Copy `.env.example` to `.env` for the host and indexer settings, and never commit `.env`.
 
 ## License
 
