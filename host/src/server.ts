@@ -138,7 +138,7 @@ export function createApp(d: AppDeps): Hono {
   });
 
   app.post("/v1/cosign", async (c) => {
-    // ponytail: in-memory limiter, resets on restart and is per process; fine for one host.
+    // In-memory and per process: resets on restart. Enough for one host instance.
     const ip = getConnInfo(c).remote.address ?? "unknown";
     const t = now();
     const hits = (cosignHits.get(ip) ?? []).filter((h) => t - h < HOUR);
