@@ -26,6 +26,16 @@ The full format is in [SPEC.md](SPEC.md).
 
 Agents and apps that buy inference from hosts they don't control can attach receipts and check grades before they pay. Marketplaces and gateways like AntSeed, Surplus and Glama can route on grades without building their own testing team. Open-weight labs get neutral coverage of every host, including the ones they never got around to testing. And anyone publishing AI output gets a receipt that still works after the text is copied somewhere else.
 
+## Why Monad
+
+Assay leans on three things Monad provides natively.
+
+The P256VERIFY precompile at `0x0100` (EIP-7951) checks P-256 signatures for 6,900 gas. Passkeys, cloud KMS keys, HSMs and Intel TEEs all sign with P-256, so a host key and a requester's passkey can both be verified onchain directly. Without the precompile, OpenZeppelin's Solidity fallback costs about 250,000 gas for the same check. Our tests pin the EVM version and include a gas-bound test that fails if the fallback ever runs instead of the precompile.
+
+ERC-8004 identity is deployed as a first-class registry on Monad. Every host and verifier in Assay is an ERC-8004 agent, and the contracts check `ownerOf` against that registry instead of running their own account system.
+
+Gas is cheap enough to anchor small batches often. One `anchor()` call uses about 61,000 gas, which is roughly 0.006 MON at the minimum base fee. Spread over a 64-receipt batch, that's about 0.0001 MON per receipt. A passkey co-signature (`cosign()`) uses about 73,000 gas.
+
 ## Status (30 Sep 2026)
 
 | Piece | State |
