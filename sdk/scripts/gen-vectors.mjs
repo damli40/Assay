@@ -1,8 +1,4 @@
-// Writes contracts/test/fixtures/webcrypto.json: P-256 signatures from Node WebCrypto, one host
-// anchor signature and one 8-leaf StandardMerkleTree. Fixtures.t.sol checks all of it in Solidity,
-// so signing and Merkle code here and in the contracts can't drift apart unnoticed.
-//
-// Run: pnpm --filter @assay/receipts gen:vectors
+// Writes contracts/test/fixtures/webcrypto.json, which contracts/test/Fixtures.t.sol checks.
 
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -12,20 +8,20 @@ import { encodeAbiParameters, keccak256, toHex, stringToHex } from "viem";
 
 const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "../../contracts/test/fixtures/webcrypto.json");
 
-// P-256 group order. Signatures with s > N/2 are rejected by OpenZeppelin's P256.
+// P-256 group order.
 const N = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
 
 // Must match the constants in Fixtures.t.sol.
 const CHAIN_ID = 31337n;
 const ANCHOR_ADDRESS = "0x00000000000000000000000000000000a55a7000";
-const AGENT_ID = 1n; // first id the mock registry hands out
+const AGENT_ID = 1n;
 
 const { subtle } = globalThis.crypto;
 const hex = (bytes) => toHex(new Uint8Array(bytes));
 const random32 = () => crypto.getRandomValues(new Uint8Array(32));
 const sha256 = async (bytes) => new Uint8Array(await subtle.digest("SHA-256", bytes));
 
-// WebCrypto returns raw r || s (64 bytes). Flip s into the lower half if needed.
+// OpenZeppelin's P256 rejects s > N/2, and WebCrypto returns high s about half the time.
 function splitAndNormalize(sig) {
   const bytes = new Uint8Array(sig);
   const r = BigInt(hex(bytes.slice(0, 32)));
@@ -38,8 +34,7 @@ function splitAndNormalize(sig) {
   };
 }
 
-// WebCrypto hashes its input with SHA-256 before signing, so we pass the message, not a digest.
-// The digest Solidity must check is sha256(message).
+// WebCrypto hashes the input itself, so Solidity must check sha256(message).
 async function sign(privateKey, message) {
   const sig = await subtle.sign({ name: "ECDSA", hash: "SHA-256" }, privateKey, message);
   return splitAndNormalize(sig);
@@ -52,14 +47,12 @@ const { privateKey, publicKey } = await subtle.generateKey({ name: "ECDSA", name
 const raw = new Uint8Array(await subtle.exportKey("raw", publicKey)); // 0x04 || x || y
 const key = { x: hex(raw.slice(1, 33)), y: hex(raw.slice(33, 65)) };
 
-// 1. Plain signatures over random messages.
 const signatures = [];
 for (let i = 0; i < 10; i++) {
   const message = random32();
   signatures.push({ message: hex(message), digest: hex(await sha256(message)), ...(await sign(privateKey, message)) });
 }
 
-// 2. An 8-leaf batch of receipt hashes.
 const receipts = Array.from({ length: 8 }, () => hex(random32()));
 const tree = StandardMerkleTree.of(
   receipts.map((h) => [h]),
@@ -68,7 +61,7 @@ const tree = StandardMerkleTree.of(
 const proofs = receipts.map((_, i) => tree.getProof(i));
 const leaves = receipts.map((h) => tree.leafHash([h]));
 
-// 3. The host's anchor signature over that batch, same encoding as ReceiptAnchor.anchorMessage.
+// Same encoding as ReceiptAnchor.anchorMessage.
 const anchorMessage = encodeAbiParameters(
   [{ type: "bytes32" }, { type: "uint256" }, { type: "address" }, { type: "uint256" }, { type: "bytes32" }, { type: "uint32" }],
   [keccak256(stringToHex("assay-anchor/0")), CHAIN_ID, ANCHOR_ADDRESS, AGENT_ID, tree.root, receipts.length],

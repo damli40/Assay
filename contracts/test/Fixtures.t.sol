@@ -7,9 +7,7 @@ import {ReceiptAnchor} from "../src/ReceiptAnchor.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {MockIdentityRegistry} from "./mocks/MockIdentityRegistry.sol";
 
-/// Checks data produced by Node (sdk/scripts/gen-vectors.mjs) against the contracts:
-/// WebCrypto signatures, a host anchor signature and StandardMerkleTree proofs.
-// Regenerate with `pnpm --filter @assay/receipts gen:vectors`.
+// Checks the output of sdk/scripts/gen-vectors.mjs against the contracts.
 contract FixturesTest is Test {
     // Must match CHAIN_ID and ANCHOR_ADDRESS in gen-vectors.mjs.
     uint256 internal constant CHAIN_ID = 31337;
@@ -31,7 +29,7 @@ contract FixturesTest is Test {
 
         vm.chainId(CHAIN_ID);
         MockIdentityRegistry reg = new MockIdentityRegistry();
-        // The host signed for this exact address, so the contract has to live there.
+        // The Node anchor signature commits to this address.
         deployCodeTo(
             "ReceiptAnchor.sol:ReceiptAnchor", abi.encode(IIdentityRegistry(address(reg)), true), ANCHOR_ADDRESS
         );
@@ -103,7 +101,6 @@ contract FixturesTest is Test {
         }
     }
 
-    /// Flip any single bit of any proof element for any leaf: the proof must stop verifying.
     function testFuzz_mutatedProofFails(uint8 leafIdx, uint8 proofIdx, uint8 bit) public {
         _anchorFromNode();
         uint256 i = leafIdx % LEAF_COUNT;

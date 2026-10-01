@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {IIdentityRegistry} from "../../src/interfaces/IIdentityRegistry.sol";
 
-/// Stand-in for the ERC-8004 IdentityRegistry. Ids start at 1 so that 0 never names a real agent.
 contract MockIdentityRegistry is IIdentityRegistry {
     mapping(uint256 agentId => address owner) public ownerOf;
     uint256 public lastId;

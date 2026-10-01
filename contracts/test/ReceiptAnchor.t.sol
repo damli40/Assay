@@ -17,7 +17,6 @@ contract ReceiptAnchorTest is Test {
     bytes32 internal qx;
     bytes32 internal qy;
 
-    // A two-leaf batch small enough to build by hand: root = hash of the sorted pair of leaves.
     bytes32 internal constant RECEIPT_A = keccak256("receipt a");
     bytes32 internal constant RECEIPT_B = keccak256("receipt b");
     bytes32 internal root;
@@ -37,12 +36,11 @@ contract ReceiptAnchorTest is Test {
         root = _pairRoot(ra.leafOf(RECEIPT_A), ra.leafOf(RECEIPT_B));
     }
 
-    // Same hashing as OpenZeppelin's MerkleProof: sort the pair, then keccak256 of the 64 bytes.
+    // OpenZeppelin MerkleProof node: keccak256 of the sorted pair.
     function _pairRoot(bytes32 a, bytes32 b) internal pure returns (bytes32) {
         return a < b ? keccak256(abi.encode(a, b)) : keccak256(abi.encode(b, a));
     }
 
-    // Signs exactly what the host signs: sha256 of the contract's anchor message.
     function _sign(ReceiptAnchor target, uint256 pk, bytes32 r_, uint32 count)
         internal
         view
@@ -61,14 +59,12 @@ contract ReceiptAnchorTest is Test {
         ra.anchor(agentId, root, 2, r, s);
     }
 
-    // ---------- anchor ----------
-
     function test_anchor_and_verifyReceipt() public {
         (bytes32 r, bytes32 s) = _sign(ra, HOST_PK, root, 2);
 
         vm.expectEmit(address(ra));
         emit ReceiptAnchor.Anchored(agentId, root, 2, ra.keyHashOf(qx, qy));
-        vm.prank(makeAddr("relayer")); // anyone can relay
+        vm.prank(makeAddr("relayer"));
         ra.anchor(agentId, root, 2, r, s);
 
         (uint256 storedAgent, uint32 count, uint64 at) = ra.anchors(root);
@@ -112,12 +108,10 @@ contract ReceiptAnchorTest is Test {
         vm.prank(host);
         other.setHostKey(agentId, qx, qy);
 
-        // Signed for `ra`, submitted to `other`. Same host, same key, same root.
         (bytes32 r, bytes32 s) = _sign(ra, HOST_PK, root, 2);
         vm.expectRevert(ReceiptAnchor.BadHostSignature.selector);
         other.anchor(agentId, root, 2, r, s);
 
-        // Positive twin: a signature made for `other` is accepted there.
         (r, s) = _sign(other, HOST_PK, root, 2);
         other.anchor(agentId, root, 2, r, s);
     }
@@ -134,8 +128,6 @@ contract ReceiptAnchorTest is Test {
         vm.expectRevert(ReceiptAnchor.BadHostSignature.selector);
         ra.anchor(agentId, root, 2, r, bytes32(n - uint256(s)));
     }
-
-    // ---------- setHostKey ----------
 
     function test_setHostKey_emits() public {
         (uint256 x, uint256 y) = vm.publicKeyP256(OTHER_PK);
@@ -168,14 +160,11 @@ contract ReceiptAnchorTest is Test {
 
         assertTrue(ra.verifyReceipt(RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root), "old anchor still valid");
 
-        // The old key can no longer anchor new batches.
         bytes32 newRoot = keccak256("next batch");
         (bytes32 r, bytes32 s) = _sign(ra, HOST_PK, newRoot, 1);
         vm.expectRevert(ReceiptAnchor.BadHostSignature.selector);
         ra.anchor(agentId, newRoot, 1, r, s);
     }
-
-    // ---------- verifyReceipt ----------
 
     function test_verifyReceipt_badProof_false() public {
         _anchor();
@@ -184,21 +173,16 @@ contract ReceiptAnchorTest is Test {
     }
 
     function test_verifyReceipt_unanchoredRoot_false() public view {
-        // Correct proof, but nobody anchored the root.
         assertFalse(ra.verifyReceipt(RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root));
     }
 
     function test_verifyReceipt_wrongLeaf_false() public {
         _anchor();
-        // Proof for RECEIPT_A, asked about a receipt that was never in the batch.
         assertFalse(ra.verifyReceipt(keccak256("receipt c"), _proof(ra.leafOf(RECEIPT_B)), root));
     }
 
-    // ---------- leafOf ----------
-
     function test_leafOf_knownVector() public view {
-        // From @openzeppelin/merkle-tree 1.0.8: StandardMerkleTree.of([[0x00..01]], ["bytes32"]).root,
-        // which for a one-leaf tree is the leaf hash itself. Fixtures.t.sol checks 8 more leaves.
+        // Root of a one-leaf StandardMerkleTree over 0x00..01, from @openzeppelin/merkle-tree 1.0.8.
         assertEq(ra.leafOf(bytes32(uint256(1))), 0xb5d9d894133a730aa651ef62d26b0ffa846233c74177a591a4a896adfda97d22);
     }
 }
