@@ -1,0 +1,24 @@
+type ReceiptAnchor_Anchored {
+  id: ID!
+  agentId: BigInt!
+  root: String!
+  count: BigInt!
+  keyHash: String!
+}
+
+type ReceiptAnchor_Cosigned {
+  id: ID!
+  receiptHash: String!
+  requesterKey: String!
+  agentId: BigInt!
+  root: String!
+}
+
+type ReceiptAnchor_HostKeySet {
+  id: ID!
+  agentId: BigInt!
+  keyHash: String!
+  qx: String!
+  qy: String!
+}
+

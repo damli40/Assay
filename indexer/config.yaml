@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: assay-indexer
+disable_default_cross_chain: true
+chains:
+- id: 10143
+  start_block: 67269630
+  contracts:
+  - name: ReceiptAnchor
+    address:
+    - "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13"
+    events:
+    - event: Anchored(uint256 indexed agentId, bytes32 indexed root, uint32 count, bytes32 keyHash)
+    - event: Cosigned(bytes32 indexed receiptHash, bytes32 indexed requesterKey, uint256 indexed agentId, bytes32 root)
+    - event: HostKeySet(uint256 indexed agentId, bytes32 indexed keyHash, bytes32 qx, bytes32 qy)
