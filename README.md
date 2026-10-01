@@ -38,7 +38,7 @@ Agents and apps that buy inference from hosts they don't control can attach rece
 | ReceiptAnchor (host keys, anchoring, Merkle proofs, passkey co-sign) | 35 tests passing, including Node-generated signatures and proofs |
 | VerifierRegistry (open verifiers, grades, `gradeOf`) | 15 tests passing |
 | Testnet deploy | Live and verified on Monad testnet, first anchor onchain. See [deployments](docs/deployments.md) |
-| `@assay/receipts` SDK | In progress: 57 tests. Receipts, Merkle batches and anchor signatures made by the SDK verify in the contracts |
+| `@assay/receipts` SDK | 68 tests. Builds, signs and verifies receipts; batches and anchor signatures made by the SDK verify in the contracts |
 | Reference host | Planned |
 | Envio indexer and verify page | Planned |
 
