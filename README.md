@@ -52,6 +52,29 @@ Gas is cheap enough to anchor small batches often. One `anchor()` call uses abou
 | Reference host | Planned |
 | Envio indexer and verify page | Planned |
 
+## Architecture
+
+```mermaid
+flowchart LR
+  App["Requester app<br/>@assay/receipts"] -->|"prompt + X-Assay-Salt"| Host["Assay host<br/>OpenAI-compatible proxy"]
+  Host -->|forward| Model["Upstream model"]
+  Host -->|"response + receipt signed as ES256 JWS"| App
+  Host -->|"Merkle root + P-256 signature per batch"| RA[("ReceiptAnchor<br/>Monad")]
+  App -->|"passkey co-signature (WebAuthn)"| RA
+  Verifier["Verifier<br/>harness"] -->|"grade + evidence hash"| VR[("VerifierRegistry<br/>Monad")]
+  ID[("ERC-8004<br/>IdentityRegistry")] -.->|ownerOf| RA
+  ID -.->|ownerOf| VR
+  RA --> Indexer["Envio indexer"]
+  VR --> Indexer
+  Indexer --> Page["Verify page and grade API"]
+```
+
+A request goes through the host, which forwards it to the model, computes salted commits of the prompt and the output, and returns the response together with a signed receipt. Every few minutes the host builds a Merkle tree of the receipts it issued and anchors the root on Monad with one P-256 signature. Anyone holding a receipt can then prove it was in an anchored batch, and the requester can add a passkey co-signature that the contract verifies through the precompile.
+
+Grades live separately. Verifiers test each host against the lab's own endpoint and post the result, a 95% confidence interval and a hash of the raw logs. Readers choose which verifiers they trust when they call `gradeOf`, so nobody can flood the registry with fake grades that count.
+
+The contracts are in `contracts/src`, the receipt format is in [SPEC.md](SPEC.md), and the deployed addresses are in [docs/deployments.md](docs/deployments.md).
+
 ## Repo layout
 
 ```
