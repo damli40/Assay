@@ -131,7 +131,7 @@ type HostModelStats {
   verifier: Verifier!
   model: String! @index
   hostKey: String! @index
-  leaderboard: ModelLeaderboard!
+  leaderboard: ModelLeaderboard! @index
   rank: Int!
   latest: Grade!
   latestCiLowBps: Int!
