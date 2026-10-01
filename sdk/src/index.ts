@@ -19,6 +19,15 @@ export {
 } from "./webauthn.js";
 export { wrap, type WrappedResult } from "./wrap.js";
 export {
+  gradeOf,
+  gradeStatus,
+  verifierRegistryAbi,
+  GRADE_MAX_AGE_SECONDS,
+  GRADE_MIN_SAMPLES,
+  type Grade,
+  type GradeStatus,
+} from "./grade.js";
+export {
   ANCHOR_TAG,
   anchorMessage,
   createHostSigner,
