@@ -1,0 +1,127 @@
+import { receiptHash, verifyReceipt, type Checks, type Reproduce, type VerifyInput, type VerifyResult } from "@assay/receipts";
+import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
+import { chainClient, DEFAULT_HOST, DEFAULT_RPC, RECEIPT_ANCHOR } from "../lib/config.js";
+import { fetchJwks, fetchReceiptStatus } from "../lib/host.js";
+import { parseReceipt, parseSalt } from "../lib/receipt.js";
+import type { Address } from "viem";
+
+/// Order shown on the page, with what a pass means and what a skip is waiting for.
+export const CHECKS: { key: keyof Checks; name: string; means: string; skipped: string }[] = [
+  { key: "jws", name: "Host signature", means: "The host's signature verifies against the keys it publishes at /.well-known/jwks.json.", skipped: "" },
+  { key: "hash", name: "Body unchanged", means: "The receipt you hold is byte for byte the one the host signed.", skipped: "Needs a valid host signature first." },
+  { key: "kid", name: "Signing key", means: "The key that signed is the one the receipt names in host.keyId.", skipped: "Needs a valid host signature first." },
+  { key: "merkle", name: "In the batch", means: "The Merkle proof places this receipt in the batch the host anchored.", skipped: "Needs the proof and root from the host. The receipt may not be anchored yet." },
+  { key: "anchored", name: "Anchored onchain", means: "ReceiptAnchor holds the batch root under the host's ERC-8004 agent id.", skipped: "Needs the batch root and a chain RPC." },
+  { key: "outputCommit", name: "Output matches", means: "Your salt and output text reproduce the output commit, so this is exactly the text the host served.", skipped: "Paste the salt and the output text to run it." },
+  { key: "promptCommit", name: "Prompt matches", means: "Your salt and messages reproduce the prompt commit, so this receipt answers that prompt.", skipped: "Paste the salt and the messages JSON to run it." },
+  { key: "cosigned", name: "Requester co-signed", means: "The passkey named in req.cosigner co-signed this receipt onchain.", skipped: "The receipt names no co-signer, or no chain RPC was given." },
+];
+
+export function formatReproduce(r: Reproduce, rpc: string): string {
+  switch (r.kind) {
+    case "jws":
+      return `Verify the compact JWS with ${r.alg} using JWKS key "${r.kid}"; the payload must equal ${r.payload}.`;
+    case "compute":
+      return `${r.what}\ninputs: ${JSON.stringify(r.inputs)}\nexpect: ${r.expect}`;
+    case "contract-call":
+      return `cast call ${r.address} "${r.function}" ${r.args.join(" ")} --rpc-url ${rpc}\n# expect ${r.expect}`;
+  }
+}
+
+const LABEL = { pass: "Pass", fail: "Fail", skipped: "Skipped" } as const;
+
+export function renderResult(result: VerifyResult, opts: { rpc: string; notes?: string[] }): HTMLElement {
+  const verdict = result.ok ? "No check failed." : "At least one check failed. Do not rely on this receipt.";
+  const out = h(
+    "div",
+    { class: "result" },
+    h("p", { class: `verdict ${result.ok ? "ok" : "bad"}` }, verdict),
+    h("p", {}, "Receipt hash ", mono(result.receiptHash), " ", copyButton(result.receiptHash)),
+  );
+  for (const note of opts.notes ?? []) out.append(h("p", { class: "hint" }, note));
+  const list = h("ul", { class: "checks" });
+  for (const c of CHECKS) {
+    const state = result.checks[c.key];
+    const repro = result.reproduce[c.key];
+    const li = h(
+      "li",
+      { class: `check ${state}`, "data-check": c.key },
+      h("div", { class: "check-head" }, h("span", { class: `badge ${state}` }, LABEL[state]), h("strong", {}, c.name)),
+      h("p", {}, state === "skipped" ? c.skipped : c.means),
+    );
+    if (repro) {
+      const line = formatReproduce(repro, opts.rpc);
+      li.append(h("div", { class: "repro" }, h("pre", {}, line), copyButton(line, "Copy reproduce line")));
+    }
+    list.append(li);
+  }
+  out.append(list);
+  return out;
+}
+
+export function mountVerify(root: HTMLElement) {
+  const receipt = field("Receipt", textarea({ rows: "5", placeholder: "X-Assay-Receipt header value, or JSON {body, jws}" }), "Base64url header or JSON. Nothing you paste leaves this page except the receipt hash, sent to the host to fetch the proof.");
+  const salt = field("Salt (optional)", input("", { placeholder: "64 hex characters" }), "The X-Assay-Salt sent with the request. Needed to open the commits.");
+  const output = field("Output text (optional)", textarea({ rows: "3" }), "The assistant message exactly as received, whitespace included.");
+  const messages = field("Messages JSON (optional)", textarea({ rows: "3", placeholder: '[{"role":"user","content":"..."}]' }));
+  const host = field("Host base URL", input(DEFAULT_HOST), "Used for /.well-known/jwks.json and /v1/receipts/:hash.");
+  const rpc = field("RPC URL", input(DEFAULT_RPC));
+  const anchor = field("ReceiptAnchor", input(RECEIPT_ANCHOR));
+  const status = liveRegion();
+  const results = h("div");
+  const form = h(
+    "form",
+    { class: "card" },
+    receipt.row,
+    salt.row,
+    output.row,
+    messages.row,
+    h("details", {}, h("summary", {}, "Host and chain settings"), host.row, rpc.row, anchor.row),
+    h("button", { type: "submit" }, "Verify"),
+    status.el,
+  );
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    results.replaceChildren();
+    try {
+      const held = parseReceipt(receipt.input.value);
+      const input: VerifyInput = { body: held.body, jws: held.jws, jwks: { keys: [] } };
+      if (salt.input.value.trim()) input.salt = parseSalt(salt.input.value);
+      // Never trim the output: one changed byte changes the commit.
+      if (output.input.value !== "") input.output = output.input.value;
+      if (messages.input.value.trim()) {
+        try {
+          input.messages = JSON.parse(messages.input.value);
+        } catch {
+          throw new Error("Messages must be valid JSON.");
+        }
+      }
+      const notes: string[] = [];
+      status.say("Fetching keys and proof from the host…");
+      try {
+        input.jwks = await fetchJwks(host.input.value);
+      } catch (e) {
+        notes.push(`Could not fetch the host's JWKS (${errorText(e)}), so the signature check fails.`);
+      }
+      try {
+        const st = await fetchReceiptStatus(host.input.value, receiptHash(held.body));
+        if (st.status === "anchored") Object.assign(input, { proof: st.proof, root: st.root });
+        else notes.push("The host has not anchored this receipt yet. Try again after the next batch.");
+      } catch (e) {
+        notes.push(`Could not fetch the proof (${errorText(e)}).`);
+      }
+      if (rpc.input.value.trim()) input.onchain = { client: chainClient(rpc.input.value), anchor: anchor.input.value.trim() as Address };
+      status.say("Checking…");
+      const result = await verifyReceipt(input);
+      results.append(renderResult(result, { rpc: rpc.input.value.trim(), notes }));
+      status.say(result.ok ? "Done. No check failed." : "Done. At least one check failed.", result.ok ? "ok" : "error");
+    } catch (e) {
+      status.say(errorText(e), "error");
+    }
+  });
+
+  root.append(
+    section("Verify a receipt", "Check a receipt yourself: the host's signature, the onchain anchor, and, if you kept the salt, that the output and prompt match.", form, results),
+  );
+}
