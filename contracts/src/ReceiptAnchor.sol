@@ -18,8 +18,6 @@ contract ReceiptAnchor {
         bytes32 qy;
     }
 
-    /// Two storage slots: agentId, then count and anchoredAt packed together.
-    /// anchoredAt is never 0 for a real anchor, so it doubles as the "exists" flag.
     struct Anchor {
         uint256 agentId;
         uint32 count;
