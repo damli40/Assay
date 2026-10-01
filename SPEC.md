@@ -79,6 +79,8 @@ The client calls `navigator.credentials.get` with `challenge = receiptHash`. The
 
 Receipts are keyed by `receiptHash` and not by signature bytes, so signature malleability can't produce a duplicate receipt.
 
+A passkey can sign any challenge, so anyone who learns a receipt hash could co-sign it with their own key. The contract therefore records every valid co-signature, one per key, and doesn't decide which one belongs to the requester. That binding happens in the receipt itself. A requester who plans to co-sign sends `X-Assay-Cosigner: <keyHash>` with the request, where `keyHash = keccak256(abi.encode(qx, qy))`, and the host signs it into the body as `req.cosigner`. Verifiers accept only the co-signature whose key hash matches `req.cosigner`, and ignore the rest.
+
 ## 5. Grades from open verifiers
 
 Anyone can be a verifier. A verifier registers an ERC-8004 identity and publishes grades to `VerifierRegistry`:

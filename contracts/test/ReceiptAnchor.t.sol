@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {WebAuthn} from "@openzeppelin/contracts/utils/cryptography/WebAuthn.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {ReceiptAnchor} from "../src/ReceiptAnchor.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {MockIdentityRegistry} from "./mocks/MockIdentityRegistry.sol";
@@ -9,6 +11,10 @@ import {MockIdentityRegistry} from "./mocks/MockIdentityRegistry.sol";
 contract ReceiptAnchorTest is Test {
     uint256 internal constant HOST_PK = 0xA11CE;
     uint256 internal constant OTHER_PK = 0xB0B;
+    uint256 internal constant REQUESTER_PK = 0xC0FFEE;
+    uint256 internal constant N = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551;
+    bytes1 internal constant UP = 0x01;
+    bytes1 internal constant UV = 0x04;
 
     MockIdentityRegistry internal reg;
     ReceiptAnchor internal ra;
@@ -147,10 +153,9 @@ contract ReceiptAnchorTest is Test {
     }
 
     function test_anchor_highS_reverts() public {
-        uint256 n = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551;
         (bytes32 r, bytes32 s) = _sign(ra, HOST_PK, root, 2);
         vm.expectRevert(ReceiptAnchor.BadHostSignature.selector);
-        ra.anchor(agentId, root, 2, r, bytes32(n - uint256(s)));
+        ra.anchor(agentId, root, 2, r, bytes32(N - uint256(s)));
     }
 
     function test_setHostKey_emits() public {
@@ -208,5 +213,118 @@ contract ReceiptAnchorTest is Test {
     function test_leafOf_knownVector() public view {
         // Root of a one-leaf StandardMerkleTree over 0x00..01, from @openzeppelin/merkle-tree 1.0.8.
         assertEq(ra.leafOf(bytes32(uint256(1))), 0xb5d9d894133a730aa651ef62d26b0ffa846233c74177a591a4a896adfda97d22);
+    }
+
+    // Same assertion layout as WebAuthn.t.sol: "type" at index 1, "challenge" at index 23.
+    function _assertion(uint256 pk, bytes32 challenge, bytes1 flags)
+        internal
+        pure
+        returns (WebAuthn.WebAuthnAuth memory)
+    {
+        string memory cdj = string.concat(
+            '{"type":"webauthn.get","challenge":"',
+            Base64.encodeURL(abi.encodePacked(challenge)),
+            '","origin":"https://assay.example","crossOrigin":false}'
+        );
+        bytes memory authData = abi.encodePacked(sha256("assay.example"), flags, uint32(1));
+        (bytes32 r, bytes32 s) = vm.signP256(pk, sha256(abi.encodePacked(authData, sha256(bytes(cdj)))));
+        return WebAuthn.WebAuthnAuth({
+            r: r, s: s, challengeIndex: 23, typeIndex: 1, authenticatorData: authData, clientDataJSON: cdj
+        });
+    }
+
+    function _requesterKey(uint256 pk) internal view returns (bytes32 x, bytes32 y) {
+        (uint256 ux, uint256 uy) = vm.publicKeyP256(pk);
+        (x, y) = (bytes32(ux), bytes32(uy));
+    }
+
+    // Builds every argument first: vm.expectRevert applies to the next external call, which must be cosign.
+    function _cosign(uint256 pk, WebAuthn.WebAuthnAuth memory auth, bytes4 expectedError) internal {
+        (bytes32 x, bytes32 y) = _requesterKey(pk);
+        bytes32[] memory proof = _proof(ra.leafOf(RECEIPT_B));
+        if (expectedError != bytes4(0)) vm.expectRevert(expectedError);
+        ra.cosign(agentId, RECEIPT_A, proof, root, auth, x, y);
+    }
+
+    function test_cosign_valid() public {
+        _anchor();
+        (bytes32 x, bytes32 y) = _requesterKey(REQUESTER_PK);
+        vm.expectEmit(address(ra));
+        emit ReceiptAnchor.Cosigned(RECEIPT_A, ra.keyHashOf(x, y), agentId, root);
+        _cosign(REQUESTER_PK, _assertion(REQUESTER_PK, RECEIPT_A, UP | UV), bytes4(0));
+        assertTrue(ra.cosigned(RECEIPT_A, ra.keyHashOf(x, y)));
+    }
+
+    function test_cosign_replay_reverts() public {
+        _anchor();
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UP | UV);
+        _cosign(REQUESTER_PK, auth, bytes4(0));
+        _cosign(REQUESTER_PK, auth, ReceiptAnchor.AlreadyCosigned.selector);
+    }
+
+    function test_cosign_otherKeyFirst_doesNotBlock() public {
+        _anchor();
+        // An attacker who saw the receipt hash co-signs first with their own passkey.
+        _cosign(OTHER_PK, _assertion(OTHER_PK, RECEIPT_A, UP | UV), bytes4(0));
+        _cosign(REQUESTER_PK, _assertion(REQUESTER_PK, RECEIPT_A, UP | UV), bytes4(0));
+        (bytes32 x, bytes32 y) = _requesterKey(REQUESTER_PK);
+        assertTrue(ra.cosigned(RECEIPT_A, ra.keyHashOf(x, y)));
+    }
+
+    function test_cosign_notAnchored_reverts() public {
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UP | UV);
+        _cosign(REQUESTER_PK, auth, ReceiptAnchor.ReceiptNotAnchored.selector);
+    }
+
+    function test_cosign_badProof_reverts() public {
+        _anchor();
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UP | UV);
+        (bytes32 x, bytes32 y) = _requesterKey(REQUESTER_PK);
+        bytes32[] memory bad = _proof(ra.leafOf(RECEIPT_B) ^ bytes32(uint256(1)));
+        vm.expectRevert(ReceiptAnchor.ReceiptNotAnchored.selector);
+        ra.cosign(agentId, RECEIPT_A, bad, root, auth, x, y);
+    }
+
+    function test_cosign_otherHostsAgentId_reverts() public {
+        _anchor();
+        vm.prank(host);
+        uint256 otherId = reg.register("");
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UP | UV);
+        (bytes32 x, bytes32 y) = _requesterKey(REQUESTER_PK);
+        bytes32[] memory proof = _proof(ra.leafOf(RECEIPT_B));
+        vm.expectRevert(ReceiptAnchor.ReceiptNotAnchored.selector);
+        ra.cosign(otherId, RECEIPT_A, proof, root, auth, x, y);
+    }
+
+    function test_cosign_challengeIsOtherReceipt_reverts() public {
+        _anchor();
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_B, UP | UV);
+        _cosign(REQUESTER_PK, auth, ReceiptAnchor.BadCosignature.selector);
+    }
+
+    function test_cosign_missingUP_reverts() public {
+        _anchor();
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UV);
+        _cosign(REQUESTER_PK, auth, ReceiptAnchor.BadCosignature.selector);
+    }
+
+    function test_cosign_missingUV_reverts() public {
+        _anchor();
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UP);
+        _cosign(REQUESTER_PK, auth, ReceiptAnchor.BadCosignature.selector);
+    }
+
+    function test_cosign_wrongKey_reverts() public {
+        _anchor();
+        // Signed by OTHER_PK, presented as REQUESTER_PK's key.
+        WebAuthn.WebAuthnAuth memory auth = _assertion(OTHER_PK, RECEIPT_A, UP | UV);
+        _cosign(REQUESTER_PK, auth, ReceiptAnchor.BadCosignature.selector);
+    }
+
+    function test_cosign_highS_reverts() public {
+        _anchor();
+        WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UP | UV);
+        auth.s = bytes32(N - uint256(auth.s));
+        _cosign(REQUESTER_PK, auth, ReceiptAnchor.BadCosignature.selector);
     }
 }

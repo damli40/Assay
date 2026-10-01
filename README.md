@@ -35,8 +35,8 @@ Agents and apps that buy inference from hosts they don't control can attach rece
 | P256 precompile tests (`0x0100`, EIP-7951) | 6 passing |
 | WebAuthn co-sign tests (OpenZeppelin 5.7.0) | 12 passing |
 | Precompile check on Monad testnet | Passed, see [evidence](docs/evidence/day1-precompile-testnet.txt) |
-| ReceiptAnchor (host keys, anchoring, Merkle proofs) | 24 tests passing, including Node-generated signatures and proofs |
-| Requester co-sign, VerifierRegistry, testnet deploy | In progress |
+| ReceiptAnchor (host keys, anchoring, Merkle proofs, passkey co-sign) | 35 tests passing, including Node-generated signatures and proofs |
+| VerifierRegistry and testnet deploy | In progress |
 | `@assay/receipts` SDK and reference host | Planned |
 | Envio indexer and verify page | Planned |
 
