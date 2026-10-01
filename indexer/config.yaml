@@ -2,6 +2,8 @@
 name: assay-indexer
 description: Assay receipts, anchors, co-signatures and verifier grades on Monad testnet
 disable_default_cross_chain: true
+# Lowercase addresses keep ids and GraphQL filters case-stable.
+address_format: lowercase
 contracts:
   - name: ReceiptAnchor
     events:
