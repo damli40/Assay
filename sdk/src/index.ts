@@ -17,6 +17,7 @@ export {
   type PasskeyCredentials,
   type Passkey,
 } from "./webauthn.js";
+export { wrap, type WrappedResult } from "./wrap.js";
 export {
   ANCHOR_TAG,
   anchorMessage,
