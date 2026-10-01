@@ -13,11 +13,18 @@ contract CreAttestorTest is Test {
     bytes32 internal constant MODEL = keccak256("z-ai/glm-5.3");
     bytes32 internal constant HOST_KEY = keccak256("host");
     uint64 internal constant T = 1_790_000_000;
+    address internal wfOwner = makeAddr("workflowOwner");
+    bytes32 internal constant WF_ID = keccak256("assay-grade-attest");
 
     function setUp() public {
         att = new CreAttestor(owner);
         vm.prank(owner);
-        att.setForwarder(fwd);
+        att.configure(fwd, wfOwner, WF_ID);
+    }
+
+    // KeystoneForwarder layout: workflowId, workflowName, workflowOwner, reportName.
+    function _meta(bytes32 id, address owner_) internal pure returns (bytes memory) {
+        return abi.encodePacked(id, bytes10("assaygrade"), owner_, bytes2(0x0001));
     }
 
     function _report(uint32 passed, uint32 total, uint16 lo, uint16 hi) internal view returns (bytes memory) {
@@ -27,7 +34,7 @@ contract CreAttestorTest is Test {
     function _onReport(bytes memory report, bytes4 expectedError) internal {
         if (expectedError != bytes4(0)) vm.expectRevert(expectedError);
         vm.prank(fwd);
-        att.onReport("", report);
+        att.onReport(_meta(WF_ID, wfOwner), report);
     }
 
     function test_onReport_storesAndEmits() public {
@@ -54,26 +61,26 @@ contract CreAttestorTest is Test {
         bytes memory report = _report(47, 50, 8_400, 9_800);
         vm.expectRevert(CreAttestor.NotForwarder.selector);
         vm.prank(owner);
-        att.onReport("", report);
+        att.onReport(_meta(WF_ID, wfOwner), report);
     }
 
     function test_onReport_forwarderUnset_reverts() public {
         CreAttestor fresh = new CreAttestor(owner);
         bytes memory report = _report(47, 50, 8_400, 9_800);
         vm.expectRevert(CreAttestor.NotForwarder.selector);
-        fresh.onReport("", report);
+        fresh.onReport(_meta(WF_ID, wfOwner), report);
     }
 
-    function test_setForwarder_twice_reverts() public {
-        vm.expectRevert(CreAttestor.ForwarderAlreadySet.selector);
+    function test_configure_twice_reverts() public {
+        vm.expectRevert(CreAttestor.AlreadyConfigured.selector);
         vm.prank(owner);
-        att.setForwarder(makeAddr("other"));
+        att.configure(makeAddr("other"), wfOwner, WF_ID);
     }
 
-    function test_setForwarder_nonOwner_reverts() public {
+    function test_configure_nonOwner_reverts() public {
         CreAttestor fresh = new CreAttestor(owner);
         vm.expectRevert(CreAttestor.NotOwner.selector);
-        fresh.setForwarder(fwd);
+        fresh.configure(fwd, wfOwner, WF_ID);
     }
 
     function test_onReport_wrongLength_reverts() public {
@@ -88,7 +95,7 @@ contract CreAttestorTest is Test {
         report[report.length - 1] = 0x02;
         vm.prank(fwd);
         vm.expectRevert();
-        att.onReport("", report);
+        att.onReport(_meta(WF_ID, wfOwner), report);
     }
 
     function test_onReport_zeroTotal_reverts() public {

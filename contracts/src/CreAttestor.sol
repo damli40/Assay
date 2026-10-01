@@ -18,12 +18,15 @@ contract CreAttestor is IERC165 {
 
     address public immutable owner;
     address public forwarder;
+    address public workflowOwner;
+    // Zero accepts any workflow from workflowOwner.
+    bytes32 public workflowId;
 
     mapping(
         address verifier => mapping(bytes32 model => mapping(bytes32 hostKey => mapping(uint64 t => Attestation)))
     ) public attestations;
 
-    event ForwarderSet(address indexed forwarder);
+    event Configured(address indexed forwarder, address indexed workflowOwner, bytes32 workflowId);
     event GradeAttested(
         address indexed verifier,
         bytes32 indexed model,
@@ -35,24 +38,34 @@ contract CreAttestor is IERC165 {
     );
 
     error NotOwner();
-    error ForwarderAlreadySet();
+    error AlreadyConfigured();
+    error BadConfig();
     error NotForwarder();
+    error BadMetadata();
+    error UnauthorizedWorkflow();
     error BadReport();
 
     constructor(address owner_) {
         owner = owner_;
     }
 
-    function setForwarder(address forwarder_) external {
+    /// One-time setup. The forwarder is shared by every CRE workflow, so reports are also pinned to our workflow.
+    function configure(address forwarder_, address workflowOwner_, bytes32 workflowId_) external {
         if (msg.sender != owner) revert NotOwner();
-        if (forwarder != address(0)) revert ForwarderAlreadySet();
-        forwarder = forwarder_;
-        emit ForwarderSet(forwarder_);
+        if (forwarder != address(0)) revert AlreadyConfigured();
+        if (forwarder_ == address(0) || workflowOwner_ == address(0)) revert BadConfig();
+        (forwarder, workflowOwner, workflowId) = (forwarder_, workflowOwner_, workflowId_);
+        emit Configured(forwarder_, workflowOwner_, workflowId_);
     }
 
-    /// CRE IReceiver entry point. `metadata` (workflow id, name, owner) is not checked: the forwarder is the trust anchor.
-    function onReport(bytes calldata, bytes calldata report) external {
+    /// CRE IReceiver entry point. KeystoneForwarder metadata is
+    /// abi.encodePacked(bytes32 workflowId, bytes10 workflowName, address workflowOwner, bytes2 reportName).
+    function onReport(bytes calldata metadata, bytes calldata report) external {
         if (msg.sender != forwarder) revert NotForwarder();
+        if (metadata.length < 64) revert BadMetadata();
+        bytes32 id = bytes32(metadata[0:32]);
+        address wfOwner = address(bytes20(metadata[42:62]));
+        if (wfOwner != workflowOwner || (workflowId != 0 && id != workflowId)) revert UnauthorizedWorkflow();
         if (report.length != REPORT_LENGTH) revert BadReport();
         (
             address verifier,
