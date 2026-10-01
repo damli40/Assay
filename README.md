@@ -36,7 +36,7 @@ ERC-8004 identity is deployed as a first-class registry on Monad. Every host and
 
 Gas is cheap enough to anchor small batches often. One `anchor()` call uses about 61,000 gas, which is roughly 0.006 MON at the minimum base fee. Spread over a 64-receipt batch, that's about 0.0001 MON per receipt. A passkey co-signature (`cosign()`) uses about 73,000 gas.
 
-## Status (30 Sep 2026)
+## Status (2 Oct 2026)
 
 | Piece | State |
 |---|---|
@@ -141,6 +141,27 @@ cd contracts && forge test --match-path "test/fork/*" --fork-url monad_testnet -
 ```
 
 To deploy your own copy, follow the steps in [docs/deployments.md](docs/deployments.md). Copy `.env.example` to `.env` for the host and indexer settings, and never commit `.env`.
+
+## How this was built
+
+Everything in this repository was written during Monad Metropolis. The grader in `harness/` and report v0 in `report/` were written in the last week of September, shortly before the first commit. Everything else, including the contracts, the SDK and the deployment, was built from 30 September onward, and the commit history shows that work day by day.
+
+## Credits
+
+Assay builds on these open-source projects:
+
+| Project | Used for | License |
+|---|---|---|
+| [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) 5.7.0 | `P256`, `WebAuthn`, `MerkleProof`, `Base64` | MIT |
+| [forge-std](https://github.com/foundry-rs/forge-std) | Solidity tests and scripts | MIT / Apache-2.0 |
+| [Foundry](https://github.com/foundry-rs/foundry) | Build, test, deploy | MIT / Apache-2.0 |
+| [viem](https://github.com/wevm/viem) | Hashing, ABI encoding, chain access | MIT |
+| [jose](https://github.com/panva/jose) | ES256 JWS signing and verification | MIT |
+| [canonicalize](https://github.com/erdtman/canonicalize) | RFC 8785 canonical JSON | Apache-2.0 |
+| [@openzeppelin/merkle-tree](https://github.com/OpenZeppelin/merkle-tree) | Merkle batches that match `MerkleProof` | MIT |
+| [vitest](https://github.com/vitest-dev/vitest) | SDK tests | MIT |
+
+The ERC-8004 registries on Monad testnet are the official deployments from [erc-8004/erc-8004-contracts](https://github.com/erc-8004/erc-8004-contracts). Third-party measurements quoted in the README and the report are credited where they appear.
 
 ## License
 
