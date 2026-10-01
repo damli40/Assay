@@ -1,0 +1,10 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Assay reference host",
+  "description": "OpenAI-compatible inference proxy that signs an Assay receipt for every response and anchors batches of receipts on Monad. Receipts are verified onchain by ReceiptAnchor.",
+  "services": [
+    { "name": "web", "endpoint": "https://github.com/trudransh/Assay" },
+    { "name": "spec", "endpoint": "https://github.com/trudransh/Assay/blob/main/SPEC.md" }
+  ],
+  "supportedTrust": []
+}

@@ -1,0 +1,10 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Assay verifier",
+  "description": "Open verifier that tests inference hosts against the lab's own endpoint and posts grades with 95% confidence intervals and an evidence hash to VerifierRegistry on Monad. Raw logs are published with every grade.",
+  "services": [
+    { "name": "web", "endpoint": "https://github.com/trudransh/Assay" },
+    { "name": "harness", "endpoint": "https://github.com/trudransh/Assay/tree/main/harness" }
+  ],
+  "supportedTrust": ["reputation"]
+}
