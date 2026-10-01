@@ -7,7 +7,7 @@ import {VerifierRegistry} from "../src/VerifierRegistry.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 
 /// IDENTITY_REGISTRY=0x8004A818BFB912233c491871b3d84c89A494BD9e \
-/// forge script script/Deploy.s.sol --rpc-url monad_testnet --account assay-host --broadcast
+/// forge script script/Deploy.s.sol --rpc-url monad_testnet --account assay-host --sender <assay-host address> --broadcast
 contract Deploy is Script {
     function run() external returns (ReceiptAnchor ra, VerifierRegistry vr) {
         IIdentityRegistry identity = IIdentityRegistry(vm.envAddress("IDENTITY_REGISTRY"));

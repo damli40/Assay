@@ -7,7 +7,7 @@ import {ReceiptAnchor} from "../src/ReceiptAnchor.sol";
 /// Anchors a two-receipt demo batch with a throwaway P-256 key, registering that key first if needed.
 /// The real host key replaces it on Day 5.
 /// ANCHOR_ADDRESS=... HOST_AGENT_ID=... DEMO_HOST_P256_PK=... \
-/// forge script script/AnchorOnce.s.sol --rpc-url monad_testnet --account assay-host --broadcast
+/// forge script script/AnchorOnce.s.sol --rpc-url monad_testnet --account assay-host --sender <assay-host address> --broadcast
 contract AnchorOnce is Script {
     struct Batch {
         bytes32 receiptA;
