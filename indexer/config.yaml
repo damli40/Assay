@@ -1,14 +1,39 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: assay-indexer
+description: Assay receipts, anchors, co-signatures and verifier grades on Monad testnet
 disable_default_cross_chain: true
-chains:
-- id: 10143
-  start_block: 67269630
-  contracts:
+contracts:
   - name: ReceiptAnchor
-    address:
-    - "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13"
     events:
-    - event: Anchored(uint256 indexed agentId, bytes32 indexed root, uint32 count, bytes32 keyHash)
-    - event: Cosigned(bytes32 indexed receiptHash, bytes32 indexed requesterKey, uint256 indexed agentId, bytes32 root)
-    - event: HostKeySet(uint256 indexed agentId, bytes32 indexed keyHash, bytes32 qx, bytes32 qy)
+      - event: HostKeySet(uint256 indexed agentId, bytes32 indexed keyHash, bytes32 qx, bytes32 qy)
+      - event: Anchored(uint256 indexed agentId, bytes32 indexed root, uint32 count, bytes32 keyHash)
+      - event: Cosigned(bytes32 indexed receiptHash, bytes32 indexed requesterKey, uint256 indexed agentId, bytes32 root)
+      - event: CosignedK(bytes32 indexed receiptHash, address indexed signer, uint256 indexed agentId, bytes32 root)
+  - name: VerifierRegistry
+    events:
+      - event: VerifierRegistered(address indexed verifier, uint256 indexed agentId)
+      - event: GradePosted(address indexed verifier, uint256 indexed verifierAgentId, bytes32 indexed model, bytes32 hostKey, uint32 passed, uint32 total, uint16 ciLowBps, uint16 ciHighBps, bytes32 checks, bytes32 refModel, bytes32 evidence, uint64 t)
+  - name: CreAttestor
+    events:
+      - event: GradeAttested(address indexed verifier, bytes32 indexed model, bytes32 indexed hostKey, uint64 t, bool agree, uint32 passed, uint32 total)
+  - name: IdentityRegistry
+    events:
+      - event: Registered(uint256 indexed agentId, string agentURI, address indexed owner)
+chains:
+  - id: 10143
+    start_block: 67269630
+    contracts:
+      - name: ReceiptAnchor
+        address: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13"
+        start_block: 67269630
+      - name: VerifierRegistry
+        address: "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1"
+        start_block: 67269635
+      # Not deployed yet. The zero address emits nothing, so codegen and handlers work until
+      # ENVIO_CRE_ATTESTOR_ADDRESS is set.
+      - name: CreAttestor
+        address: "${ENVIO_CRE_ATTESTOR_ADDRESS:-0x0000000000000000000000000000000000000000}"
+        start_block: 67269635
+      - name: IdentityRegistry
+        address: "0x8004A818BFB912233c491871b3d84c89A494BD9e"
+        start_block: 67269800
