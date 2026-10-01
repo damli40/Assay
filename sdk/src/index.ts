@@ -11,3 +11,13 @@ export {
   type AnchorParams,
   type HostSigner,
 } from "./hostSigner.js";
+export {
+  verifyReceipt,
+  parseAgentId,
+  receiptAnchorAbi,
+  type Check,
+  type Checks,
+  type ContractReader,
+  type VerifyInput,
+  type VerifyResult,
+} from "./verify.js";
