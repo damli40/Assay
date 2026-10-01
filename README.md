@@ -75,6 +75,17 @@ Grades live separately. Verifiers test each host against the lab's own endpoint 
 
 The contracts are in `contracts/src`, the receipt format is in [SPEC.md](SPEC.md), and the deployed addresses are in [docs/deployments.md](docs/deployments.md).
 
+## Tech stack
+
+| Layer | What we use |
+|---|---|
+| Chain | Monad testnet (chain 10143), P256VERIFY precompile, ERC-8004 IdentityRegistry and ReputationRegistry |
+| Contracts | Solidity 0.8.30, Foundry, OpenZeppelin Contracts 5.7.0 (`P256`, `WebAuthn`, `MerkleProof`) |
+| SDK | TypeScript, viem, jose (ES256 JWS), canonicalize (RFC 8785), @openzeppelin/merkle-tree, vitest |
+| Grader | Python 3 standard library, OpenRouter API |
+| Indexing | Envio HyperIndex (planned) |
+| Requester keys | WebAuthn passkeys, Mera PRF-derived keys (planned) |
+
 ## Repo layout
 
 ```
