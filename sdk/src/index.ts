@@ -5,6 +5,19 @@ export { P256_N, normalizeS, splitRawSignature, derToRaw, spkiToXY, rawPubToXY, 
 export { leafHash, buildBatch, verifyProof, type Batch } from "./merkle.js";
 export { hostKeyForAgent, hostKeyForEndpoint } from "./hostKey.js";
 export {
+  findClientDataIndexes,
+  assertionToWebAuthnAuth,
+  checkOrigin,
+  checkRpIdHash,
+  requesterKeyHash,
+  registerPasskey,
+  cosignReceipt,
+  type WebAuthnAuth,
+  type AssertionResponse,
+  type PasskeyCredentials,
+  type Passkey,
+} from "./webauthn.js";
+export {
   ANCHOR_TAG,
   anchorMessage,
   createHostSigner,
