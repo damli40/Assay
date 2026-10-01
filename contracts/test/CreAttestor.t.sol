@@ -124,4 +124,64 @@ contract CreAttestorTest is Test {
         assertTrue(att.supportsInterface(bytes4(keccak256("onReport(bytes,bytes)"))));
         assertFalse(att.supportsInterface(0xffffffff));
     }
+
+    function _onReportMeta(CreAttestor target, bytes memory meta, bytes4 expectedError) internal {
+        bytes memory report = _report(47, 50, 8_400, 9_800);
+        if (expectedError != bytes4(0)) vm.expectRevert(expectedError);
+        vm.prank(fwd);
+        target.onReport(meta, report);
+    }
+
+    function test_onReport_wrongWorkflowOwner_reverts() public {
+        // Anyone can deploy a CRE workflow that goes through the shared forwarder.
+        _onReportMeta(att, _meta(WF_ID, makeAddr("attacker")), CreAttestor.UnauthorizedWorkflow.selector);
+    }
+
+    function test_onReport_wrongWorkflowId_reverts() public {
+        _onReportMeta(att, _meta(keccak256("other workflow"), wfOwner), CreAttestor.UnauthorizedWorkflow.selector);
+    }
+
+    function test_onReport_shortMetadata_reverts() public {
+        bytes memory meta = _meta(WF_ID, wfOwner);
+        assembly {
+            mstore(meta, 63)
+        }
+        _onReportMeta(att, meta, CreAttestor.BadMetadata.selector);
+        _onReportMeta(att, "", CreAttestor.BadMetadata.selector);
+    }
+
+    function test_onReport_correctMetadata_ok() public {
+        _onReportMeta(att, _meta(WF_ID, wfOwner), bytes4(0));
+        (, uint32 total,,,) = att.attestations(verifier, MODEL, HOST_KEY, T);
+        assertEq(total, 50);
+    }
+
+    function test_onReport_anyWorkflowIdFromOwner_whenIdUnset() public {
+        CreAttestor any = new CreAttestor(owner);
+        vm.prank(owner);
+        any.configure(fwd, wfOwner, bytes32(0));
+        _onReportMeta(any, _meta(keccak256("v2 workflow"), wfOwner), bytes4(0));
+        _onReportMeta(any, _meta(WF_ID, makeAddr("attacker")), CreAttestor.UnauthorizedWorkflow.selector);
+    }
+
+    function test_configure_zeroAddress_reverts() public {
+        CreAttestor fresh = new CreAttestor(owner);
+        vm.startPrank(owner);
+        vm.expectRevert(CreAttestor.BadConfig.selector);
+        fresh.configure(address(0), wfOwner, WF_ID);
+        vm.expectRevert(CreAttestor.BadConfig.selector);
+        fresh.configure(fwd, address(0), WF_ID);
+        vm.stopPrank();
+    }
+
+    function test_configure_storesAndEmits() public {
+        CreAttestor fresh = new CreAttestor(owner);
+        vm.expectEmit(address(fresh));
+        emit CreAttestor.Configured(fwd, wfOwner, WF_ID);
+        vm.prank(owner);
+        fresh.configure(fwd, wfOwner, WF_ID);
+        assertEq(fresh.forwarder(), fwd);
+        assertEq(fresh.workflowOwner(), wfOwner);
+        assertEq(fresh.workflowId(), WF_ID);
+    }
 }
