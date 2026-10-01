@@ -19,6 +19,7 @@ export {
   type Check,
   type Checks,
   type ContractReader,
+  type Reproduce,
   type VerifyInput,
   type VerifyResult,
 } from "./verify.js";

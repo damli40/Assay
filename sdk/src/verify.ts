@@ -1,4 +1,4 @@
-import type { JWK } from "jose";
+import { decodeProtectedHeader, type JWK } from "jose";
 import type { Address, Hex } from "viem";
 import { commitRequest, commitResponse } from "./commit.js";
 import { verifyReceiptJws } from "./hostSigner.js";
@@ -44,10 +44,18 @@ export interface VerifyInput {
   params?: unknown;
 }
 
+/// How to recompute one check without this SDK.
+export type Reproduce =
+  | { kind: "jws"; kid: string; alg: "ES256"; payload: "JCS(body)" }
+  | { kind: "compute"; what: string; inputs: Record<string, unknown>; expect: string }
+  | { kind: "contract-call"; address: Address; function: string; args: string[]; expect: string };
+
 export interface VerifyResult {
   ok: boolean;
   receiptHash: Hex;
   checks: Checks;
+  /// One entry per check that ran (skipped checks have none).
+  reproduce: Partial<Record<keyof Checks, Reproduce>>;
 }
 
 export const receiptAnchorAbi = [
@@ -90,6 +98,15 @@ export async function verifyReceipt(input: VerifyInput): Promise<VerifyResult> {
     cosigned: "skipped",
   };
 
+  const reproduce: VerifyResult["reproduce"] = {};
+  let headerKid = "";
+  try {
+    headerKid = decodeProtectedHeader(input.jws).kid ?? "";
+  } catch {
+    // An unparseable JWS still gets a jws entry, with an empty kid.
+  }
+  reproduce.jws = { kind: "jws", kid: headerKid, alg: "ES256", payload: "JCS(body)" };
+
   // Later checks use the hash of the body the host signed, so one corrupted input fails exactly one check.
   let signed: ReceiptBody | undefined;
   try {
@@ -98,13 +115,23 @@ export async function verifyReceipt(input: VerifyInput): Promise<VerifyResult> {
     checks.jws = "pass";
     checks.hash = check(receiptHash(out.body) === held);
     checks.kid = check(out.kid === out.body.host.keyId);
+    reproduce.hash = { kind: "compute", what: "sha256(JCS(body))", inputs: { body: input.body }, expect: receiptHash(out.body) };
+    reproduce.kid = { kind: "compute", what: "kid in the JWS protected header", inputs: { jws: input.jws }, expect: out.body.host.keyId };
   } catch {
     // jws stays "fail"; hash and kid can't be judged without a valid signature.
   }
   const body = signed ?? input.body;
   const hash = signed ? receiptHash(signed) : held;
 
-  if (input.proof && input.root) checks.merkle = check(verifyProof(hash, input.proof, input.root));
+  if (input.proof && input.root) {
+    checks.merkle = check(verifyProof(hash, input.proof, input.root));
+    reproduce.merkle = {
+      kind: "compute",
+      what: "StandardMerkleTree.verify(root, ['bytes32'], [receiptHash], proof)",
+      inputs: { receiptHash: hash, proof: input.proof },
+      expect: input.root,
+    };
+  }
 
   if (input.onchain && input.root) {
     const [, anchoredAt] = (await input.onchain.client.readContract({
@@ -114,6 +141,13 @@ export async function verifyReceipt(input: VerifyInput): Promise<VerifyResult> {
       args: [parseAgentId(body.host.agentId), input.root],
     })) as [number, bigint];
     checks.anchored = check(anchoredAt !== 0n);
+    reproduce.anchored = {
+      kind: "contract-call",
+      address: input.onchain.anchor,
+      function: "anchors(uint256,bytes32)(uint32,uint64)",
+      args: [parseAgentId(body.host.agentId).toString(), input.root],
+      expect: "anchoredAt (second value) != 0",
+    };
   }
 
   if (input.onchain && body.req.cosigner) {
@@ -124,15 +158,35 @@ export async function verifyReceipt(input: VerifyInput): Promise<VerifyResult> {
       args: [hash, body.req.cosigner],
     })) as boolean;
     checks.cosigned = check(ok);
+    reproduce.cosigned = {
+      kind: "contract-call",
+      address: input.onchain.anchor,
+      function: "cosigned(bytes32,bytes32)(bool)",
+      args: [hash, body.req.cosigner],
+      expect: "true",
+    };
   }
 
   if (input.salt !== undefined && input.output !== undefined) {
     checks.outputCommit = check(commitResponse(input.salt, input.output) === body.res.commit);
+    reproduce.outputCommit = {
+      kind: "compute",
+      what: "sha256(salt || utf8(output))",
+      inputs: { salt: input.salt, output: input.output },
+      expect: body.res.commit,
+    };
   }
   if (input.salt !== undefined && input.messages !== undefined) {
-    checks.promptCommit = check(commitRequest(input.salt, input.messages, input.params ?? body.req.params) === body.req.commit);
+    const params = input.params ?? body.req.params;
+    checks.promptCommit = check(commitRequest(input.salt, input.messages, params) === body.req.commit);
+    reproduce.promptCommit = {
+      kind: "compute",
+      what: "sha256(salt || utf8(JCS({messages, params})))",
+      inputs: { salt: input.salt, messages: input.messages, params },
+      expect: body.req.commit,
+    };
   }
 
   const ok = Object.values(checks).every((c) => c !== "fail");
-  return { ok, receiptHash: hash, checks };
+  return { ok, receiptHash: hash, checks, reproduce };
 }

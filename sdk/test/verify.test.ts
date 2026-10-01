@@ -1,4 +1,4 @@
-import { webcrypto } from "node:crypto";
+import { createHash, webcrypto } from "node:crypto";
 import type { JWK } from "jose";
 import type { Hex } from "viem";
 import { describe, expect, it } from "vitest";
@@ -91,6 +91,41 @@ describe("verifyReceipt", () => {
     const out = await verifyReceipt({ body: input.body, jws: input.jws, jwks: input.jwks });
     expect(out.ok).toBe(true);
     expect(out.checks).toMatchObject({ jws: "pass", hash: "pass", kid: "pass", merkle: "skipped", anchored: "skipped", outputCommit: "skipped", cosigned: "skipped" });
+  });
+
+  it("gives a reproduce entry for every check that ran, and each one recomputes its check", async () => {
+    const { input, hash, root } = await scenario();
+    const { checks, reproduce } = await verifyReceipt(input);
+    expect(Object.keys(reproduce).sort()).toEqual(Object.keys(checks).sort());
+
+    expect(reproduce.jws).toEqual({ kind: "jws", kid: KEY_ID, alg: "ES256", payload: "JCS(body)" });
+    expect(reproduce.anchored).toMatchObject({ kind: "contract-call", address: ANCHOR, args: ["1962", root] });
+    expect(reproduce.cosigned).toMatchObject({ kind: "contract-call", address: ANCHOR, args: [hash, COSIGNER], expect: "true" });
+
+    // Replay the anchored call from its reproduce entry alone.
+    const call = reproduce.anchored!;
+    if (call.kind !== "contract-call") throw new Error("expected contract-call");
+    const [, anchoredAt] = (await chain(root, hash).readContract({
+      address: call.address,
+      abi: [],
+      functionName: call.function.split("(")[0],
+      args: [BigInt(call.args[0]), call.args[1]],
+    })) as [number, bigint];
+    expect(anchoredAt).not.toBe(0n);
+
+    // Recompute the output commit with node:crypto from the listed inputs only.
+    const out = reproduce.outputCommit!;
+    if (out.kind !== "compute") throw new Error("expected compute");
+    const { salt, output } = out.inputs as { salt: Hex; output: string };
+    const digest = createHash("sha256").update(Buffer.from(salt.slice(2), "hex")).update(output, "utf8").digest("hex");
+    expect("0x" + digest).toBe(out.expect);
+    expect(reproduce.merkle).toMatchObject({ kind: "compute", inputs: { receiptHash: hash, proof: input.proof }, expect: root });
+  });
+
+  it("has no reproduce entry for skipped checks", async () => {
+    const { input } = await scenario();
+    const out = await verifyReceipt({ body: input.body, jws: input.jws, jwks: input.jwks });
+    expect(Object.keys(out.reproduce).sort()).toEqual(["hash", "jws", "kid"]);
   });
 
   it("parses ERC-8004 agent ids", () => {
