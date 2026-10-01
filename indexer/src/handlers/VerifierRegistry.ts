@@ -1,4 +1,6 @@
 import { indexer, type HostModelStats } from "envio";
+import { withCard } from "../agentCard.js";
+import { getOrCreateAgent } from "../common.js";
 
 const fields = { transaction: ["hash"], block: ["timestamp"] } as const;
 
@@ -13,6 +15,8 @@ indexer.onEvent({ contract: "VerifierRegistry", event: "VerifierRegistered" }, a
     registeredBlock: event.block.number,
     gradeCount: existing?.gradeCount ?? 0,
   });
+  const agent = await getOrCreateAgent(context, event.chainId, agentId);
+  context.Agent.set(await withCard(context, agent));
 });
 
 // Best first: higher lower bound, then higher upper bound, then hostKey so ties are stable.

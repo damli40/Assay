@@ -1,11 +1,12 @@
 import { indexer, type EvmOnEventContext } from "envio";
+import { withCard } from "../agentCard.js";
 import { bumpActivity, getOrCreateAgent } from "../common.js";
 
 const fields = { transaction: ["hash"], block: ["timestamp"] } as const;
 
 indexer.onEvent({ contract: "ReceiptAnchor", event: "HostKeySet", fields }, async ({ event, context }) => {
   const { agentId, keyHash, qx, qy } = event.params;
-  const agent = await getOrCreateAgent(context, event.chainId, agentId);
+  const agent = await withCard(context, await getOrCreateAgent(context, event.chainId, agentId));
   const keyId = `${agent.id}-${keyHash}`;
   if (agent.currentKey_id === keyId) return;
 
