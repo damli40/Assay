@@ -1,0 +1,20 @@
+name: indexer
+on: [push, pull_request]
+jobs:
+  envio:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: indexer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: indexer/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm codegen
+      - run: npx tsc --noEmit
+      - run: pnpm test
