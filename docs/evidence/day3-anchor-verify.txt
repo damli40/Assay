@@ -1,0 +1,6 @@
+# Onchain check of the first anchor (2026-10-01T13:49Z, block 67273458)
+# ReceiptAnchor 0x049A73755cA3508ef3Daa4752A3406f6e00CfB13, agent 1962, root 0x5594c31b47c59350e82e11a4161b629c03ac85a36c02dc74c2630fde01086e57
+verifyReceipt(1962, A, [leafOf(B)], root) = true
+verifyReceipt(1962, B, [leafOf(A)], root) = true
+verifyReceipt(1,    A, [leafOf(B)], root) = false
+anchors(1962, root) = 2 1790862482 [1.79e9] 

@@ -37,7 +37,7 @@ Agents and apps that buy inference from hosts they don't control can attach rece
 | Precompile check on Monad testnet | Passed, see [evidence](docs/evidence/day1-precompile-testnet.txt) |
 | ReceiptAnchor (host keys, anchoring, Merkle proofs, passkey co-sign) | 35 tests passing, including Node-generated signatures and proofs |
 | VerifierRegistry (open verifiers, grades, `gradeOf`) | 15 tests passing |
-| Testnet deploy | In progress |
+| Testnet deploy | Live and verified on Monad testnet, first anchor onchain. See [deployments](docs/deployments.md) |
 | `@assay/receipts` SDK and reference host | Planned |
 | Envio indexer and verify page | Planned |
 
