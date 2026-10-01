@@ -12,4 +12,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @assay/receipts typecheck
+      - run: pnpm --filter @assay/host typecheck
       - run: pnpm -r test
