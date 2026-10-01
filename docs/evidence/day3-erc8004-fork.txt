@@ -1,0 +1,6 @@
+# forge test --match-path "test/fork/*" --fork-url monad_testnet -vv  (2026-10-01T12:29Z)
+# fork block: 67257463
+[PASS] test_fork_registerAndSetHostKey() (gas: 1769720)
+[PASS] test_fork_registerVerifierAndPostGrade() (gas: 1023199)
+[PASS] test_fork_registryIsLive() (gas: 12336)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 4.32s (4.75s CPU time)
