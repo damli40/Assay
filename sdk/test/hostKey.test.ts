@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostKeyForAgent, hostKeyForEndpoint } from "../src/hostKey.js";
+import { hostKeyForAgent, hostKeyForDirect, hostKeyForEndpoint } from "../src/hostKey.js";
 
 // Expected values come from `cast keccak "<string>"`.
 describe("host keys (D21)", () => {
@@ -16,5 +16,11 @@ describe("host keys (D21)", () => {
 
   it("rejects non-integer ids", () => {
     expect(() => hostKeyForAgent(1.5, 1)).toThrow();
+  });
+
+  it("hostKeyForDirect matches cast keccak and harness/export_grade.py", () => {
+    expect(hostKeyForDirect("generativelanguage.googleapis.com")).toBe(
+      "0xd0fe1e8708e22bc3fe3b101f9ab21a41052eb11b27d4d994f91cccca881927c7",
+    );
   });
 });

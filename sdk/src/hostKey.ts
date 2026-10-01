@@ -9,3 +9,8 @@ export function hostKeyForAgent(chainId: bigint | number, agentId: bigint | numb
 export function hostKeyForEndpoint(tag: string): Hex {
   return keccak256(stringToBytes(`openrouter:${tag}`));
 }
+
+/// A lab's own API graded directly (harness `--base-url`), tagged `direct:<host>`. Same convention as harness/export_grade.py.
+export function hostKeyForDirect(host: string): Hex {
+  return keccak256(stringToBytes(`direct:${host}`));
+}
