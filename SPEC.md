@@ -66,7 +66,7 @@ Hosts don't send a transaction per request. They batch receipts like this:
 1. Every N seconds or M receipts, the host builds a Merkle tree of `receiptHash` values.
 2. It signs the root and calls `ReceiptAnchor.anchor(root, count, sig)`.
 3. The contract checks the signature against the host's registered key, so nobody can anchor a batch the host didn't sign.
-4. Anyone can then check a single receipt with `verifyReceipt(receiptHash, proof, root)`, which takes a Merkle proof and the anchored root.
+4. Anyone can then check a single receipt with `verifyReceipt(agentId, receiptHash, proof, root)`, which takes a Merkle proof and the root that host anchored. Anchors are stored per host, so one host can't block or claim another host's batch by anchoring the same root first.
 
 ## 4. Requester co-signature (optional)
 

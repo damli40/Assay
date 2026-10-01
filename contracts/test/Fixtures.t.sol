@@ -14,6 +14,7 @@ contract FixturesTest is Test {
     address internal constant ANCHOR_ADDRESS = address(uint160(0xA55A7000));
     uint256 internal constant SIGNATURE_COUNT = 10;
     uint256 internal constant LEAF_COUNT = 8;
+    uint256 internal constant AGENT_ID = 1;
 
     string internal json;
     ReceiptAnchor internal ra;
@@ -81,7 +82,7 @@ contract FixturesTest is Test {
 
     function test_nodeAnchorSignature_accepted() public {
         _anchorFromNode();
-        (, uint32 count, uint64 at) = ra.anchors(root);
+        (uint32 count, uint64 at) = ra.anchors(AGENT_ID, root);
         assertEq(count, LEAF_COUNT);
         assertGt(at, 0);
     }
@@ -97,7 +98,7 @@ contract FixturesTest is Test {
         _anchorFromNode();
         for (uint256 i; i < LEAF_COUNT; i++) {
             bytes32 receipt = vm.parseJsonBytes32(json, _at(".merkle.receipts", i, ""));
-            assertTrue(ra.verifyReceipt(receipt, _proof(i), root));
+            assertTrue(ra.verifyReceipt(AGENT_ID, receipt, _proof(i), root));
         }
     }
 
@@ -108,6 +109,6 @@ contract FixturesTest is Test {
         bytes32[] memory proof = _proof(i);
 
         proof[proofIdx % proof.length] ^= bytes32(uint256(1) << bit);
-        assertFalse(ra.verifyReceipt(receipt, proof, root));
+        assertFalse(ra.verifyReceipt(AGENT_ID, receipt, proof, root));
     }
 }

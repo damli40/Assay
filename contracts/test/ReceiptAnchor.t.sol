@@ -67,13 +67,12 @@ contract ReceiptAnchorTest is Test {
         vm.prank(makeAddr("relayer"));
         ra.anchor(agentId, root, 2, r, s);
 
-        (uint256 storedAgent, uint32 count, uint64 at) = ra.anchors(root);
-        assertEq(storedAgent, agentId);
+        (uint32 count, uint64 at) = ra.anchors(agentId, root);
         assertEq(count, 2);
         assertEq(at, block.timestamp);
 
-        assertTrue(ra.verifyReceipt(RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root));
-        assertTrue(ra.verifyReceipt(RECEIPT_B, _proof(ra.leafOf(RECEIPT_A)), root));
+        assertTrue(ra.verifyReceipt(agentId, RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root));
+        assertTrue(ra.verifyReceipt(agentId, RECEIPT_B, _proof(ra.leafOf(RECEIPT_A)), root));
     }
 
     function test_anchor_wrongKey_reverts() public {
@@ -114,6 +113,31 @@ contract ReceiptAnchorTest is Test {
 
         (r, s) = _sign(other, HOST_PK, root, 2);
         other.anchor(agentId, root, 2, r, s);
+    }
+
+    function test_anchor_otherHostSameRoot_doesNotBlock() public {
+        address mallory = makeAddr("mallory");
+        vm.startPrank(mallory);
+        uint256 malloryId = reg.register("");
+        (uint256 x, uint256 y) = vm.publicKeyP256(OTHER_PK);
+        ra.setHostKey(malloryId, bytes32(x), bytes32(y));
+        vm.stopPrank();
+
+        // Mallory copies the honest host's root from the mempool and anchors it first under her own id.
+        (bytes32 mr, bytes32 ms) = vm.signP256(OTHER_PK, sha256(ra.anchorMessage(malloryId, root, 2)));
+        ra.anchor(malloryId, root, 2, mr, ms);
+
+        _anchor();
+        assertTrue(ra.verifyReceipt(agentId, RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root));
+        (uint32 count,) = ra.anchors(agentId, root);
+        assertEq(count, 2, "honest host's record is its own");
+    }
+
+    function test_verifyReceipt_otherHostsAnchor_false() public {
+        _anchor();
+        vm.prank(host);
+        uint256 otherId = reg.register("");
+        assertFalse(ra.verifyReceipt(otherId, RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root));
     }
 
     function test_anchor_countTampered_reverts() public {
@@ -158,7 +182,7 @@ contract ReceiptAnchorTest is Test {
         vm.prank(host);
         ra.setHostKey(agentId, bytes32(x), bytes32(y));
 
-        assertTrue(ra.verifyReceipt(RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root), "old anchor still valid");
+        assertTrue(ra.verifyReceipt(agentId, RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root), "old anchor still valid");
 
         bytes32 newRoot = keccak256("next batch");
         (bytes32 r, bytes32 s) = _sign(ra, HOST_PK, newRoot, 1);
@@ -169,16 +193,16 @@ contract ReceiptAnchorTest is Test {
     function test_verifyReceipt_badProof_false() public {
         _anchor();
         bytes32 flipped = ra.leafOf(RECEIPT_B) ^ bytes32(uint256(1));
-        assertFalse(ra.verifyReceipt(RECEIPT_A, _proof(flipped), root));
+        assertFalse(ra.verifyReceipt(agentId, RECEIPT_A, _proof(flipped), root));
     }
 
     function test_verifyReceipt_unanchoredRoot_false() public view {
-        assertFalse(ra.verifyReceipt(RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root));
+        assertFalse(ra.verifyReceipt(agentId, RECEIPT_A, _proof(ra.leafOf(RECEIPT_B)), root));
     }
 
     function test_verifyReceipt_wrongLeaf_false() public {
         _anchor();
-        assertFalse(ra.verifyReceipt(keccak256("receipt c"), _proof(ra.leafOf(RECEIPT_B)), root));
+        assertFalse(ra.verifyReceipt(agentId, keccak256("receipt c"), _proof(ra.leafOf(RECEIPT_B)), root));
     }
 
     function test_leafOf_knownVector() public view {

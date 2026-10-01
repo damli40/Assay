@@ -15,7 +15,6 @@ contract ReceiptAnchor {
     }
 
     struct Anchor {
-        uint256 agentId;
         uint32 count;
         uint64 anchoredAt;
     }
@@ -24,7 +23,8 @@ contract ReceiptAnchor {
     bool public immutable requireUV;
 
     mapping(uint256 agentId => HostKey) public hostKeys;
-    mapping(bytes32 root => Anchor) public anchors;
+    // Keyed per host: any host can sign any root, so a global key would let one host block another's anchor.
+    mapping(uint256 agentId => mapping(bytes32 root => Anchor)) public anchors;
 
     event HostKeySet(uint256 indexed agentId, bytes32 indexed keyHash, bytes32 qx, bytes32 qy);
     event Anchored(uint256 indexed agentId, bytes32 indexed root, uint32 count, bytes32 keyHash);
@@ -59,18 +59,22 @@ contract ReceiptAnchor {
         HostKey memory key = hostKeys[agentId];
         if (key.qx == 0 && key.qy == 0) revert UnknownHost();
         if (count == 0) revert EmptyBatch();
-        if (anchors[root].anchoredAt != 0) revert RootAlreadyAnchored();
+        if (anchors[agentId][root].anchoredAt != 0) revert RootAlreadyAnchored();
 
         // ES256 signs sha256(message).
         bytes32 digest = sha256(anchorMessage(agentId, root, count));
         if (!P256.verify(digest, r, s, key.qx, key.qy)) revert BadHostSignature();
 
-        anchors[root] = Anchor(agentId, count, uint64(block.timestamp));
+        anchors[agentId][root] = Anchor(count, uint64(block.timestamp));
         emit Anchored(agentId, root, count, keyHashOf(key.qx, key.qy));
     }
 
-    function verifyReceipt(bytes32 receiptHash, bytes32[] calldata proof, bytes32 root) external view returns (bool) {
-        if (anchors[root].anchoredAt == 0) return false;
+    function verifyReceipt(uint256 agentId, bytes32 receiptHash, bytes32[] calldata proof, bytes32 root)
+        external
+        view
+        returns (bool)
+    {
+        if (anchors[agentId][root].anchoredAt == 0) return false;
         return MerkleProof.verifyCalldata(proof, root, leafOf(receiptHash));
     }
 
