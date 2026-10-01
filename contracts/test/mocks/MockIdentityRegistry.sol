@@ -11,4 +11,9 @@ contract MockIdentityRegistry is IIdentityRegistry {
         agentId = ++lastId;
         ownerOf[agentId] = msg.sender;
     }
+
+    function transfer(uint256 agentId, address to) external {
+        require(ownerOf[agentId] == msg.sender, "not owner");
+        ownerOf[agentId] = to;
+    }
 }
