@@ -75,7 +75,8 @@ def host_key_preimage(tag, assay_agent=None):
     if assay_agent:
         chain, agent = assay_agent
         return f"erc8004:{chain}:{agent}"
-    return f"openrouter:{tag}"
+    # assay_probe.py tags direct endpoints "direct:<host>"; they are not OpenRouter hosts
+    return tag if tag.startswith("direct:") else f"openrouter:{tag}"
 
 def to_bps(lo, hi):
     """Widen, never narrow: low rounds down, high rounds up, both clamped to [0, 10000]."""

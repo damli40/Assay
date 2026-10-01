@@ -63,6 +63,11 @@ class Encodings(unittest.TestCase):
         self.assertEqual(pre, "erc8004:10143:1962")
         self.assertEqual(eg.keccak_hex(pre), "0xbc6bc5b79f83de1bb4e63bacbdb8d82c8a38e1c9caa38043f8b6ba33ffb33e6c")
 
+    def test_direct_host_key_keeps_its_tag(self):
+        pre = eg.host_key_preimage("direct:generativelanguage.googleapis.com")
+        self.assertEqual(pre, "direct:generativelanguage.googleapis.com")
+        self.assertEqual(eg.keccak_hex(pre), "0xd0fe1e8708e22bc3fe3b101f9ab21a41052eb11b27d4d994f91cccca881927c7")
+
     def test_checks_and_model(self):
         self.assertEqual(eg.keccak_hex(eg.CHECKS_ID), "0x414c940358dd4cd842c195ab1ad421a6a54559284c6846f743916a5f934e001e")
         self.assertEqual(eg.keccak_hex("z-ai/glm-5.3"), "0x6cc954dc904d6bf2f1c308fedd093554068e88708ed27a3f644fd82e61e5d271")
