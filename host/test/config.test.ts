@@ -23,6 +23,18 @@ describe("loadConfig", () => {
     expect(c.upstreamProvider).toBeUndefined();
   });
 
+  it("uses OpenRouter by default and a direct upstream with its own key", () => {
+    expect(loadConfig(base).upstreamUrl).toBe("https://openrouter.ai/api/v1/chat/completions");
+    const url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    const { OPENROUTER_API_KEY: _, ...noOr } = base;
+    const c = loadConfig({ ...noOr, UPSTREAM_URL: url, UPSTREAM_API_KEY: "g-key" });
+    expect(c.upstreamUrl).toBe(url);
+    expect(c.openrouterApiKey).toBe("g-key");
+    expect(() => loadConfig({ ...noOr, UPSTREAM_URL: url })).toThrow(/UPSTREAM_API_KEY/);
+    expect(() => loadConfig({ ...base, UPSTREAM_URL: "http://plain" , UPSTREAM_API_KEY: "k" })).toThrow(/https/);
+    expect(() => loadConfig({ ...base, UPSTREAM_URL: url, UPSTREAM_API_KEY: "k", UPSTREAM_PROVIDER: "z-ai" })).toThrow(/UPSTREAM_PROVIDER/);
+  });
+
   it("reads the second RPC and retired key paths", () => {
     const c = loadConfig({ ...base, MONAD_RPC_URL_2: "https://rpc.two", RETIRED_JWK_PATHS: "a.json, b.json" });
     expect(c.rpcUrls).toEqual(["https://rpc.one", "https://rpc.two"]);

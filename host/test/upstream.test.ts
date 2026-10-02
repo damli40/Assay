@@ -14,6 +14,16 @@ describe("upstream", () => {
     expect((seen?.init.headers as Record<string, string>).authorization).toBe("Bearer sk-x");
   });
 
+  it("posts to a direct upstream URL when one is given", async () => {
+    let url = "";
+    const fake = (async (u: string) => {
+      url = u;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    await openRouter("g-key", fake, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")({});
+    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+  });
+
   it("maps a non-JSON 200 to 502", async () => {
     const fake = (async () => new Response("<html>", { status: 200 })) as unknown as typeof fetch;
     expect((await openRouter("k", fake)({})).status).toBe(502);
