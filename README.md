@@ -97,7 +97,8 @@ indexer/     Envio HyperIndex: anchors, co-signatures, grades, drift, leaderboar
 cre/         Chainlink CRE workflow that re-checks grades (in progress)
 web/         verify, ask and co-sign, grades, Mera vault
 report/      open-weight hosting report
-docs/        deployments, quickstart, threat model, evidence
+docs/        architecture, quickstart, threat model, adopters, integrations, deployments, evidence
+gitbook/     the documentation site (GitBook, synced from this folder)
 ```
 
 ## Try the grader
