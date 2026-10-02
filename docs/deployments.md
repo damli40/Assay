@@ -2,7 +2,7 @@
 
 ## Monad testnet (chain 10143)
 
-Current deployment, 3 Oct 2026, with Foundry 1.7.1, solc 0.8.30 and `evm_version = "osaka"`. Both contracts are verified on Sourcify with an exact match. This version adds `cosignK` (secp256k1 requester co-signatures) to ReceiptAnchor. `CreAttestor` is owned by the `assay-host` address. Its `configure(forwarder, workflowOwner, workflowId)` call waits for the CRE workflow deploy, so it accepts no reports yet.
+Current deployment, 3 Oct 2026, with Foundry 1.7.1, solc 0.8.30 and `evm_version = "osaka"`. All three contracts are verified on Sourcify with an exact match. This version adds `cosignK` (secp256k1 requester co-signatures) to ReceiptAnchor. `CreAttestor` is owned by the `assay-host` address. Its `configure(forwarder, workflowOwner, workflowId)` call waits for the CRE workflow deploy, so it accepts no reports yet.
 
 | Contract | Address | Deploy tx | Block |
 |---|---|---|---|
