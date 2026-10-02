@@ -15,7 +15,7 @@ An assay tests whether metal is what it claims to be, and a passing piece gets a
 2. Click Configure, then pick GitHub Sync.
 3. Install or authorize the GitBook GitHub app for the `trudransh` account, with access to the `Assay` repo.
 4. Repository: `trudransh/Assay`. Branch: `main`.
-5. Project directory: `gitbook/`. The root `.gitbook.yaml` already says `root: ./gitbook/`, so either setting finds the same files.
+5. Project directory: leave it as `./` (the repo root). `gitbook-docs.yaml` there describes the site and points its one space at `gitbook/`, which holds the space's own `.gitbook.yaml`, `README.md` and `SUMMARY.md`.
 6. Initial sync direction: GitHub to GitBook. Picking the other direction would overwrite the Markdown in the repo with an empty space.
 7. Click Sync. The sidebar should match `gitbook/SUMMARY.md`: Welcome, Getting started, How it works, For developers, Integrations, Security, Resources.
 
