@@ -1,0 +1,24 @@
+name: e2e
+on: [push, pull_request]
+jobs:
+  local-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: forge build
+        working-directory: contracts
+        run: forge build
+      - name: start anvil
+        run: |
+          anvil --chain-id 10143 --port 8548 --silent &
+          timeout 30 bash -c 'until cast chain-id --rpc-url http://127.0.0.1:8548 >/dev/null 2>&1; do sleep 1; done'
+      - run: pnpm --filter @assay/host e2e:local

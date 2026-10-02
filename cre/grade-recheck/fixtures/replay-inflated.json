@@ -1,0 +1,11 @@
+{
+  "verifier": "0x00000000000000000000000000000000000000A1",
+  "model": "0x6cc954dc904d6bf2f1c308fedd093554068e88708ed27a3f644fd82e61e5d271",
+  "hostKey": "0xbc6bc5b79f83de1bb4e63bacbdb8d82c8a38e1c9caa38043f8b6ba33ffb33e6c",
+  "passed": 10,
+  "total": 10,
+  "ciLowBps": 7224,
+  "ciHighBps": 10000,
+  "evidence": "0xcd0b0aab09afd28ffb56d22dff6ac18a9ae582a4dad1e03b738c9d88e3a8b090",
+  "t": 1791195300
+}

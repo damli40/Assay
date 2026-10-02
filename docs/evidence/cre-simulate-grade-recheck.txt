@@ -1,0 +1,44 @@
+CRE grade-recheck: simulation attempt, 2 Oct 2026
+==================================================
+
+Status: NOT SIMULATED YET. CRE CLI v1.36.0 requires a logged-in CRE account (or CRE_API_KEY)
+for every command, including `cre init` and `cre workflow simulate`. The workflow compiles to
+WASM and its handlers pass against the SDK's capability mocks; the owner runs the simulation
+after `cre login` (steps in cre/README.md) and replaces this file with the real output.
+
+$ cre version
+CRE CLI version v1.36.0
+
+$ cre whoami
+Initializing...
+
+! You are not logged in
+
+✗ Authentication required: not logged in and no CRE_API_KEY set
+  → Run 'cre login' interactively, or
+  → Set CRE_API_KEY environment variable for non-interactive use
+✗ authentication required: no credentials found: you are not logged in, run cre login and try again
+
+$ cd cre && cre workflow simulate grade-recheck -T staging-settings --non-interactive \
+    --trigger-index 1 --http-payload grade-recheck/fixtures/replay-honest.json
+Initializing...
+
+! You are not logged in
+
+✗ Authentication required: not logged in and no CRE_API_KEY set
+  → Run 'cre login' interactively, or
+  → Set CRE_API_KEY environment variable for non-interactive use
+✗ authentication required: no credentials found: you are not logged in, run cre login and try again
+
+What does work without an account
+---------------------------------
+
+$ cd cre/grade-recheck && bunx cre-compile main.ts grade-recheck.wasm
+✅ Compiled: grade-recheck.wasm   (4.3 MB, Javy v8.1.0 plugin, @chainlink/cre-sdk 1.23.0)
+✅ Workflow built: grade-recheck.wasm
+
+$ cd cre/grade-recheck && bun test
+ 27 pass
+ 0 fail
+ 44 expect() calls
+Ran 27 tests across 2 files.

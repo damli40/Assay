@@ -1,0 +1,36 @@
+{"case": "case_0", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_1", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_2", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_3", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_4", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_5", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_6", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_7", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_8", "tag": "z-ai/fp8", "http": 200, "ok": true}
+{"case": "case_9", "tag": "z-ai/fp8", "http": 200, "ok": false}
+{"case": "flight_full", "tag": "z-ai/fp8", "http": 502, "ok": false}
+{"case": "max_tokens_16", "tag": "z-ai/fp8", "ok": true}
+{"case": "case_0", "tag": "chutes/bf16", "http": 200, "ok": true}
+{"case": "case_1", "tag": "chutes/bf16", "http": 200, "ok": true}
+{"case": "case_2", "tag": "chutes/bf16", "http": 200, "ok": true}
+{"case": "case_3", "tag": "chutes/bf16", "http": 200, "ok": true}
+{"case": "case_4", "tag": "chutes/bf16", "http": 200, "ok": true}
+{"case": "case_5", "tag": "chutes/bf16", "http": 200, "ok": true}
+{"case": "case_6", "tag": "chutes/bf16", "http": 200, "ok": false}
+{"case": "case_7", "tag": "chutes/bf16", "http": 200, "ok": false}
+{"case": "case_8", "tag": "chutes/bf16", "http": 200, "ok": false}
+{"case": "case_9", "tag": "chutes/bf16", "http": 200, "ok": false}
+{"case": "flight_full", "tag": "chutes/bf16", "http": 502, "ok": false}
+{"case": "max_tokens_16", "tag": "chutes/bf16", "ok": true}
+{"case": "case_0", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "case_1", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "case_2", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "case_3", "tag": "direct:assay.example.com", "http": 200, "ok": false}
+{"case": "case_4", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "case_5", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "case_6", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "case_7", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "case_8", "tag": "direct:assay.example.com", "http": 200, "ok": false}
+{"case": "case_9", "tag": "direct:assay.example.com", "http": 200, "ok": true}
+{"case": "flight_full", "tag": "direct:assay.example.com", "http": 502, "ok": false}
+{"case": "max_tokens_16", "tag": "direct:assay.example.com", "ok": true}

@@ -1,0 +1,191 @@
+# Every id starts with the chain id (10143-...) so a second chain can be added without migrating ids.
+
+enum CosignKind {
+  P256
+  K
+}
+
+enum CardStatus {
+  OK
+  ERROR
+  UNSUPPORTED
+}
+
+# ERC-8004 identity. Created by Registered, or by the first host key / verifier event that names it.
+type Agent {
+  id: ID! # 10143-<agentId>
+  agentId: BigInt! @index
+  owner: String
+  agentURI: String
+  registeredBlock: Int
+  cardStatus: CardStatus
+  name: String
+  description: String
+  image: String
+  services: Json
+  currentKey: HostKey
+  keyCount: Int!
+  anchorCount: Int!
+  receiptCount: Int!
+  cosignCount: Int!
+  keys: [HostKey!]! @derivedFrom(field: "agent")
+  rotations: [KeyRotation!]! @derivedFrom(field: "agent")
+  anchors: [Anchor!]! @derivedFrom(field: "agent")
+  activity: [HostActivity!]! @derivedFrom(field: "agent")
+}
+
+type HostKey {
+  id: ID! # 10143-<agentId>-<keyHash>
+  agent: Agent!
+  keyHash: String! @index
+  qx: String!
+  qy: String!
+  active: Boolean!
+  setBlock: Int!
+  setTimestamp: Int!
+  retiredBlock: Int
+  anchorCount: Int!
+  receiptCount: Int!
+  anchors: [Anchor!]! @derivedFrom(field: "hostKey")
+}
+
+type KeyRotation {
+  id: ID! # 10143-<agentId>-<block>-<logIndex>
+  agent: Agent!
+  fromKey: HostKey
+  toKey: HostKey!
+  anchorsUnderFromKey: Int!
+  block: Int!
+  timestamp: Int!
+  txHash: String!
+}
+
+type Anchor {
+  id: ID! # 10143-<agentId>-<root>
+  agent: Agent!
+  hostKey: HostKey!
+  root: String! @index
+  count: Int!
+  cosignCount: Int!
+  block: Int!
+  timestamp: Int!
+  txHash: String!
+  cosigns: [Cosign!]! @derivedFrom(field: "anchor")
+}
+
+type Cosign {
+  id: ID! # 10143-<receiptHash>-<requesterKey or signer address>
+  kind: CosignKind!
+  receiptHash: String! @index
+  requester: String! @index # P256: keccak256(qx, qy). K: signer address.
+  agent: Agent!
+  anchor: Anchor!
+  block: Int!
+  timestamp: Int!
+  txHash: String!
+}
+
+# Per host per UTC day.
+type HostActivity {
+  id: ID! # 10143-<agentId>-<YYYY-MM-DD>
+  agent: Agent!
+  day: String! @index
+  anchors: Int!
+  receipts: Int!
+  cosigns: Int!
+}
+
+type Verifier {
+  id: ID! # 10143-<address>
+  address: String!
+  agentId: BigInt
+  registeredBlock: Int
+  gradeCount: Int!
+  grades: [Grade!]! @derivedFrom(field: "verifier")
+}
+
+type Grade {
+  id: ID! # 10143-<verifier>-<model>-<hostKey>-<t>
+  verifier: Verifier!
+  verifierAgentId: BigInt!
+  model: String! @index
+  hostKey: String! @index
+  stats: HostModelStats!
+  passed: Int!
+  total: Int!
+  ciLowBps: Int!
+  ciHighBps: Int!
+  checks: String!
+  refModel: String!
+  evidence: String!
+  t: BigInt!
+  block: Int!
+  timestamp: Int!
+  txHash: String!
+  attestations: [GradeAttestation!]! @derivedFrom(field: "grade")
+}
+
+# One row per verifier, model and host. Doubles as the leaderboard entry for (verifier, model).
+type HostModelStats {
+  id: ID! # 10143-<verifier>-<model>-<hostKey>
+  verifier: Verifier!
+  model: String! @index
+  hostKey: String! @index
+  leaderboard: ModelLeaderboard! @index
+  rank: Int!
+  latest: Grade!
+  latestCiLowBps: Int!
+  latestCiHighBps: Int!
+  latestT: BigInt!
+  gradeCount: Int!
+  passedSum: BigInt!
+  totalSum: BigInt!
+  passRateBps: Int! # passedSum / totalSum over every grade, in basis points
+  driftCount: Int!
+  drifts: [DriftEvent!]! @derivedFrom(field: "stats")
+}
+
+# Written when a new grade's interval sits entirely below the previous one.
+type DriftEvent {
+  id: ID! # same as the new grade's id
+  stats: HostModelStats!
+  verifier: Verifier!
+  model: String! @index
+  hostKey: String! @index
+  previous: Grade!
+  grade: Grade!
+  previousCiLowBps: Int!
+  ciHighBps: Int!
+  dropBps: Int!
+  t: BigInt!
+  timestamp: Int! @index
+}
+
+# Hosts for one model ranked by one verifier's latest ciLowBps (rank 1 is best).
+type ModelLeaderboard {
+  id: ID! # 10143-<verifier>-<model>
+  verifier: Verifier!
+  model: String! @index
+  hostCount: Int!
+  leaderHostKey: String!
+  leaderCiLowBps: Int!
+  updatedTimestamp: Int!
+  entries: [HostModelStats!]! @derivedFrom(field: "leaderboard")
+}
+
+# Chainlink CRE re-check of a posted grade.
+type GradeAttestation {
+  id: ID! # 10143-<attestor>-<verifier>-<model>-<hostKey>-<t>
+  attestor: String!
+  grade: Grade! # may point at a grade id that was never posted
+  verifier: String!
+  model: String!
+  hostKey: String!
+  t: BigInt!
+  agree: Boolean!
+  passed: Int!
+  total: Int!
+  block: Int!
+  timestamp: Int!
+  txHash: String!
+}

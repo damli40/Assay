@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest";
+import { loadConfig } from "../src/config.js";
+
+const base = {
+  OPENROUTER_API_KEY: "sk-or-test",
+  UPSTREAM_MODEL: "z-ai/glm-5.3",
+  MONAD_RPC_URL: "https://rpc.one",
+  ANCHOR_ADDRESS: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13",
+  HOST_AGENT_ID: "1962",
+  RELAYER_PRIVATE_KEY: `0x${"11".repeat(32)}`,
+};
+
+describe("loadConfig", () => {
+  it("applies defaults", () => {
+    const c = loadConfig(base);
+    expect(c.batchSeconds).toBe(300);
+    expect(c.batchMax).toBe(64);
+    expect(c.port).toBe(8787);
+    expect(c.hostAgentId).toBe(1962n);
+    expect(c.rpcUrls).toEqual(["https://rpc.one"]);
+    expect(c.hostJwkPath).toMatch(/host\/\.keys\/host\.jwk\.json$/);
+    expect(c.retiredJwkPaths).toEqual([]);
+    expect(c.upstreamProvider).toBeUndefined();
+  });
+
+  it("reads the second RPC and retired key paths", () => {
+    const c = loadConfig({ ...base, MONAD_RPC_URL_2: "https://rpc.two", RETIRED_JWK_PATHS: "a.json, b.json" });
+    expect(c.rpcUrls).toEqual(["https://rpc.one", "https://rpc.two"]);
+    expect(c.retiredJwkPaths).toHaveLength(2);
+  });
+
+  it("lists every problem and never echoes secrets", () => {
+    const bad = { ...base, OPENROUTER_API_KEY: "", HOST_AGENT_ID: "abc", RELAYER_PRIVATE_KEY: "0xdeadbeefsecret", BATCH_MAX: "0" };
+    let msg = "";
+    try {
+      loadConfig(bad);
+    } catch (e) {
+      msg = (e as Error).message;
+    }
+    expect(msg).toContain("OPENROUTER_API_KEY is required");
+    expect(msg).toContain("HOST_AGENT_ID must be a positive integer");
+    expect(msg).toContain("RELAYER_PRIVATE_KEY must be 0x + 64 hex");
+    expect(msg).toContain("BATCH_MAX must be an integer >= 1");
+    expect(msg).not.toContain("deadbeefsecret");
+  });
+
+  it("rejects a bad anchor address", () => {
+    expect(() => loadConfig({ ...base, ANCHOR_ADDRESS: "0x1234" })).toThrow(/ANCHOR_ADDRESS/);
+  });
+});

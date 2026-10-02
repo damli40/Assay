@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {P256} from "@openzeppelin/contracts/utils/cryptography/P256.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {WebAuthn} from "@openzeppelin/contracts/utils/cryptography/WebAuthn.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
 
 /// Anchors Merkle roots of Assay receipt batches, signed by each host's P-256 key (SPEC section 3).
@@ -28,10 +30,12 @@ contract ReceiptAnchor {
     mapping(uint256 agentId => mapping(bytes32 root => Anchor)) public anchors;
     // Keyed per requester key: any passkey can sign any challenge, so one slot per receipt could be front-run.
     mapping(bytes32 receiptHash => mapping(bytes32 requesterKey => bool)) public cosigned;
+    mapping(bytes32 receiptHash => mapping(address signer => bool)) public cosignedK;
 
     event HostKeySet(uint256 indexed agentId, bytes32 indexed keyHash, bytes32 qx, bytes32 qy);
     event Anchored(uint256 indexed agentId, bytes32 indexed root, uint32 count, bytes32 keyHash);
     event Cosigned(bytes32 indexed receiptHash, bytes32 indexed requesterKey, uint256 indexed agentId, bytes32 root);
+    event CosignedK(bytes32 indexed receiptHash, address indexed signer, uint256 indexed agentId, bytes32 root);
 
     error NotAgentOwner();
     error InvalidPublicKey();
@@ -103,6 +107,26 @@ contract ReceiptAnchor {
 
         cosigned[receiptHash][requesterKey] = true;
         emit Cosigned(receiptHash, requesterKey, agentId, root);
+    }
+
+    /// Same as `cosign` for secp256k1 requester keys (Mera per-app keys): an EIP-191 signature over `receiptHash`.
+    /// The signer is whoever recovers; `req.cosigner` decides offchain whether that address is the requester.
+    function cosignK(
+        uint256 agentId,
+        bytes32 receiptHash,
+        bytes32[] calldata proof,
+        bytes32 root,
+        bytes calldata signature
+    ) external {
+        if (!verifyReceipt(agentId, receiptHash, proof, root)) revert ReceiptNotAnchored();
+        // tryRecover rejects high-s and lengths other than 65, so each receipt has one valid signature per signer.
+        (address signer, ECDSA.RecoverError err,) =
+            ECDSA.tryRecoverCalldata(MessageHashUtils.toEthSignedMessageHash(receiptHash), signature);
+        if (err != ECDSA.RecoverError.NoError) revert BadCosignature();
+        if (cosignedK[receiptHash][signer]) revert AlreadyCosigned();
+
+        cosignedK[receiptHash][signer] = true;
+        emit CosignedK(receiptHash, signer, agentId, root);
     }
 
     /// StandardMerkleTree ["bytes32"] leaf. The double hash keeps leaves distinct from inner nodes.

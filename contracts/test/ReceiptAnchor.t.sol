@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {WebAuthn} from "@openzeppelin/contracts/utils/cryptography/WebAuthn.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ReceiptAnchor} from "../src/ReceiptAnchor.sol";
 import {IIdentityRegistry} from "../src/interfaces/IIdentityRegistry.sol";
 import {MockIdentityRegistry} from "./mocks/MockIdentityRegistry.sol";
@@ -326,5 +327,98 @@ contract ReceiptAnchorTest is Test {
         WebAuthn.WebAuthnAuth memory auth = _assertion(REQUESTER_PK, RECEIPT_A, UP | UV);
         auth.s = bytes32(N - uint256(auth.s));
         _cosign(REQUESTER_PK, auth, ReceiptAnchor.BadCosignature.selector);
+    }
+
+    // secp256k1 order, for the malleated-signature test.
+    uint256 internal constant K_N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
+
+    function _sigK(uint256 pk, bytes32 receiptHash) internal pure returns (bytes memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, MessageHashUtils.toEthSignedMessageHash(receiptHash));
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _cosignK(bytes memory sig, bytes4 expectedError) internal {
+        bytes32[] memory proof = _proof(ra.leafOf(RECEIPT_B));
+        if (expectedError != bytes4(0)) vm.expectRevert(expectedError);
+        ra.cosignK(agentId, RECEIPT_A, proof, root, sig);
+    }
+
+    function test_cosignK_valid() public {
+        _anchor();
+        address signer = vm.addr(REQUESTER_PK);
+        vm.expectEmit(address(ra));
+        emit ReceiptAnchor.CosignedK(RECEIPT_A, signer, agentId, root);
+        vm.prank(makeAddr("relayer"));
+        _cosignK(_sigK(REQUESTER_PK, RECEIPT_A), bytes4(0));
+        assertTrue(ra.cosignedK(RECEIPT_A, signer));
+    }
+
+    function test_cosignK_replay_reverts() public {
+        _anchor();
+        bytes memory sig = _sigK(REQUESTER_PK, RECEIPT_A);
+        _cosignK(sig, bytes4(0));
+        _cosignK(sig, ReceiptAnchor.AlreadyCosigned.selector);
+    }
+
+    function test_cosignK_notAnchored_reverts() public {
+        _cosignK(_sigK(REQUESTER_PK, RECEIPT_A), ReceiptAnchor.ReceiptNotAnchored.selector);
+    }
+
+    function test_cosignK_badProof_reverts() public {
+        _anchor();
+        bytes memory sig = _sigK(REQUESTER_PK, RECEIPT_A);
+        bytes32[] memory bad = _proof(ra.leafOf(RECEIPT_B) ^ bytes32(uint256(1)));
+        vm.expectRevert(ReceiptAnchor.ReceiptNotAnchored.selector);
+        ra.cosignK(agentId, RECEIPT_A, bad, root, sig);
+    }
+
+    function test_cosignK_otherHostsAgentId_reverts() public {
+        _anchor();
+        vm.prank(host);
+        uint256 otherId = reg.register("");
+        bytes memory sig = _sigK(REQUESTER_PK, RECEIPT_A);
+        bytes32[] memory proof = _proof(ra.leafOf(RECEIPT_B));
+        vm.expectRevert(ReceiptAnchor.ReceiptNotAnchored.selector);
+        ra.cosignK(otherId, RECEIPT_A, proof, root, sig);
+    }
+
+    function test_cosignK_signatureOverOtherHash_cannotClaimSigner() public {
+        _anchor();
+        // A signature over another receipt recovers to some unrelated address, never the requester's.
+        _cosignK(_sigK(REQUESTER_PK, RECEIPT_B), bytes4(0));
+        assertFalse(ra.cosignedK(RECEIPT_A, vm.addr(REQUESTER_PK)));
+        _cosignK(_sigK(REQUESTER_PK, RECEIPT_A), bytes4(0));
+        assertTrue(ra.cosignedK(RECEIPT_A, vm.addr(REQUESTER_PK)));
+    }
+
+    function test_cosignK_otherSignerFirst_doesNotBlock() public {
+        _anchor();
+        _cosignK(_sigK(OTHER_PK, RECEIPT_A), bytes4(0));
+        _cosignK(_sigK(REQUESTER_PK, RECEIPT_A), bytes4(0));
+        assertTrue(ra.cosignedK(RECEIPT_A, vm.addr(OTHER_PK)));
+        assertTrue(ra.cosignedK(RECEIPT_A, vm.addr(REQUESTER_PK)));
+    }
+
+    function test_cosignK_highS_reverts() public {
+        _anchor();
+        bytes32 digest = MessageHashUtils.toEthSignedMessageHash(RECEIPT_A);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(REQUESTER_PK, digest);
+        (uint8 v2, bytes32 s2) = (v == 27 ? 28 : 27, bytes32(K_N - uint256(s)));
+        assertEq(ecrecover(digest, v2, r, s2), vm.addr(REQUESTER_PK), "raw ecrecover accepts the twin");
+        bytes memory malleated = abi.encodePacked(r, s2, v2);
+        _cosignK(malleated, ReceiptAnchor.BadCosignature.selector);
+    }
+
+    function test_cosignK_badLength_reverts() public {
+        _anchor();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(REQUESTER_PK, MessageHashUtils.toEthSignedMessageHash(RECEIPT_A));
+        _cosignK(abi.encodePacked(r, s), ReceiptAnchor.BadCosignature.selector);
+        _cosignK(abi.encodePacked(r, s, v, uint8(0)), ReceiptAnchor.BadCosignature.selector);
+    }
+
+    function test_cosignK_badV_reverts() public {
+        _anchor();
+        (, bytes32 r, bytes32 s) = vm.sign(REQUESTER_PK, MessageHashUtils.toEthSignedMessageHash(RECEIPT_A));
+        _cosignK(abi.encodePacked(r, s, uint8(29)), ReceiptAnchor.BadCosignature.selector);
     }
 }

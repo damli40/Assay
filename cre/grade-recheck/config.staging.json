@@ -1,0 +1,9 @@
+{
+  "chainSelectorName": "monad-testnet",
+  "verifierRegistry": "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91",
+  "creAttestor": "0xB4A1CB9e40aDa44570Ae790430C23876d460deDC",
+  "evidenceBaseUrl": "https://raw.githubusercontent.com/trudransh/Assay/main/cre/grade-recheck/fixtures/evidence",
+  "assayHosts": { "direct:assay.example.com": "erc8004:10143:1962" },
+  "gasLimit": "300000",
+  "replay": { "authorizedEvmAddresses": [] }
+}
