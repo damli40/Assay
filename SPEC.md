@@ -90,7 +90,7 @@ Anyone can be a verifier. A verifier registers an ERC-8004 identity and publishe
 ```
 Grade {
   model        bytes32   // keccak256("z-ai/glm-5.3")
-  hostKey      bytes32   // hash of the host's public key
+  hostKey      bytes32   // the host's identity, see the table below
   checks       bytes32   // hash of the check suite version
   passed       uint32
   total        uint32
@@ -101,6 +101,16 @@ Grade {
   t            uint64
 }
 ```
+
+The `hostKey` field names who was graded. Grades follow the host's identity, not its signing key, so a host can't shed a bad grade by rotating keys.
+
+| Host kind | `hostKey` | Example preimage |
+|---|---|---|
+| Assay host with an ERC-8004 identity | `keccak256(utf8("erc8004:<chainId>:<agentId>"))` | `erc8004:10143:1962` |
+| OpenRouter endpoint | `keccak256(utf8("openrouter:" + tag))` | `openrouter:z-ai` |
+| A lab's own API, graded directly | `keccak256(utf8("direct:<host>"))` | `direct:api.z.ai` |
+
+The SDK computes these with `hostKeyForAgent`, `hostKeyForEndpoint` and `hostKeyForDirect`. The harness export uses the same strings, and both test suites pin the same vectors. A host can still register a new identity to escape its history, so readers should also weigh identity age and grade count.
 
 Readers call `gradeOf(model, hostKey, trustedVerifiers[])` and choose whose grades count. ERC-8004 recommends the same pattern for reputation, because unfiltered feedback is easy to spam. Assay runs the first verifier, but the registry doesn't depend on Assay in any way.
 
@@ -121,4 +131,4 @@ These notes pin down details that the sections above leave open. They come from 
 3. Mera per-app requester keys are secp256k1, since Mera's signing sessions don't offer P-256. The key follows Mera's documented BIP-39/BIP-32 path from a per-app PRF salt `sha256("assay:requester:<appId>")`, and the contract checks it with `ecrecover` over an EIP-191 digest of `receiptHash`.
 4. Merkle leaves use OpenZeppelin's `StandardMerkleTree` with leaf type `["bytes32"]`. Each leaf is `keccak256(bytes.concat(keccak256(abi.encode(receiptHash))))`, which matches OpenZeppelin's `MerkleProof`.
 5. The anchor message is `abi.encode(keccak256("assay-anchor/0"), chainid, anchorContract, agentId, root, count)`. The host signs it with ES256, so the contract verifies against `sha256(message)`. Including the chain ID and contract address stops a signature from being replayed on another chain or deployment.
-6. For hosts that sign with an Assay key, `hostKey = keccak256(abi.encode(qx, qy))`. Graded endpoints without a key, such as every OpenRouter endpoint, use `keccak256(abi.encodePacked("openrouter:", tag))`.
+6. A grade's `hostKey` follows identity, as in the table in section 5. For an Assay host it is `keccak256("erc8004:<chainId>:<agentId>")`, so the grade survives a key rotation. OpenRouter endpoints use `keccak256(abi.encodePacked("openrouter:", tag))`. The signing key's hash, `keccak256(abi.encode(qx, qy))`, still appears in the `HostKeySet` and `Anchored` events. There it only identifies which key signed a batch.
