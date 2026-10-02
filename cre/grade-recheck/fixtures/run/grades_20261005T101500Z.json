@@ -1,0 +1,53 @@
+{
+  "stamp": "20261005T101500Z",
+  "modelId": "z-ai/glm-5.3",
+  "checksId": "assay-checks/tool-calls-v0",
+  "reference": "z-ai/fp8",
+  "evidenceFile": "evidence_20261005T101500Z.tar.gz",
+  "evidence": "0xcd0b0aab09afd28ffb56d22dff6ac18a9ae582a4dad1e03b738c9d88e3a8b090",
+  "grades": [
+    {
+      "tag": "z-ai/fp8",
+      "hostKeyPreimage": "openrouter:z-ai/fp8",
+      "model": "0x6cc954dc904d6bf2f1c308fedd093554068e88708ed27a3f644fd82e61e5d271",
+      "hostKey": "0xe62ef805f5e37ece31d01a1567ffc50f659d5abebce5dc9462568ff81241cc81",
+      "checks": "0x414c940358dd4cd842c195ab1ad421a6a54559284c6846f743916a5f934e001e",
+      "passed": 9,
+      "total": 10,
+      "ciLowBps": 5958,
+      "ciHighBps": 9822,
+      "refModel": "0x6bc9a7bf62921ed1d28846e84d42437b5165c3bcb813a31fb8cbeaa99043851c",
+      "evidence": "0xcd0b0aab09afd28ffb56d22dff6ac18a9ae582a4dad1e03b738c9d88e3a8b090",
+      "t": 1791195300
+    },
+    {
+      "tag": "chutes/bf16",
+      "hostKeyPreimage": "openrouter:chutes/bf16",
+      "model": "0x6cc954dc904d6bf2f1c308fedd093554068e88708ed27a3f644fd82e61e5d271",
+      "hostKey": "0x53889d3cc81902d0dae133cb5ae492597acd8ac82288eeb4620d97d7ebdd5011",
+      "checks": "0x414c940358dd4cd842c195ab1ad421a6a54559284c6846f743916a5f934e001e",
+      "passed": 6,
+      "total": 10,
+      "ciLowBps": 3126,
+      "ciHighBps": 8319,
+      "refModel": "0x6bc9a7bf62921ed1d28846e84d42437b5165c3bcb813a31fb8cbeaa99043851c",
+      "evidence": "0xcd0b0aab09afd28ffb56d22dff6ac18a9ae582a4dad1e03b738c9d88e3a8b090",
+      "t": 1791195300
+    },
+    {
+      "tag": "direct:assay.example.com",
+      "hostKeyPreimage": "erc8004:10143:1962",
+      "model": "0x6cc954dc904d6bf2f1c308fedd093554068e88708ed27a3f644fd82e61e5d271",
+      "hostKey": "0xbc6bc5b79f83de1bb4e63bacbdb8d82c8a38e1c9caa38043f8b6ba33ffb33e6c",
+      "checks": "0x414c940358dd4cd842c195ab1ad421a6a54559284c6846f743916a5f934e001e",
+      "passed": 8,
+      "total": 10,
+      "ciLowBps": 4901,
+      "ciHighBps": 9434,
+      "refModel": "0x6bc9a7bf62921ed1d28846e84d42437b5165c3bcb813a31fb8cbeaa99043851c",
+      "evidence": "0xcd0b0aab09afd28ffb56d22dff6ac18a9ae582a4dad1e03b738c9d88e3a8b090",
+      "t": 1791195300
+    }
+  ],
+  "skipped": []
+}
