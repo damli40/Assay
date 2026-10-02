@@ -7,7 +7,7 @@ const MODEL = `0x${"6d".repeat(32)}`;
 const HOST_A = `0x${"a".repeat(64)}`;
 const HOST_B = `0x${"b".repeat(64)}`;
 const HOST_C = `0x${"c".repeat(64)}`;
-const START = 67_461_100;
+const START = 67_463_000;
 const T0 = 1_791_000_000;
 
 let n = 0;

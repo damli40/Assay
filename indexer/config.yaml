@@ -30,12 +30,10 @@ chains:
         start_block: 67461080
       - name: VerifierRegistry
         address: "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91"
-        start_block: 67461086
-      # Not deployed yet. The zero address emits nothing, so codegen and handlers work until
-      # ENVIO_CRE_ATTESTOR_ADDRESS is set.
+        start_block: 67462996
       - name: CreAttestor
-        address: "${ENVIO_CRE_ATTESTOR_ADDRESS:-0x0000000000000000000000000000000000000000}"
-        start_block: 67461086
+        address: "${ENVIO_CRE_ATTESTOR_ADDRESS:-0xB4A1CB9e40aDa44570Ae790430C23876d460deDC}"
+        start_block: 67462996
       - name: IdentityRegistry
         address: "0x8004A818BFB912233c491871b3d84c89A494BD9e"
         start_block: 67269800
