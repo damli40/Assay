@@ -132,3 +132,15 @@ These notes pin down details that the sections above leave open. They come from 
 4. Merkle leaves use OpenZeppelin's `StandardMerkleTree` with leaf type `["bytes32"]`. Each leaf is `keccak256(bytes.concat(keccak256(abi.encode(receiptHash))))`, which matches OpenZeppelin's `MerkleProof`.
 5. The anchor message is `abi.encode(keccak256("assay-anchor/0"), chainid, anchorContract, agentId, root, count)`. The host signs it with ES256, so the contract verifies against `sha256(message)`. Including the chain ID and contract address stops a signature from being replayed on another chain or deployment.
 6. A grade's `hostKey` follows identity, as in the table in section 5. For an Assay host it is `keccak256("erc8004:<chainId>:<agentId>")`, so the grade survives a key rotation. OpenRouter endpoints use `keccak256(abi.encodePacked("openrouter:", tag))`. The signing key's hash, `keccak256(abi.encode(qx, qy))`, still appears in the `HostKeySet` and `Anchored` events. There it only identifies which key signed a batch.
+
+## 8. Rules for consumers
+
+A receipt proves where a response came from. It is not a bearer ticket, and anything that acts on one has to follow these rules.
+
+| Rule | Who | Why |
+|---|---|---|
+| A contract that pays, credits or unlocks something on a receipt stores `receiptHash` as spent and rejects it the second time. | Consumer contracts | `ReceiptAnchor` lets anyone check the same receipt any number of times. Without a nullifier, one receipt can be claimed twice. |
+| A host keeps every retired key in `/.well-known/jwks.json` with `"status": "retired"`. | Hosts | Old receipts carry the old `kid`. If the key disappears from the JWKS, their signatures can no longer be checked. |
+| Only the co-signature whose key matches `req.cosigner` counts as the requester's. | Verifiers and readers | The contract records every valid co-signature, one per key. Anyone who sees a receipt hash can co-sign it with their own passkey. |
+| Check the WebAuthn `origin` and `rpIdHash` offchain. | Verifiers | OpenZeppelin's `WebAuthn.verify` does not check them. The SDK has `checkOrigin` and `checkRpIdHash`. |
+| Treat a grade older than 7 days as unknown, and one with fewer than 30 samples as a warning. | Readers of grades | A stale grade says nothing about the host today. The SDK's `gradeStatus` applies both limits. |
