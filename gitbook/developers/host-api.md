@@ -18,6 +18,7 @@ The reference host is an OpenAI-compatible proxy in front of OpenRouter. It sign
 | `POST /v1/cosign` | Relays `ReceiptAnchor.cosign` so the requester pays no gas |
 | `GET /.well-known/jwks.json` | The host's public keys, current and retired |
 | `GET /.well-known/agent-registration.json` | The ERC-8004 registration file |
+| `GET /v1/grade` | The latest grade for a model and host from the verifiers you trust, as a status |
 | `GET /health` | Model, key id and queue length |
 
 ## `POST /v1/chat/completions`
@@ -101,6 +102,31 @@ Retired keys stay published so receipts they signed still verify.
 ## `GET /.well-known/agent-registration.json`
 
 The ERC-8004 registration file: `name` "Assay reference host", `services` for `chat`, `jwks` and `receipts`, and `registrations` with the agent id and `eip155:10143:0x8004A818BFB912233c491871b3d84c89A494BD9e`.
+
+## `GET /v1/grade`
+
+Answers "can I trust this host for this model right now" in one call. It reads `VerifierRegistry.gradeOf` and applies the same rules as the SDK's `gradeStatus`.
+
+| Query parameter | Meaning |
+|---|---|
+| `model` | Model id, for example `z-ai/glm-5.3`. Hashed with keccak256 |
+| `host` | `erc8004:<chain>:<agentId>`, `openrouter:<tag>`, `direct:<host>`, or a raw 0x host key |
+| `verifiers` | Comma-separated addresses of the verifiers you trust |
+| `reference` | Optional. Same format as `host`. With it, a host whose interval sits below the reference's gets `fail` |
+
+| Status | Meaning |
+|---|---|
+| `pass` | A trusted, fresh grade with at least 30 samples |
+| `warn` | Fewer than 30 samples |
+| `unknown` | No grade from your verifiers, or the newest is older than 7 days |
+| `fail` | The host's upper bound is below the reference's lower bound |
+
+The response includes `reproduce` with the exact `gradeOf(bytes32,bytes32,address[])` call, so you can check the answer without trusting the host.
+
+| Status code | When |
+|---|---|
+| `400` | Missing `model`, a malformed `host` or `reference`, or no valid verifier address |
+| `502` | The chain read failed |
 
 ## `GET /health`
 
