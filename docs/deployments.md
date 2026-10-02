@@ -34,6 +34,7 @@ The full registration receipts are in [evidence/host-register.json](evidence/hos
 
 | What | Tx | Notes |
 |---|---|---|
+| First real anchor (3 Oct ReceiptAnchor): a live request through the host to Gemma 4 31B on Google AI Studio, receipt `0x9a166cac…07e5` | [`0x41f73bca…a867`](https://testnet.monadvision.com/tx/0x41f73bcaa5270d16df2cbdafc920b0fa7f6e87890f968acece7f3c6a99a7a867) (block 67577033) | Relayer `0x4b49…9bf5` paid the gas. `verifyReceipt` returns true onchain and every SDK check passes |
 | `registerVerifier(1981)` on the 3 Oct VerifierRegistry | [`0x752c6fe5…`](https://testnet.monadvision.com/tx/0x752c6fe566c60f390a79c449c812afc1fcd8b6802b1877da7bdc6231da52d178) (block 67575710) | Agent 1981 can now post grades |
 | `setHostKey(1962, …)` with the real host key on the 3 Oct ReceiptAnchor, key hash `0x6c73fb3e…a68e` | [`0xcfd45e43…`](https://testnet.monadvision.com/tx/0xcfd45e4304e7de3c0337eb83288d657e978efc2a0df614c74cfb1a9adcc7b8b4) (block 67464463) | The host's ES256 key (kid `2Jc6WJSj…qg0`). The private key stays in the host's gitignored `.keys/` folder |
 | `setHostKey(1962, …)` with a throwaway demo key, on the 1 Oct ReceiptAnchor | [`0x4ec112c6…`](https://testnet.monadvision.com/tx/0x4ec112c6017876122907af089417deed43ad01cb84a506fd6916aae94f8ba93c) (block 67273078) | Replaced by the real host key on Day 5 |
