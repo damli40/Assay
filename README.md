@@ -41,7 +41,7 @@ Gas is cheap enough to anchor small batches often. One `anchor()` call uses abou
 | Piece | State |
 |---|---|
 | Contracts (`ReceiptAnchor`, `VerifierRegistry`, `CreAttestor`) | 99 tests, plus 3 that run against the real ERC-8004 registry on a testnet fork |
-| Testnet deploy | `ReceiptAnchor` and `VerifierRegistry` live and verified, first anchor onchain. See [deployments](docs/deployments.md). `cosignK` and `CreAttestor` are built and tested but not deployed yet |
+| Testnet deploy | `ReceiptAnchor` (with `cosignK`), `VerifierRegistry` and `CreAttestor` live and verified on Sourcify. See [deployments](docs/deployments.md) |
 | `@assay/receipts` SDK | 110 tests: receipts, salted commits, signing, Merkle batches, `verifyReceipt` with a `reproduce` line per check, passkey helpers, `wrap(fetch)`, `gradeOf` |
 | Reference host (`host/`) | 35 tests: OpenAI-compatible proxy that signs every response, batches and anchors receipts, relays co-signatures |
 | End to end | 16 of 16 checks on a local chain: request, signed receipt, onchain anchor, passkey co-signature, full verification. See [evidence](docs/evidence/e2e-local.txt) |

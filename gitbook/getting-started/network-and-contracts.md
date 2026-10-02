@@ -26,7 +26,7 @@ Every address on this page is live on Monad testnet. Both Assay contracts were d
 |---|---|---|---|
 | ReceiptAnchor | [`0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24`](https://testnet.monadvision.com/address/0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24) | [`0x32d12f86…`](https://testnet.monadvision.com/tx/0x32d12f86ec3dca22d7b25ec33985eeda69f94e7299592728b16b2896715a1022) | 67461080 |
 | VerifierRegistry | [`0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91`](https://testnet.monadvision.com/address/0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91) | [`0x246d2ef1…`](https://testnet.monadvision.com/tx/0x246d2ef1d317d9ef4dc21318ef16a60f50bc1e4818685058228669f0b48abfd8) | 67461086 |
-| CreAttestor | Not deployed yet | | |
+| CreAttestor | [`0xB4A1CB9e40aDa44570Ae790430C23876d460deDC`](https://testnet.monadvision.com/address/0xB4A1CB9e40aDa44570Ae790430C23876d460deDC) | [`0x0d2dc7b2…`](https://testnet.monadvision.com/tx/0x0d2dc7b2fc51c718226a28bc2b0027a94d74409b1060f47b795d9582ab6bb00a) | 67462996 |
 
 `ReceiptAnchor` was deployed with `requireUV = true`. Both contracts read `ownerOf` from the ERC-8004 IdentityRegistry below.
 
@@ -77,7 +77,7 @@ cast call 0x049A73755cA3508ef3Daa4752A3406f6e00CfB13 "ANCHOR_TAG()(bytes32)" \
 | [Contracts reference](../developers/contracts.md) | Every function on these addresses |
 
 {% hint style="warning" %}
-The deployed `ReceiptAnchor` predates `cosignK`. Passkey `cosign` works on this address today. Mera-style secp256k1 co-signatures need the next deployment, and this page will list the new address when it ships.
+The 3 Oct `ReceiptAnchor` supports both passkey `cosign` and secp256k1 `cosignK`. `CreAttestor` is deployed but not configured: it accepts reports once the CRE workflow is deployed and `configure` is called.
 {% endhint %}
 
 Next: [Receipts](../how-it-works/receipts.md)
