@@ -53,7 +53,7 @@ The receipt hash is `receiptHash = sha256(JCS(body))`, and it's the value every 
 | Host | `ES256` (ECDSA P-256) | Cloud KMS, an HSM, or a TEE. Intel's quoting enclave signs with NIST P-256. | P256VERIFY precompile at `0x0100` |
 | Host (AntSeed-style) | `ES256K` (secp256k1, EIP-191 with a domain tag) | The node key. AntSeed peers use "a secp256k1 private key" and `personal_sign` | `ecrecover` |
 | Requester | WebAuthn assertion (P-256), challenge = `receiptHash` | The user's passkey | Parse `authenticatorData` and `clientDataJSON`, then P256VERIFY |
-| Requester (unlinkable) | secp256k1 key derived from the passkey's PRF output (Mera `getPasskeyPrfOutput`) with a per-app salt. See section 7, note 3 | Nowhere. It's re-derived from the passkey each time | `ecrecover` |
+| Requester (unlinkable) | secp256k1 key derived from the passkey's PRF output (Mera `getPasskeyPrfOutput`) with a per-app salt, signing an EIP-191 message over `receiptHash`. See section 7, note 3 | Nowhere. It's re-derived from the passkey each time | `ecrecover` in `ReceiptAnchor.cosignK` |
 
 P256VERIFY takes 160 bytes (`hash ‖ r ‖ s ‖ x ‖ y`) and returns 1 on success.
 
@@ -76,6 +76,8 @@ The client calls `navigator.credentials.get` with `challenge = receiptHash`. The
 2. It checks the user-present flag in `authenticatorData`.
 3. It computes `h = sha256(authenticatorData ‖ sha256(clientDataJSON))`.
 4. It calls P256VERIFY with `h, r, s` and the credential's public key `x, y`.
+
+A requester with a secp256k1 key (for example a Mera per-app key) calls `cosignK(agentId, receiptHash, proof, root, signature)` instead. The signature is a 65-byte EIP-191 signature over `receiptHash`, and the contract recovers the signer with `ecrecover`. It rejects high `s` and any other length. Records are kept per signer address in `cosignedK[receiptHash][signer]`, for the same front-running reason as above. v0.1 does not yet fix how `req.cosigner` names a secp256k1 signer, and the SDK's `verifyReceipt` checks only P-256 co-signatures.
 
 Receipts are keyed by `receiptHash` and not by signature bytes, so signature malleability can't produce a duplicate receipt.
 
