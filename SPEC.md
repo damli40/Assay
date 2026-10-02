@@ -144,3 +144,23 @@ A receipt proves where a response came from. It is not a bearer ticket, and anyt
 | Only the co-signature whose key matches `req.cosigner` counts as the requester's. | Verifiers and readers | The contract records every valid co-signature, one per key. Anyone who sees a receipt hash can co-sign it with their own passkey. |
 | Check the WebAuthn `origin` and `rpIdHash` offchain. | Verifiers | OpenZeppelin's `WebAuthn.verify` does not check them. The SDK has `checkOrigin` and `checkRpIdHash`. |
 | Treat a grade older than 7 days as unknown, and one with fewer than 30 samples as a warning. | Readers of grades | A stale grade says nothing about the host today. The SDK's `gradeStatus` applies both limits. |
+
+## 9. CRE attestations
+
+A grade comes from one verifier. A Chainlink CRE workflow can re-check it on a decentralized oracle network and record the result onchain.
+
+The workflow fires on `GradePosted`. Each node fetches the evidence bundle and checks its sha256 against the grade's `evidence` field. It then recomputes `passed`, `total` and the Wilson interval from the raw logs. The nodes agree on one report, and the CRE forwarder delivers it to `CreAttestor.onReport(metadata, report)`.
+
+`CreAttestor` stores one attestation per `(verifier, model, hostKey, t)` and emits `GradeAttested`.
+
+| Report field | Type | Meaning |
+|---|---|---|
+| `verifier` | `address` | The verifier whose grade was re-checked |
+| `model`, `hostKey`, `t` | `bytes32`, `bytes32`, `uint64` | Which grade it was |
+| `passed`, `total` | `uint32` | The recomputed counts |
+| `ciLowBps`, `ciHighBps` | `uint16` | The recomputed 95% Wilson interval |
+| `agree` | `bool` | Whether the recomputed values match the posted grade |
+
+The report is the `abi.encode` of these 9 fields, 288 bytes. The contract rejects any other length, `total == 0`, `passed > total`, an inverted interval or a bound above 10000.
+
+The forwarder is shared by every CRE workflow, so checking `msg.sender` alone would let any workflow write here. The owner calls `configure(forwarder, workflowOwner, workflowId)` once. After that, `onReport` reads the workflow owner and id from the forwarder's metadata and rejects reports from any other workflow. A zero `workflowId` accepts any workflow from the pinned owner.
