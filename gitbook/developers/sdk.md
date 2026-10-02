@@ -208,7 +208,7 @@ Runs every check it has inputs for and reports each one separately as `"pass"`, 
 | `body`, `jws`, `jwks` (required) | `jws`, `hash`, `kid` |
 | `proof`, `root` | `merkle` |
 | `onchain: { client, anchor }` plus `root` | `anchored` |
-| `onchain` and `req.cosigner` in the body | `cosigned` |
+| `onchain` and `req.cosigner` in the body | `cosigned`: reads `cosignedK` when `req.cosigner` is a padded address, `cosigned` otherwise |
 | `salt`, `output` | `outputCommit` |
 | `salt`, `messages` (and optionally `params`) | `promptCommit` |
 
@@ -314,6 +314,18 @@ checkRpIdHash(auth.authenticatorData, "assay.example.com");
 
 ```typescript
 const cosigner = requesterKeyHash(pk.qx, pk.qy);
+```
+
+### `cosignerForAddress(address)` and `cosignerAddress(cosigner)`
+
+For a secp256k1 requester (a Mera per-app key that co-signs with `cosignK`), `req.cosigner` is the address left-padded to 32 bytes. `cosignerAddress` reads it back and returns `null` for a P-256 key hash.
+
+```ts
+import { cosignerAddress, cosignerForAddress } from "@assay/receipts";
+
+const cosigner = cosignerForAddress("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+// "0x00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8"
+cosignerAddress(cosigner); // "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 ```
 
 ## Client

@@ -16,6 +16,8 @@ Co-signing is optional. The requester signs `receiptHash` with a passkey, and th
 | Challenge | The 32 raw bytes of `receiptHash`. In `clientDataJSON` it appears as `base64url(receiptHash)`. |
 | `requesterKey` | `keccak256(abi.encode(qx, qy))` of the passkey's public key. SDK `requesterKeyHash`. |
 | `X-Assay-Cosigner` | Request header with the `requesterKey` (0x + 64 hex). The host signs it into the body as `req.cosigner`. |
+| `req.cosigner` for a passkey | `requesterKeyHash(qx, qy)`, the keccak256 of the P-256 public key |
+| `req.cosigner` for a per-app key | The secp256k1 address left-padded to 32 bytes, from `cosignerForAddress(address)`. Verifiers then check `cosignedK` instead of `cosigned` |
 | `cosigned[receiptHash][requesterKey]` | `true` once that key co-signed that receipt. |
 | `cosignedK[receiptHash][signer]` | The same record for a secp256k1 signer address. |
 | UV | User verified. `requireUV = true` on the deployed contract, so the authenticator flags must include UP and UV (`0x05`). |

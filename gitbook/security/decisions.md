@@ -21,6 +21,7 @@ This is the public part of Assay's decision log. Each entry says what was chosen
 | D20 | `postGrade` re-checks ERC-8004 ownership every time and rejects stale grades | An identity is an NFT and can be sold. A verifier must not roll back its own record |
 | D21 | Grades follow the host's identity, `keccak256("erc8004:<chainId>:<agentId>")`, not its key | Rotating a key must not wipe a bad grade. Unkeyed endpoints keep `keccak256("openrouter:" + tag)` |
 | D22 | A contract that pays on a receipt must store `receiptHash` as spent. Hosts keep retired keys in the JWKS | Receipts prove origin, they are not bearer tickets. Old receipts must still verify after a rotation |
+| D25 | A per-app secp256k1 requester puts its address, left-padded to 32 bytes, in `req.cosigner` | So a `cosignK` co-signature is bound to the requester the same way a passkey co-signature is |
 
 ## Earlier choices these build on
 
