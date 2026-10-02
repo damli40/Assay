@@ -42,12 +42,12 @@ Gas is cheap enough to anchor small batches often. One `anchor()` call uses abou
 |---|---|
 | Contracts (`ReceiptAnchor`, `VerifierRegistry`, `CreAttestor`) | 99 tests, plus 3 that run against the real ERC-8004 registry on a testnet fork |
 | Testnet deploy | `ReceiptAnchor` (with `cosignK`), `VerifierRegistry` and `CreAttestor` live and verified on Sourcify. See [deployments](docs/deployments.md) |
-| `@assay/receipts` SDK | 110 tests: receipts, salted commits, signing, Merkle batches, `verifyReceipt` with a `reproduce` line per check, passkey helpers, `wrap(fetch)`, `gradeOf` |
-| Reference host (`host/`) | 35 tests: OpenAI-compatible proxy that signs every response, batches and anchors receipts, relays co-signatures |
+| `@assay/receipts` SDK | 123 tests: receipts, salted commits, signing, Merkle batches, `verifyReceipt` with a `reproduce` line per check, passkey helpers, `wrap(fetch)` with a grade gate that refuses badly graded hosts before paying, `gradeOf` |
+| Reference host (`host/`) | 47 tests: OpenAI-compatible proxy that signs every response, batches and anchors receipts, relays co-signatures, serves grades. Works with OpenRouter or any OpenAI-compatible API |
 | End to end | 16 of 16 checks on a local chain: request, signed receipt, onchain anchor, passkey co-signature, full verification. See [evidence](docs/evidence/e2e-local.txt) |
 | Web app (`web/`) | 44 tests: verify page, ask and co-sign, grades, and a Mera vault for receipts and salts |
-| Envio indexer (`indexer/`) | 16 handler tests: four contracts, host stats, drift events, leaderboards, key rotations |
-| Grader (`harness/`) | 32 tests: probes hosts against the lab's endpoint, exports grades with a deterministic evidence bundle |
+| Envio indexer (`indexer/`) | 22 handler tests: five contracts, host stats, drift events, leaderboards, key rotations, receipt-backed ERC-8004 feedback |
+| Grader (`harness/`) | 41 tests: probes hosts against the lab's endpoint, exports grades with a deterministic evidence bundle, prints the commands that post them |
 | Report v0 | Published in [report/](report/REPORT_v0.md) |
 | Chainlink CRE workflow (`cre/`) | 27 tests: re-checks each grade's evidence and writes an attestation to `CreAttestor`. Compiles to WASM. Simulation and deployment need a Chainlink CRE account |
 
