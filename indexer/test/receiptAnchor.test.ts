@@ -12,7 +12,7 @@ const PASSKEY = `0x${"f".repeat(64)}`;
 const SIGNER = "0x00000000000000000000000000000000000000aa";
 const DAY_1 = 1_791_000_000; // 2026-10-03 UTC
 const DAY_2 = DAY_1 + 86_400;
-const START = 67_269_700;
+const START = 67_461_100;
 
 const keySet = (n: number, keyHash: string) =>
   ({

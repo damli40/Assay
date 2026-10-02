@@ -3,7 +3,7 @@ import { createTestIndexer } from "envio";
 
 const OWNER = "0x00000000000000000000000000000000000000aa" as `0x${string}`;
 const KEY = `0x${"a".repeat(64)}`;
-const START = 67_269_810;
+const START = 67_461_100;
 const card = { type: "agent", name: "Assay host", description: "Signed receipts", services: [{ name: "A2A", endpoint: "https://h.example" }] };
 
 function run(agentId: bigint, agentURI: string) {
