@@ -5,10 +5,10 @@ icon: link
 
 # Chainlink CRE
 
-**Where:** `CreAttestor` in `contracts/src/CreAttestor.sol` (written and tested, not deployed yet). The workflow lives in `cre/`.
+**Where:** `CreAttestor` in `contracts/src/CreAttestor.sol` (deployed at `0xB4A1CB9e40aDa44570Ae790430C23876d460deDC`, waiting for `configure`). The workflow lives in `cre/`.
 
 {% hint style="info" %}
-Built and tested, not deployed yet. The workflow in `cre/grade-recheck/` has 27 tests and compiles to WASM. Simulating it needs a Chainlink CRE account, so the simulation output and the `CreAttestor` deploy come next. Steps are in `cre/README.md`.
+Built and tested. `CreAttestor` is deployed on testnet. The workflow in `cre/grade-recheck/` has 27 tests and compiles to WASM. Simulating it needs a Chainlink CRE account, so the simulation output and the workflow deploy come next. Steps are in `cre/README.md`.
 {% endhint %}
 
 ## Problem

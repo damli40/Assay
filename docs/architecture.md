@@ -10,7 +10,7 @@ This page shows how the parts of Assay fit together and what happens to one requ
 | Reference host | `host/` | OpenAI-compatible proxy in front of OpenRouter. Signs a receipt per response and anchors batches | A server |
 | `ReceiptAnchor` | `contracts/src/ReceiptAnchor.sol` | Host keys, batch anchors, receipt inclusion checks, passkey and secp256k1 co-signatures | Monad testnet |
 | `VerifierRegistry` | `contracts/src/VerifierRegistry.sol` | Verifier registration and grades, `gradeOf` filtered by the reader's trusted list | Monad testnet |
-| `CreAttestor` | `contracts/src/CreAttestor.sol` | Stores Chainlink CRE re-checks of posted grades | Monad testnet (not deployed yet) |
+| `CreAttestor` | `contracts/src/CreAttestor.sol` | Stores Chainlink CRE re-checks of posted grades | Monad testnet |
 | ERC-8004 IdentityRegistry | external, `0x8004A818…BD9e` | Identity of every host and verifier. Both contracts check `ownerOf` against it | Monad testnet |
 | Grader | `harness/` | Tests hosts against the lab's own endpoint and exports grades with an evidence bundle | Anyone's machine |
 | Indexer | `indexer/` | Envio HyperIndex over all of the contracts above. Computes drift, leaderboards, activity and key history | Envio Cloud or local Docker |
@@ -106,7 +106,7 @@ A grade still comes from one verifier. The Chainlink CRE workflow in `cre/` re-c
 3. The nodes reach consensus on one report.
 4. The CRE forwarder calls `CreAttestor.onReport(metadata, report)`. The contract accepts only the configured forwarder and the pinned workflow owner (and workflow id, if set), then stores the attestation and emits `GradeAttested`.
 
-A successful `onReport` costs up to 60,713 gas. The contract and its tests are done. The workflow is being built, and `CreAttestor` is not deployed yet.
+A successful `onReport` costs up to 60,713 gas. The contract and its tests are done. `CreAttestor` is deployed on testnet. The workflow is built and tested, and it waits for a CRE account to simulate and deploy.
 
 ## Indexing
 

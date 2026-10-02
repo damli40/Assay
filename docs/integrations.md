@@ -9,7 +9,7 @@ Each integration here fixes a specific weakness in Assay. For each one this page
 | Monad P256 precompile | Host and passkey signatures checked onchain | `contracts/src/ReceiptAnchor.sol` | Live on testnet |
 | ERC-8004 IdentityRegistry | Identity of hosts and verifiers | `contracts/src/`, `host/scripts/register-agent.ts` | Live on testnet, host is agent 1962 |
 | Envio HyperIndex | Joined, derived read layer | `indexer/` | Built and tested, not yet deployed to Envio Cloud |
-| Chainlink CRE | Decentralized re-check of grades | `contracts/src/CreAttestor.sol`, `cre/` | Built and tested, not deployed |
+| Chainlink CRE | Decentralized re-check of grades | `contracts/src/CreAttestor.sol`, `cre/` | Built and tested. `CreAttestor` deployed, workflow not yet |
 | Mera passkey PRF | Receipt vault, per-app requester keys, per-receipt reveal keys | `web/src/mera.ts`, `ReceiptAnchor.cosignK` | Built, `cosignK` not yet deployed |
 | Kimi | Trust agent that explains grades and receipts | not started | Planned |
 
@@ -66,7 +66,7 @@ What we built, and what is being built.
 | Simulation output | `docs/evidence/cre-simulate-grade-recheck.txt` | Needs a CRE account login |
 | Indexing of `GradeAttested` and the link to the re-checked grade | `indexer/src/handlers/CreAttestor.ts` | Done |
 
-Status. The workflow is built and tested: its Wilson math matches the harness on 5,156 vectors, and its report decodes in `CreAttestor`'s exact layout. The CRE CLI needs an account login even to simulate, so the simulation and the `CreAttestor` deploy are the next steps. `cre/README.md` lists them.
+Status. The workflow is built and tested: its Wilson math matches the harness on 5,156 vectors, and its report decodes in `CreAttestor`'s exact layout. The CRE CLI needs an account login even to simulate, so the simulation and the workflow deploy are the next steps. `CreAttestor` is already deployed on testnet. `cre/README.md` lists them.
 
 ## Mera
 
@@ -84,7 +84,7 @@ What we built.
 
 Each namespace uses its own PRF salt, `sha256(label)`. Every ciphertext carries its label as AES-GCM associated data, so a blob sealed under one namespace won't open under another. The PRF output is used once and zeroed, and nothing derived from it is stored. The code is in `web/src/mera.ts` and `web/src/lib/vault.ts`. `cosignK` and its 10 tests are in `contracts/`.
 
-Status. Built in the web app's Vault tab. `cosignK` is not deployed yet. Passkeys are bound to the rpId, so the live cross-device test runs once the app is on its final domain.
+Status. Built in the web app's Vault tab. `cosignK` is live on the 3 Oct ReceiptAnchor. Passkeys are bound to the rpId, so the live cross-device test runs once the app is on its final domain.
 
 ## Kimi
 

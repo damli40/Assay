@@ -94,7 +94,7 @@ Constructor: `VerifierRegistry(IIdentityRegistry identity)`.
 
 ## CreAttestor
 
-Constructor: `CreAttestor(address owner)`. Deployed by `script/Deploy.s.sol` only when `DEPLOY_CRE_ATTESTOR=true`. Not deployed on testnet yet.
+Constructor: `CreAttestor(address owner)`. Deployed by `script/Deploy.s.sol` only when `DEPLOY_CRE_ATTESTOR=true`. Deployed on testnet at `0xB4A1CB9e40aDa44570Ae790430C23876d460deDC` (block 67462996), not configured yet.
 
 ### Functions
 
