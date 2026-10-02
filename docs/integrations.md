@@ -11,7 +11,6 @@ Each integration here fixes a specific weakness in Assay. For each one this page
 | Envio HyperIndex | Joined, derived read layer | `indexer/` | Built and tested, not yet deployed to Envio Cloud |
 | Chainlink CRE | Decentralized re-check of grades | `contracts/src/CreAttestor.sol`, `cre/` | Built and tested. `CreAttestor` deployed, workflow not yet |
 | Mera passkey PRF | Receipt vault, per-app requester keys, per-receipt reveal keys | `web/src/mera.ts`, `ReceiptAnchor.cosignK` | Built, `cosignK` not yet deployed |
-| Kimi | Trust agent that explains grades and receipts | not started | Planned |
 
 ## Monad: P256 precompile and ERC-8004
 
@@ -85,13 +84,3 @@ What we built.
 Each namespace uses its own PRF salt, `sha256(label)`. Every ciphertext carries its label as AES-GCM associated data, so a blob sealed under one namespace won't open under another. The PRF output is used once and zeroed, and nothing derived from it is stored. The code is in `web/src/mera.ts` and `web/src/lib/vault.ts`. `cosignK` and its 10 tests are in `contracts/`.
 
 Status. Built in the web app's Vault tab. `cosignK` is live on the 3 Oct ReceiptAnchor. Passkeys are bound to the rpId, so the live cross-device test runs once the app is on its final domain.
-
-## Kimi
-
-Problem. Grades are numbers: pass counts, intervals, drift events. A developer or an agent asking "should I send this request to host X?" needs a verdict with reasons, ideally in their own language.
-
-Why this tool. Kimi is built for agentic tool use and is multilingual. Moonshot already runs a vendor verifier for hosts of its own models, so Kimi comes from a provider that cares about this exact problem.
-
-What we plan to build. A trust agent with three tools over Assay's own infrastructure: `get_grade` (Envio GraphQL), `verify_receipt` (SDK `verifyReceipt`) and `get_host_card` (the ERC-8004 agent card). It takes a receipt or a host name and returns a verdict with evidence links. Its answers would be served through an Assay host, so each one carries its own receipt. Separately, the grader can cover Kimi K3's OpenRouter endpoints against Moonshot's own API.
-
-Status. Planned, not started. It needs a small Moonshot API top-up.

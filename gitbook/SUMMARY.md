@@ -32,7 +32,6 @@
 * [Envio](integrations/envio.md)
 * [Chainlink CRE](integrations/chainlink-cre.md)
 * [Mera](integrations/mera.md)
-* [Kimi](integrations/kimi.md)
 
 ## Security
 
