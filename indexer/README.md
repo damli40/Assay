@@ -8,10 +8,10 @@ This folder is a standalone project. It is not part of the pnpm workspace and ha
 
 | Contract | Address | Start block | Events |
 |---|---|---|---|
-| ReceiptAnchor | `0x049A73755cA3508ef3Daa4752A3406f6e00CfB13` | 67269630 | `HostKeySet`, `Anchored`, `Cosigned`, `CosignedK` |
-| VerifierRegistry | `0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1` | 67269635 | `VerifierRegistered`, `GradePosted` |
+| ReceiptAnchor | `0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24` | 67461080 | `HostKeySet`, `Anchored`, `Cosigned`, `CosignedK` |
+| VerifierRegistry | `0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91` | 67461086 | `VerifierRegistered`, `GradePosted` |
 | ERC-8004 IdentityRegistry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | 67269800 | `Registered` |
-| CreAttestor | `ENVIO_CRE_ATTESTOR_ADDRESS` (not deployed yet) | 67269635 | `GradeAttested` |
+| CreAttestor | `ENVIO_CRE_ATTESTOR_ADDRESS` (not deployed yet) | 67461086 | `GradeAttested` |
 
 `CosignedK` only exists on the next ReceiptAnchor deployment. Add its address to `config.yaml` when it ships.
 

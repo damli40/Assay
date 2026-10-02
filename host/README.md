@@ -29,7 +29,7 @@ The host reads the repo root `.env`. See `.env.example`. Relative paths resolve 
 | `MONAD_RPC_URL` | yes | | Primary RPC |
 | `MONAD_RPC_URL_2` | no | | Fallback RPC, tried once when the primary fails |
 | `ANCHOR_ADDRESS` | yes | | `ReceiptAnchor` address |
-| `VERIFIER_REGISTRY` | no | `0x0C86…a9a1` (testnet) | `VerifierRegistry` read by `GET /v1/grade` |
+| `VERIFIER_REGISTRY` | no | `0x7755…5C91` (testnet) | `VerifierRegistry` read by `GET /v1/grade` |
 | `HOST_AGENT_ID` | yes | | The host's ERC-8004 agentId |
 | `RELAYER_PRIVATE_KEY` | yes | | Wallet that pays anchor and co-sign gas |
 | `HOST_JWK_PATH` | no | `.keys/host.jwk.json` | Current signing key |

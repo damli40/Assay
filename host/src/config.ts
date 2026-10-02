@@ -5,7 +5,7 @@ import { calculateJwkThumbprint, type JWK } from "jose";
 import { isAddress, type Address, type Hex } from "viem";
 
 export const CHAIN_ID = 10143;
-export const DEFAULT_VERIFIER_REGISTRY = "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1";
+export const DEFAULT_VERIFIER_REGISTRY = "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91";
 const HOST_DIR = fileURLToPath(new URL("..", import.meta.url));
 
 export interface Config {

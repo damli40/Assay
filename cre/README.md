@@ -17,7 +17,7 @@ A grade in Assay comes from one verifier. That verifier ran the harness on one m
 
 ## What `grade-recheck` does
 
-1. Trigger: An EVM log trigger fires on `GradePosted` from `VerifierRegistry` (`0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1`) once the block is finalized.
+1. Trigger: An EVM log trigger fires on `GradePosted` from `VerifierRegistry` (`0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91`) once the block is finalized.
 2. Fetch: Each node downloads `<evidenceBaseUrl>/<evidence>.tar.gz`, where `<evidence>` is the event's `evidence` field without `0x`. Bundles are content-addressed, so any static host works.
 3. Check the hash: `sha256(bundle)` must equal `evidence`.
 4. Recount: The node unpacks the bundle (gzip + ustar, as `harness/export_grade.py` writes it), reads `raw_<stamp>.jsonl` and recounts `passed/total` per endpoint with the harness rules: skip `max_tokens_16` rows and rows whose `http` is not 200.
