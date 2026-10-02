@@ -5,7 +5,7 @@
 
 Writes run/ (a small probe run plus export_grade.py output) and wilson_vectors.json.
 """
-import csv, json, os, sys
+import csv, json, os, shutil, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "harness"))
@@ -40,6 +40,9 @@ def main():
     os.makedirs(run, exist_ok=True)
     write_run(run)
     doc = eg.export(run, STAMP, assay_agent=(10143, 1962), assay_tag="direct:assay.example.com")
+    # Content-addressed copy, the layout the workflow fetches (<evidenceBaseUrl>/<sha256>.tar.gz)
+    os.makedirs(os.path.join(HERE, "evidence"), exist_ok=True)
+    shutil.copyfile(os.path.join(run, doc["evidenceFile"]), os.path.join(HERE, "evidence", doc["evidence"][2:] + ".tar.gz"))
     # HTTP replay payloads for `cre workflow simulate --trigger-index 1 --http-payload ...`
     g = doc["grades"][2]
     keys = ["model", "hostKey", "passed", "total", "ciLowBps", "ciHighBps", "evidence", "t"]
