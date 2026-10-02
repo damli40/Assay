@@ -1,0 +1,10 @@
+# CRE project settings. Targets are selected with `-T staging-settings` or `-T production-settings`.
+staging-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz
+
+production-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz
