@@ -36,21 +36,20 @@ ERC-8004 identity is deployed as a first-class registry on Monad. Every host and
 
 Gas is cheap enough to anchor small batches often. One `anchor()` call uses about 61,000 gas, which is roughly 0.006 MON at the minimum base fee. Spread over a 64-receipt batch, that's about 0.0001 MON per receipt. A passkey co-signature (`cosign()`) uses about 73,000 gas.
 
-## Status (2 Oct 2026)
+## Status (3 Oct 2026)
 
 | Piece | State |
 |---|---|
-| Grader (`harness/assay_probe.py`) | Works |
+| Contracts (`ReceiptAnchor`, `VerifierRegistry`, `CreAttestor`) | 99 tests, plus 3 that run against the real ERC-8004 registry on a testnet fork |
+| Testnet deploy | `ReceiptAnchor` and `VerifierRegistry` live and verified, first anchor onchain. See [deployments](docs/deployments.md). `cosignK` and `CreAttestor` are built and tested but not deployed yet |
+| `@assay/receipts` SDK | 110 tests: receipts, salted commits, signing, Merkle batches, `verifyReceipt` with a `reproduce` line per check, passkey helpers, `wrap(fetch)`, `gradeOf` |
+| Reference host (`host/`) | 35 tests: OpenAI-compatible proxy that signs every response, batches and anchors receipts, relays co-signatures |
+| End to end | 16 of 16 checks on a local chain: request, signed receipt, onchain anchor, passkey co-signature, full verification. See [evidence](docs/evidence/e2e-local.txt) |
+| Web app (`web/`) | 44 tests: verify page, ask and co-sign, grades, and a Mera vault for receipts and salts |
+| Envio indexer (`indexer/`) | 16 handler tests: four contracts, host stats, drift events, leaderboards, key rotations |
+| Grader (`harness/`) | 32 tests: probes hosts against the lab's endpoint, exports grades with a deterministic evidence bundle |
 | Report v0 | Published in [report/](report/REPORT_v0.md) |
-| P256 precompile tests (`0x0100`, EIP-7951) | 6 passing |
-| WebAuthn co-sign tests (OpenZeppelin 5.7.0) | 12 passing |
-| Precompile check on Monad testnet | Passed, see [evidence](docs/evidence/day1-precompile-testnet.txt) |
-| ReceiptAnchor (host keys, anchoring, Merkle proofs, passkey co-sign) | 35 tests passing, including Node-generated signatures and proofs |
-| VerifierRegistry (open verifiers, grades, `gradeOf`) | 15 tests passing |
-| Testnet deploy | Live and verified on Monad testnet, first anchor onchain. See [deployments](docs/deployments.md) |
-| `@assay/receipts` SDK | 68 tests. Builds, signs and verifies receipts; batches and anchor signatures made by the SDK verify in the contracts |
-| Reference host | Planned |
-| Envio indexer and verify page | Planned |
+| Chainlink CRE workflow (`cre/`) | In progress |
 
 ## Architecture
 
@@ -83,18 +82,20 @@ The contracts are in `contracts/src`, the receipt format is in [SPEC.md](SPEC.md
 | Contracts | Solidity 0.8.30, Foundry, OpenZeppelin Contracts 5.7.0 (`P256`, `WebAuthn`, `MerkleProof`) |
 | SDK | TypeScript, viem, jose (ES256 JWS), canonicalize (RFC 8785), @openzeppelin/merkle-tree, vitest |
 | Grader | Python 3 standard library, OpenRouter API |
-| Indexing | Envio HyperIndex (planned) |
-| Requester keys | WebAuthn passkeys, Mera PRF-derived keys (planned) |
+| Indexing | Envio HyperIndex (four contracts, derived entities computed in handlers) |
+| Requester keys | WebAuthn passkeys, Mera PRF-derived keys for the receipt vault and per-app identities |
+| Host and web | Hono on Node 22, Vite with plain TypeScript |
 
 ## Repo layout
 
 ```
-contracts/   Foundry: ReceiptAnchor, VerifierRegistry, tests (OpenZeppelin P256 and WebAuthn)
-sdk/         @assay/receipts: commit, cosign, verify, wrap(fetch)
-host/        @assay/host: OpenAI-compatible proxy that signs receipts
-harness/     assay_probe.py, the grader
-indexer/     Envio HyperIndex: anchors, grades, drift
-web/         verify page: paste an output and its receipt to see where it came from
+contracts/   Foundry: ReceiptAnchor, VerifierRegistry, CreAttestor, tests
+sdk/         @assay/receipts: receipts, signing, Merkle, verify, passkeys, wrap(fetch), grades
+host/        @assay/host: OpenAI-compatible proxy that signs and anchors receipts
+harness/     assay_probe.py (the grader) and export_grade.py
+indexer/     Envio HyperIndex: anchors, co-signatures, grades, drift, leaderboards
+cre/         Chainlink CRE workflow that re-checks grades (in progress)
+web/         verify, ask and co-sign, grades, Mera vault
 report/      open-weight hosting report
 docs/        deployments, quickstart, threat model, evidence
 ```
