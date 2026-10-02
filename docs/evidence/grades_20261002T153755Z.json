@@ -1,0 +1,39 @@
+{
+  "stamp": "20261002T153755Z",
+  "modelId": "google/gemma-4-31b-it",
+  "checksId": "assay-checks/tool-calls-v0",
+  "reference": "direct:generativelanguage.googleapis.com",
+  "evidenceFile": "evidence_20261002T153755Z.tar.gz",
+  "evidence": "0x8518d2110b3f1be92049d8d9696b03046ffd3955d5e3cbad82e0f3f3a4fcb67a",
+  "grades": [
+    {
+      "tag": "google-ai-studio",
+      "hostKeyPreimage": "openrouter:google-ai-studio",
+      "model": "0xa36da0f491625ae8dc036e223025060cb6bc0baa42ab98c8647f2805ce5a25ab",
+      "hostKey": "0x38e3ba25890a8d31a96ec36823ede8271d3df40b6d7ce2d94f4419b18344bcc9",
+      "checks": "0x414c940358dd4cd842c195ab1ad421a6a54559284c6846f743916a5f934e001e",
+      "passed": 6,
+      "total": 6,
+      "ciLowBps": 6096,
+      "ciHighBps": 10000,
+      "refModel": "0xd0fe1e8708e22bc3fe3b101f9ab21a41052eb11b27d4d994f91cccca881927c7",
+      "evidence": "0x8518d2110b3f1be92049d8d9696b03046ffd3955d5e3cbad82e0f3f3a4fcb67a",
+      "t": 1790955475
+    },
+    {
+      "tag": "direct:generativelanguage.googleapis.com",
+      "hostKeyPreimage": "direct:generativelanguage.googleapis.com",
+      "model": "0xa36da0f491625ae8dc036e223025060cb6bc0baa42ab98c8647f2805ce5a25ab",
+      "hostKey": "0xd0fe1e8708e22bc3fe3b101f9ab21a41052eb11b27d4d994f91cccca881927c7",
+      "checks": "0x414c940358dd4cd842c195ab1ad421a6a54559284c6846f743916a5f934e001e",
+      "passed": 19,
+      "total": 19,
+      "ciLowBps": 8318,
+      "ciHighBps": 10000,
+      "refModel": "0xd0fe1e8708e22bc3fe3b101f9ab21a41052eb11b27d4d994f91cccca881927c7",
+      "evidence": "0x8518d2110b3f1be92049d8d9696b03046ffd3955d5e3cbad82e0f3f3a4fcb67a",
+      "t": 1790955475
+    }
+  ],
+  "skipped": []
+}
