@@ -1,44 +1,22 @@
-CRE grade-recheck: simulation attempt, 2 Oct 2026
-==================================================
+# cre workflow simulate, CRE CLI v1.36.0, 2026-10-02T16:57:06Z
 
-Status: NOT SIMULATED YET. CRE CLI v1.36.0 requires a logged-in CRE account (or CRE_API_KEY)
-for every command, including `cre init` and `cre workflow simulate`. The workflow compiles to
-WASM and its handlers pass against the SDK's capability mocks; the owner runs the simulation
-after `cre login` (steps in cre/README.md) and replaces this file with the real output.
+$ cre workflow simulate grade-recheck -T staging-settings --non-interactive --trigger-index 1 --http-payload grade-recheck/fixtures/replay-honest.json
+2026-10-02T23:57:21Z [USER LOG] grade verifier=0x00000000000000000000000000000000000000A1 hostKey=0xbc6bc5b79f83de1bb4e63bacbdb8d82c8a38e1c9caa38043f8b6ba33ffb33e6c 8/10 ci=[4901,9434] evidence=0xcd0b0aab09afd28ffb56d22dff6ac18a9ae582a4dad1e03b738c9d88e3a8b090
+2026-10-02T23:57:21Z [USER LOG] recheck hashOk=true tag=direct:assay.example.com 8/10 ci=[4901,9434] agree=true
+2026-10-02T23:57:22Z [USER LOG] attested agree=true tx=0x0000000000000000000000000000000000000000000000000000000000000000
+✓ Workflow Simulation Result:
+"{\"agree\":true,\"tx\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}"
 
-$ cre version
-CRE CLI version v1.36.0
+$ cre workflow simulate grade-recheck -T staging-settings --non-interactive --trigger-index 1 --http-payload grade-recheck/fixtures/replay-inflated.json
+2026-10-02T23:57:39Z [USER LOG] grade verifier=0x00000000000000000000000000000000000000A1 hostKey=0xbc6bc5b79f83de1bb4e63bacbdb8d82c8a38e1c9caa38043f8b6ba33ffb33e6c 10/10 ci=[7224,10000] evidence=0xcd0b0aab09afd28ffb56d22dff6ac18a9ae582a4dad1e03b738c9d88e3a8b090
+2026-10-02T23:57:47Z [USER LOG] recheck hashOk=true tag=direct:assay.example.com 8/10 ci=[4901,9434] agree=false
+2026-10-02T23:57:47Z [USER LOG] attested agree=false tx=0x0000000000000000000000000000000000000000000000000000000000000000
+✓ Workflow Simulation Result:
+"{\"agree\":false,\"tx\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}"
 
-$ cre whoami
-Initializing...
-
-! You are not logged in
-
-✗ Authentication required: not logged in and no CRE_API_KEY set
-  → Run 'cre login' interactively, or
-  → Set CRE_API_KEY environment variable for non-interactive use
-✗ authentication required: no credentials found: you are not logged in, run cre login and try again
-
-$ cd cre && cre workflow simulate grade-recheck -T staging-settings --non-interactive \
-    --trigger-index 1 --http-payload grade-recheck/fixtures/replay-honest.json
-Initializing...
-
-! You are not logged in
-
-✗ Authentication required: not logged in and no CRE_API_KEY set
-  → Run 'cre login' interactively, or
-  → Set CRE_API_KEY environment variable for non-interactive use
-✗ authentication required: no credentials found: you are not logged in, run cre login and try again
-
-What does work without an account
----------------------------------
-
-$ cd cre/grade-recheck && bunx cre-compile main.ts grade-recheck.wasm
-✅ Compiled: grade-recheck.wasm   (4.3 MB, Javy v8.1.0 plugin, @chainlink/cre-sdk 1.23.0)
-✅ Workflow built: grade-recheck.wasm
-
-$ cd cre/grade-recheck && bun test
- 27 pass
- 0 fail
- 44 expect() calls
-Ran 27 tests across 2 files.
+$ cre workflow simulate grade-recheck -T staging-settings --non-interactive --trigger-index 0 --evm-tx-hash 0xbae5c59e14a0f0653f41096323c6eae7f0e95533458027ef25b3823502ef88e0 --evm-event-index 0
+2026-10-02T23:58:00Z [USER LOG] grade verifier=0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7 hostKey=0x38e3ba25890a8d31a96ec36823ede8271d3df40b6d7ce2d94f4419b18344bcc9 6/6 ci=[6096,10000] evidence=0x8518d2110b3f1be92049d8d9696b03046ffd3955d5e3cbad82e0f3f3a4fcb67a
+2026-10-02T23:58:01Z [USER LOG] recheck hashOk=true tag=google-ai-studio 6/6 ci=[6096,10000] agree=true
+2026-10-02T23:58:01Z [USER LOG] attested agree=true tx=0x0000000000000000000000000000000000000000000000000000000000000000
+✓ Workflow Simulation Result:
+"{\"agree\":true,\"tx\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}"
