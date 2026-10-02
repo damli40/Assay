@@ -33,6 +33,7 @@ The full registration receipt is in [evidence/host-register.json](evidence/host-
 
 | What | Tx | Notes |
 |---|---|---|
+| `setHostKey(1962, …)` with the real host key on the 3 Oct ReceiptAnchor, key hash `0x6c73fb3e…a68e` | [`0xcfd45e43…`](https://testnet.monadvision.com/tx/0xcfd45e4304e7de3c0337eb83288d657e978efc2a0df614c74cfb1a9adcc7b8b4) (block 67464463) | The host's ES256 key (kid `2Jc6WJSj…qg0`). The private key stays in the host's gitignored `.keys/` folder |
 | `setHostKey(1962, …)` with a throwaway demo key, on the 1 Oct ReceiptAnchor | [`0x4ec112c6…`](https://testnet.monadvision.com/tx/0x4ec112c6017876122907af089417deed43ad01cb84a506fd6916aae94f8ba93c) (block 67273078) | Replaced by the real host key on Day 5 |
 | First anchor (1 Oct ReceiptAnchor): 2-receipt demo batch, root `0x5594c31b…6e57` | [`0x663e126c…`](https://testnet.monadvision.com/tx/0x663e126c75016ee71ea7f3fc9a3f3daf291475ecf3c6a34c358e414db06a6c6e) (block 67273084) | Host signature checked by the P256 precompile in a real transaction |
 
