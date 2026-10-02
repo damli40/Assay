@@ -23,9 +23,11 @@ The host reads the repo root `.env`. See `.env.example`. Relative paths resolve 
 
 | Variable | Required | Default | Meaning |
 |---|---|---|---|
-| `OPENROUTER_API_KEY` | yes | | OpenRouter key |
+| `OPENROUTER_API_KEY` | yes, unless `UPSTREAM_URL` is set | | OpenRouter key |
 | `UPSTREAM_MODEL` | yes | | Model sent upstream and named in every receipt |
 | `UPSTREAM_PROVIDER` | no | | Provider slug to pin, with `allow_fallbacks: false` |
+| `UPSTREAM_URL` | no | OpenRouter | A direct OpenAI-compatible chat completions URL, for example a lab's own API |
+| `UPSTREAM_API_KEY` | with `UPSTREAM_URL` | | Key for `UPSTREAM_URL`. `OPENROUTER_API_KEY` is then not needed |
 | `MONAD_RPC_URL` | yes | | Primary RPC |
 | `MONAD_RPC_URL_2` | no | | Fallback RPC, tried once when the primary fails |
 | `ANCHOR_ADDRESS` | yes | | `ReceiptAnchor` address |
