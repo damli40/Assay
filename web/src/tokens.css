@@ -1,0 +1,134 @@
+/* Touchstone tokens for Assay. Single source of truth for colour, type, space and motion.
+ *
+ * How to use (build step 0 in design/BUILD_ORDER.md):
+ *   1. Copy design/fonts/*.woff2 to web/public/fonts/.
+ *   2. Copy this file to web/src/tokens.css and import it first in web/src/main.ts
+ *      (and in the landing entry): import "./tokens.css";
+ *   3. Delete the old :root block at the top of web/src/style.css. The legacy aliases
+ *      at the bottom of this file keep the existing rules working while you migrate them.
+ *
+ * Rules:
+ *   - Components use these variables, never raw hex.
+ *   - Each signal colour means one thing (see the comments). Text on a filled signal is --stone-0.
+ *   - A state is never colour alone: it also carries a word (Pass, Fail, Skipped, Waiting) or an icon.
+ */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("/fonts/archivo-latin-wdth-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Martian Mono";
+  src: url("/fonts/martian-mono-latin-wdth-normal.woff2") format("woff2");
+  font-weight: 100 800;
+  font-stretch: 75% 112.5%;
+  font-display: swap;
+}
+/* Only used for the "A" inside the logo mark when it is drawn as live SVG text.
+   The SVG files in design/brand/logo are outlined and need no font. */
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/source-serif-4-latin-800-normal.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  /* Ground */
+  --stone-0: #0C0C0B;      /* page */
+  --stone-1: #151513;      /* cards */
+  --stone-2: #1E1E1B;      /* inputs, check rows, code */
+  --line: #2E2E29;         /* borders */
+  --line-strong: #3A3A33;  /* input borders, secondary buttons */
+
+  /* Text (contrast on --stone-0) */
+  --bone: #EDE6D6;         /* 15.74:1 */
+  --muted: #ABA493;        /* 7.89:1. Never on gold. */
+
+  /* Brand */
+  --gold: #C9A227;         /* brand, primary button, "signed by host". 8.09:1 */
+  --gold-high: #F2C94C;    /* links, focus ring, warn. 12.33:1 */
+
+  /* Signals: one meaning each */
+  --violet: #8B73FF;       /* anchored, anything onchain. 5.59:1 */
+  --pink: #FF8BCF;         /* you: passkey, co-signature, vault. 9.18:1 */
+  --lime: #B8F03C;         /* pass. 14.51:1 */
+  --coral: #FF5B45;        /* fail, mismatch, below reference, destructive. 6.37:1 */
+  --sky: #4FC3F7;          /* pending, waiting, roadmap, "new". 9.77:1 */
+  --warn: var(--gold-high);/* warn grade, soft banners */
+
+  /* Type */
+  --font-sans: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Martian Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --stretch-display: 118%; /* h1 to h3 */
+  --stretch-wordmark: 125%;/* wordmark, stamps, big numbers */
+  --stretch-label: 112%;   /* chips, buttons, table heads, uppercase labels */
+  --stretch-mono: 87.5%;
+  --fs-display: clamp(40px, 5.4vw, 82px); /* landing hero only */
+  --fs-h1: clamp(30px, 3.6vw, 48px);
+  --fs-h2: 22px;
+  --fs-body: 16px;
+  --fs-small: 13px;
+  --fs-label: 11px;
+  --lh-body: 1.55;
+
+  /* Space and shape */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 40px;
+  --space-7: 72px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --octagon: polygon(29% 0, 71% 0, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0 71%, 0 29%);
+
+  /* Depth: hard offset shadows only */
+  --shadow-primary: 4px 4px 0 var(--violet);
+  --shadow-primary-hover: 6px 6px 0 var(--violet);
+  --shadow-dialog: 0 30px 80px rgba(0, 0, 0, 0.6);
+
+  /* Focus */
+  --focus-ring: 2px solid var(--gold-high);
+  --focus-offset: 2px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-punch: cubic-bezier(0.2, 0.9, 0.3, 1.25); /* stamps only, never tables or lists */
+  --dur-fast: 150ms;
+  --dur-stamp: 550ms;
+  --dur-draw: 700ms;
+
+  /* Layout */
+  --max-app: 1240px;
+  --tap: 44px;
+  --bp-two-col: 1100px;    /* above: form 5fr, result 7fr */
+  --bp-bottom-bar: 900px;  /* at or below: bottom tab bar */
+  --bp-stack: 640px;       /* at or below: kv rows stack, full-width buttons */
+
+  color-scheme: dark;
+
+  /* Legacy aliases: the names web/src/style.css uses today. Remove each one once
+     no rule references it (grep for var(--bg) etc.). */
+  --bg: var(--stone-0);
+  --surface: var(--stone-1);
+  --text: var(--bone);
+  --bad: var(--coral);
+  --serif: var(--font-sans); /* headings move from Georgia to Archivo */
+  --sans: var(--font-sans);
+  --mono: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
