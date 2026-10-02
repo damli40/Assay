@@ -9,7 +9,7 @@ Each integration here fixes a specific weakness in Assay. For each one this page
 | Monad P256 precompile | Host and passkey signatures checked onchain | `contracts/src/ReceiptAnchor.sol` | Live on testnet |
 | ERC-8004 IdentityRegistry | Identity of hosts and verifiers | `contracts/src/`, `host/scripts/register-agent.ts` | Live on testnet, host is agent 1962 |
 | Envio HyperIndex | Joined, derived read layer | `indexer/` | Built and tested, not yet deployed to Envio Cloud |
-| Chainlink CRE | Decentralized re-check of grades | `contracts/src/CreAttestor.sol`, `cre/` | In progress |
+| Chainlink CRE | Decentralized re-check of grades | `contracts/src/CreAttestor.sol`, `cre/` | Built and tested, not deployed |
 | Mera passkey PRF | Receipt vault, per-app requester keys, per-receipt reveal keys | `web/src/mera.ts`, `ReceiptAnchor.cosignK` | Built, `cosignK` not yet deployed |
 | Kimi | Trust agent that explains grades and receipts | not started | Planned |
 
@@ -62,11 +62,11 @@ What we built, and what is being built.
 | Piece | Where | State |
 |---|---|---|
 | `CreAttestor`: accepts reports only from the configured forwarder and the pinned workflow owner and id, stores one attestation per grade, emits `GradeAttested` | `contracts/src/CreAttestor.sol` | Done, 21 tests |
-| Workflow: `GradePosted` log trigger, fetch the evidence, check its sha256, recompute `passed`, `total` and the Wilson interval, reach consensus, write the report | `cre/` | In progress |
-| Simulation output | `docs/evidence/` | In progress |
+| Workflow: `GradePosted` log trigger, fetch the evidence, check its sha256, recompute `passed`, `total` and the Wilson interval, reach consensus, write the report | `cre/grade-recheck/` | Built, 27 tests, compiles to WASM |
+| Simulation output | `docs/evidence/cre-simulate-grade-recheck.txt` | Needs a CRE account login |
 | Indexing of `GradeAttested` and the link to the re-checked grade | `indexer/src/handlers/CreAttestor.ts` | Done |
 
-Status. In progress. `CreAttestor` is not deployed yet. The workflow is being built, and its simulation output will be saved in `docs/evidence/`.
+Status. The workflow is built and tested: its Wilson math matches the harness on 5,156 vectors, and its report decodes in `CreAttestor`'s exact layout. The CRE CLI needs an account login even to simulate, so the simulation and the `CreAttestor` deploy are the next steps. `cre/README.md` lists them.
 
 ## Mera
 

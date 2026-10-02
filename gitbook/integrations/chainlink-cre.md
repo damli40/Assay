@@ -8,7 +8,7 @@ icon: link
 **Where:** `CreAttestor` in `contracts/src/CreAttestor.sol` (written and tested, not deployed yet). The workflow lives in `cre/`.
 
 {% hint style="info" %}
-In progress. The `CreAttestor` contract is done. The workflow is still being built, and this page will be updated when it runs.
+Built and tested, not deployed yet. The workflow in `cre/grade-recheck/` has 27 tests and compiles to WASM. Simulating it needs a Chainlink CRE account, so the simulation output and the `CreAttestor` deploy come next. Steps are in `cre/README.md`.
 {% endhint %}
 
 ## Problem

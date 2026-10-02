@@ -15,7 +15,7 @@ This page shows how the parts of Assay fit together and what happens to one requ
 | Grader | `harness/` | Tests hosts against the lab's own endpoint and exports grades with an evidence bundle | Anyone's machine |
 | Indexer | `indexer/` | Envio HyperIndex over all of the contracts above. Computes drift, leaderboards, activity and key history | Envio Cloud or local Docker |
 | Web app | `web/` | Verify, ask and co-sign, grades, and a Mera passkey vault | Browser |
-| CRE workflow | `cre/` | Re-checks a grade's evidence on a Chainlink DON and writes the result to `CreAttestor` | In progress |
+| CRE workflow | `cre/` | Re-checks a grade's evidence on a Chainlink DON and writes the result to `CreAttestor` | Built and tested, not deployed |
 
 ## One request, step by step
 
@@ -97,7 +97,7 @@ A first `postGrade` for a (model, host) pair costs 195,885 gas, because it fills
 
 `hostKey` follows identity, not the signing key: `keccak256("erc8004:<chainId>:<agentId>")` for an Assay host. A host that rotates its key keeps its grades.
 
-## CRE re-check (in progress)
+## CRE re-check
 
 A grade still comes from one verifier. The Chainlink CRE workflow in `cre/` re-checks it on a decentralized oracle network.
 

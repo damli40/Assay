@@ -67,7 +67,7 @@ corepack pnpm --filter @assay/host test -- server
 | Verifier identity transfer. The ERC-8004 identity is an NFT and can be sold, but the old address stays registered. | `postGrade` re-checks `ownerOf` on every post. | `test_post_afterIdentityTransferred_reverts` |
 | Fake verifiers flood the registry. | `gradeOf` only reads the verifiers the reader passes in. | `test_gradeOf_ignoresUntrusted` |
 | Impossible numbers. | `total > 0`, `passed <= total`, `ciLowBps <= ciHighBps <= 10000`, no future `t`. | `test_post_passedGtTotal_reverts`, `test_post_totalZero_reverts`, `test_post_ciInverted_reverts`, `test_post_ciOver10000_reverts`, `test_post_futureTimestamp_reverts` |
-| Evidence that doesn't match the grade. | `evidence` is the sha256 of a deterministic tarball. The CRE workflow (in progress) re-checks the hash and recomputes the counts. | harness `test_evidence_hash_matches_tarball`, `test_evidence_is_deterministic` |
+| Evidence that doesn't match the grade. | `evidence` is the sha256 of a deterministic tarball. The CRE workflow in `cre/` re-checks the hash and recomputes the counts. | harness `test_evidence_hash_matches_tarball`, `test_evidence_is_deterministic` |
 | Old grades presented as current. | `gradeStatus` returns `unknown` after 7 days and `warn` under 30 samples. | SDK `gradeStatus` table, e.g. `a grade older than 7 days → unknown` |
 
 ### CRE attestations
@@ -97,5 +97,5 @@ corepack pnpm --filter @assay/host test -- server
 | ES384 attestations | NVIDIA's attestation tokens use ES384, and Monad has no P-384 precompile. | Verify offchain, or wrap the result in a P-256 signature. |
 | Front-running as a class | Two of our attacks came from transactions visible in the mempool. Both are fixed in the contract layout. | An encrypted mempool such as BTX would remove the whole class at the protocol level. We have not routed through it yet because it has no public docs. |
 | Identity reset | A host can register a fresh ERC-8004 identity to drop its history. | Readers weigh identity age and grade count. The indexer exposes both. |
-| One verifier today | Assay runs the first verifier. | The registry is open, and the CRE workflow (in progress) re-checks grades on a DON. |
+| One verifier today | Assay runs the first verifier. | The registry is open, and the CRE workflow in `cre/` re-checks grades on a DON once it is deployed. |
 | Host key in a file | The reference host keeps its P-256 key in a local JWK file. | Cloud KMS, an HSM or a TEE. All of them sign P-256. |

@@ -31,7 +31,7 @@ This page separates what runs today from what is next. Items move up when they s
 
 | Item | Page |
 |---|---|
-| Chainlink CRE evidence re-check workflow | [Chainlink CRE](../integrations/chainlink-cre.md) |
+| Simulate and deploy the CRE re-check workflow (built and tested) | [Chainlink CRE](../integrations/chainlink-cre.md) |
 | Report v1: every GLM-5.3 endpoint graded against Z.ai's own endpoint | [Hosting report](hosting-report.md) |
 | Kimi trust agent | [Kimi](../integrations/kimi.md) |
 

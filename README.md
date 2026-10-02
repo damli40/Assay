@@ -49,7 +49,7 @@ Gas is cheap enough to anchor small batches often. One `anchor()` call uses abou
 | Envio indexer (`indexer/`) | 16 handler tests: four contracts, host stats, drift events, leaderboards, key rotations |
 | Grader (`harness/`) | 32 tests: probes hosts against the lab's endpoint, exports grades with a deterministic evidence bundle |
 | Report v0 | Published in [report/](report/REPORT_v0.md) |
-| Chainlink CRE workflow (`cre/`) | In progress |
+| Chainlink CRE workflow (`cre/`) | 27 tests: re-checks each grade's evidence and writes an attestation to `CreAttestor`. Compiles to WASM. Simulation and deployment need a Chainlink CRE account |
 
 ## Architecture
 
@@ -94,7 +94,7 @@ sdk/         @assay/receipts: receipts, signing, Merkle, verify, passkeys, wrap(
 host/        @assay/host: OpenAI-compatible proxy that signs and anchors receipts
 harness/     assay_probe.py (the grader) and export_grade.py
 indexer/     Envio HyperIndex: anchors, co-signatures, grades, drift, leaderboards
-cre/         Chainlink CRE workflow that re-checks grades (in progress)
+cre/         Chainlink CRE workflow that re-checks grades
 web/         verify, ask and co-sign, grades, Mera vault
 report/      open-weight hosting report
 docs/        architecture, quickstart, threat model, adopters, integrations, deployments, evidence
