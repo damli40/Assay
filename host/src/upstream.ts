@@ -8,9 +8,10 @@ export interface UpstreamResult {
 /// Sends an OpenAI-style chat body and returns the raw status and JSON. Injected so tests run offline.
 export type Upstream = (body: Record<string, unknown>) => Promise<UpstreamResult>;
 
-export function openRouter(apiKey: string, fetchFn: typeof fetch = fetch): Upstream {
+/// Any OpenAI-compatible chat completions endpoint, OpenRouter by default.
+export function openRouter(apiKey: string, fetchFn: typeof fetch = fetch, url: string = OPENROUTER_URL): Upstream {
   return async (body) => {
-    const res = await fetchFn(OPENROUTER_URL, {
+    const res = await fetchFn(url, {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       body: JSON.stringify(body),

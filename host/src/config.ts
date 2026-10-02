@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { calculateJwkThumbprint, type JWK } from "jose";
 import { isAddress, type Address, type Hex } from "viem";
+import { OPENROUTER_URL } from "./upstream.js";
 
 export const CHAIN_ID = 10143;
 export const DEFAULT_VERIFIER_REGISTRY = "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91";
@@ -10,6 +11,8 @@ const HOST_DIR = fileURLToPath(new URL("..", import.meta.url));
 
 export interface Config {
   openrouterApiKey: string;
+  /// Full chat-completions URL. OpenRouter unless set, e.g. a lab's own OpenAI-compatible API.
+  upstreamUrl: string;
   upstreamModel: string;
   upstreamProvider?: string;
   rpcUrls: string[];
@@ -43,7 +46,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     return n;
   };
 
-  const openrouterApiKey = required("OPENROUTER_API_KEY");
+  const upstreamUrl = get("UPSTREAM_URL");
+  if (upstreamUrl && !/^https:\/\//.test(upstreamUrl)) errors.push("UPSTREAM_URL must be an https URL");
+  // A direct upstream uses its own key; provider pinning only exists on OpenRouter.
+  const openrouterApiKey = upstreamUrl ? required("UPSTREAM_API_KEY") : required("OPENROUTER_API_KEY");
+  if (upstreamUrl && get("UPSTREAM_PROVIDER")) errors.push("UPSTREAM_PROVIDER only applies to OpenRouter; leave it empty with UPSTREAM_URL");
   const upstreamModel = required("UPSTREAM_MODEL");
   const rpc1 = required("MONAD_RPC_URL");
   const rpc2 = get("MONAD_RPC_URL_2");
@@ -66,6 +73,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const port = int("PORT", 8787, 1);
   const cfg: Config = {
     openrouterApiKey,
+    upstreamUrl: upstreamUrl ?? OPENROUTER_URL,
     upstreamModel,
     upstreamProvider: get("UPSTREAM_PROVIDER"),
     rpcUrls: rpc2 ? [rpc1, rpc2] : [rpc1],

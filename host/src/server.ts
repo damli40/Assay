@@ -219,7 +219,7 @@ async function main() {
     signer,
     retiredJwks,
     store,
-    upstream: openRouter(cfg.openrouterApiKey),
+    upstream: openRouter(cfg.openrouterApiKey, fetch, cfg.upstreamUrl),
     model: cfg.upstreamModel,
     provider: cfg.upstreamProvider,
     agentId: cfg.hostAgentId,
