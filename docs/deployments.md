@@ -26,13 +26,15 @@ The first version, without `cosignK`. The first anchor and the evidence files fr
 | Role | agentId | Owner | Registration tx | Agent card |
 |---|---|---|---|---|
 | Reference host | 1962 | `0xF3CbD8aaf1f2350bFd8a3220Ab4E83FDd8fa18d9` | [`0x4f164f1d…`](https://testnet.monadvision.com/tx/0x4f164f1db133dd9fba6af4433cb2b5af9869afdf08e11044fb0b4281f55b8c97) (block 67269809) | [host.json](agents/host.json) |
+| Verifier | 1981 | `0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7` | [`0xfb3d22c2…`](https://testnet.monadvision.com/tx/0xfb3d22c27fb265d3ec4b8582d8a5ada650ea506c81b54e1cfd4ece9d1366f210) (block 67575374) | [verifier.json](agents/verifier.json) |
 
-The full registration receipt is in [evidence/host-register.json](evidence/host-register.json).
+The full registration receipts are in [evidence/host-register.json](evidence/host-register.json) and [evidence/verifier-register.json](evidence/verifier-register.json). The verifier is a separate wallet because ERC-8004 doesn't let an agent's owner give feedback to its own agent.
 
 ## Onchain activity
 
 | What | Tx | Notes |
 |---|---|---|
+| `registerVerifier(1981)` on the 3 Oct VerifierRegistry | [`0x752c6fe5…`](https://testnet.monadvision.com/tx/0x752c6fe566c60f390a79c449c812afc1fcd8b6802b1877da7bdc6231da52d178) (block 67575710) | Agent 1981 can now post grades |
 | `setHostKey(1962, …)` with the real host key on the 3 Oct ReceiptAnchor, key hash `0x6c73fb3e…a68e` | [`0xcfd45e43…`](https://testnet.monadvision.com/tx/0xcfd45e4304e7de3c0337eb83288d657e978efc2a0df614c74cfb1a9adcc7b8b4) (block 67464463) | The host's ES256 key (kid `2Jc6WJSj…qg0`). The private key stays in the host's gitignored `.keys/` folder |
 | `setHostKey(1962, …)` with a throwaway demo key, on the 1 Oct ReceiptAnchor | [`0x4ec112c6…`](https://testnet.monadvision.com/tx/0x4ec112c6017876122907af089417deed43ad01cb84a506fd6916aae94f8ba93c) (block 67273078) | Replaced by the real host key on Day 5 |
 | First anchor (1 Oct ReceiptAnchor): 2-receipt demo batch, root `0x5594c31b…6e57` | [`0x663e126c…`](https://testnet.monadvision.com/tx/0x663e126c75016ee71ea7f3fc9a3f3daf291475ecf3c6a34c358e414db06a6c6e) (block 67273084) | Host signature checked by the P256 precompile in a real transaction |
