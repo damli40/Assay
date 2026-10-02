@@ -1,0 +1,14 @@
+name: cre
+on: [push, pull_request]
+jobs:
+  grade-recheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cre/grade-recheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx tsc --noEmit
+      - run: bun test
