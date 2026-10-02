@@ -146,5 +146,28 @@ class LiveRunToExport(unittest.TestCase):
         self.assertEqual([g["passed"] for g in doc["grades"]], [8, 8])
 
 
+
+class Retry(unittest.TestCase):
+    def test_retries_429_then_returns_success(self):
+        codes = [429, 500, 200]
+        def fake(req, timeout=None):
+            c = codes.pop(0)
+            if c != 200:
+                raise ap.urllib.error.HTTPError(req.full_url, c, "x", {}, io.BytesIO(b'{"error":{}}'))
+            r = io.BytesIO(b'{"ok":true}'); r.status = 200
+            return contextlib.nullcontext(r)
+        with mock.patch.object(ap.urllib.request, "urlopen", fake), mock.patch.object(ap.time, "sleep") as sl:
+            self.assertEqual(ap.http("GET", "https://x"), (200, {"ok": True}))
+        self.assertEqual(sl.call_count, 2)
+
+    def test_gives_up_and_never_retries_4xx(self):
+        calls = []
+        def fake(req, timeout=None):
+            calls.append(1)
+            raise ap.urllib.error.HTTPError(req.full_url, 400, "x", {}, io.BytesIO(b'{}'))
+        with mock.patch.object(ap.urllib.request, "urlopen", fake), mock.patch.object(ap.time, "sleep"):
+            self.assertEqual(ap.http("GET", "https://x")[0], 400)
+        self.assertEqual(len(calls), 1)
+
 if __name__ == "__main__":
     unittest.main()

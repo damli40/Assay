@@ -62,7 +62,17 @@ CASES = [
 ]
 
 # ---------------------------------------------------------------- helpers
+RETRIES = 4  # free tiers throttle (429) and Google's OpenAI layer throws transient 500s
+
 def http(method, url, body=None, key=None, timeout=120):
+    """Retries 429 and 5xx with backoff. A response that still fails is returned and counted as an error, never a pass."""
+    for attempt in range(RETRIES + 1):
+        status, data = _http_once(method, url, body, key, timeout)
+        if (status != 429 and status < 500) or attempt == RETRIES:
+            return status, data
+        time.sleep(min(60, 5 * 2 ** attempt))
+
+def _http_once(method, url, body, key, timeout):
     headers = {"Content-Type": "application/json", "User-Agent": "assay-probe/0.1"}
     if key:
         headers["Authorization"] = f"Bearer {key}"
