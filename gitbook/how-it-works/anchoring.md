@@ -44,7 +44,7 @@ The host does not send a transaction per request. It collects receipt hashes, bu
 ## Check a receipt yourself
 
 ```bash
-cast call 0x049A73755cA3508ef3Daa4752A3406f6e00CfB13 \
+cast call 0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24 \
   "verifyReceipt(uint256,bytes32,bytes32[],bytes32)(bool)" \
   1962 <receiptHash> "[<proof>]" <root> --rpc-url https://testnet-rpc.monad.xyz
 ```

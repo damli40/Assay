@@ -49,7 +49,7 @@ forge test --match-path "test/fork/*" --fork-url monad_testnet -vv
 3. Read the first anchor, whose host signature the precompile checked in a real transaction:
 
 ```bash
-cast call 0x049A73755cA3508ef3Daa4752A3406f6e00CfB13 "anchors(uint256,bytes32)(uint32,uint64)" 1962 \
+cast call 0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24 "anchors(uint256,bytes32)(uint32,uint64)" 1962 \
   0x5594c31b47c59350e82e11a4161b629c03ac85a36c02dc74c2630fde01086e57 --rpc-url https://testnet-rpc.monad.xyz
 ```
 

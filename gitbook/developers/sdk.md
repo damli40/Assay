@@ -194,7 +194,7 @@ const { body, kid } = await verifyReceiptJws(jws, jwks);
 The exact bytes `ReceiptAnchor.anchorMessage` returns. `ANCHOR_TAG` is `keccak256("assay-anchor/0")`.
 
 ```typescript
-const msg = anchorMessage({ chainId: 10143n, anchor: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13", agentId: 1962n, root, count: 2 });
+const msg = anchorMessage({ chainId: 10143n, anchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24", agentId: 1962n, root, count: 2 });
 ```
 
 ## Verification
@@ -220,7 +220,7 @@ import { createPublicClient, http } from "viem";
 const client = createPublicClient({ transport: http("https://testnet-rpc.monad.xyz") });
 const result = await verifyReceipt({
   body, jws, jwks, proof, root,
-  onchain: { client, anchor: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13" },
+  onchain: { client, anchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24" },
   salt, output,
 });
 result.checks.anchored;   // "pass"
@@ -364,7 +364,7 @@ import { keccak256, stringToBytes } from "viem";
 
 const found = await gradeOf(
   client,
-  "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1",
+  "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91",
   keccak256(stringToBytes("z-ai/glm-5.3")),
   hostKeyForAgent(10143, 1962),
   [trustedVerifier],
