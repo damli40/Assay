@@ -15,7 +15,7 @@ const messages = [{ role: "user", content: "Say OK" }];
 const res = await fetch(`${hostUrl}/v1/chat/completions`, {
   method: "POST",
   headers: { "content-type": "application/json", "x-assay-salt": salt.slice(2) },
-  body: JSON.stringify({ messages, max_tokens: 16, temperature: 0 }),
+  body: JSON.stringify({ messages, max_tokens: 256, temperature: 0 }),
 });
 if (!res.ok) throw new Error(`host returned ${res.status}: ${await res.text()}`);
 const output = ((await res.json()) as { choices: { message: { content: string } }[] }).choices[0].message.content;
