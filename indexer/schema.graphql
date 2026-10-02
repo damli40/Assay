@@ -28,10 +28,15 @@ type Agent {
   anchorCount: Int!
   receiptCount: Int!
   cosignCount: Int!
+  feedbackCount: Int!
+  # D26: feedback whose sender co-signed (cosignK) the receipt named in feedbackHash.
+  receiptBackedFeedbackCount: Int!
+  receiptBackedNegativeCount: Int!
   keys: [HostKey!]! @derivedFrom(field: "agent")
   rotations: [KeyRotation!]! @derivedFrom(field: "agent")
   anchors: [Anchor!]! @derivedFrom(field: "agent")
   activity: [HostActivity!]! @derivedFrom(field: "agent")
+  feedback: [Feedback!]! @derivedFrom(field: "agent")
 }
 
 type HostKey {
@@ -185,6 +190,31 @@ type GradeAttestation {
   agree: Boolean!
   passed: Int!
   total: Int!
+  block: Int!
+  timestamp: Int!
+  txHash: String!
+}
+
+# ERC-8004 ReputationRegistry feedback about an agent. Receipt-backed when the sender co-signed,
+# with cosignK, the receipt whose hash is feedbackHash: the complaint comes from whoever asked.
+type Feedback {
+  id: ID! # 10143-<agentId>-<client>-<feedbackIndex>
+  agent: Agent!
+  client: String! @index
+  feedbackIndex: BigInt!
+  value: BigInt!
+  valueDecimals: Int!
+  tag1: String!
+  tag2: String!
+  endpoint: String!
+  feedbackURI: String!
+  feedbackHash: String! @index
+  receiptBacked: Boolean!
+  cosign: Cosign
+  revoked: Boolean!
+  # The agent owner's reply (ResponseAppended): the host's right of reply.
+  hostResponseURI: String
+  hostResponseHash: String
   block: Int!
   timestamp: Int!
   txHash: String!

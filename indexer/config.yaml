@@ -21,6 +21,11 @@ contracts:
   - name: IdentityRegistry
     events:
       - event: Registered(uint256 indexed agentId, string agentURI, address indexed owner)
+  - name: ReputationRegistry
+    events:
+      - event: NewFeedback(uint256 indexed agentId, address indexed clientAddress, uint64 feedbackIndex, int128 value, uint8 valueDecimals, string indexed indexedTag1, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash)
+      - event: FeedbackRevoked(uint256 indexed agentId, address indexed clientAddress, uint64 indexed feedbackIndex)
+      - event: ResponseAppended(uint256 indexed agentId, address indexed clientAddress, uint64 feedbackIndex, address indexed responder, string responseURI, bytes32 responseHash)
 chains:
   - id: 10143
     start_block: 67269630
@@ -37,3 +42,6 @@ chains:
       - name: IdentityRegistry
         address: "0x8004A818BFB912233c491871b3d84c89A494BD9e"
         start_block: 67269800
+      - name: ReputationRegistry
+        address: "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+        start_block: 67461080

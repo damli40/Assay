@@ -21,6 +21,9 @@ export async function getOrCreateAgent(context: EvmOnEventContext, chainId: numb
     anchorCount: 0,
     receiptCount: 0,
     cosignCount: 0,
+    feedbackCount: 0,
+    receiptBackedFeedbackCount: 0,
+    receiptBackedNegativeCount: 0,
   });
 }
 
