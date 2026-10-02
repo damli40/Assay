@@ -7,7 +7,7 @@ icon: file-contract
 
 **Where:** `contracts/src/` (Solidity 0.8.30, Foundry, OpenZeppelin Contracts 5.7.0). Deployed addresses are on [Network and contracts](../getting-started/network-and-contracts.md).
 
-Three contracts. `ReceiptAnchor` holds host keys, batch anchors and co-signatures. `VerifierRegistry` holds grades. `CreAttestor` records Chainlink CRE re-checks of grades.
+Assay has three contracts. `ReceiptAnchor` holds host keys, batch anchors and co-signatures. `VerifierRegistry` holds grades. `CreAttestor` records Chainlink CRE re-checks of grades.
 
 Gas numbers are the maximum from `forge test --gas-report` against a mock identity registry. On testnet the real ERC-8004 `ownerOf` call adds a little, so `setHostKey` lands around 75,000 to 80,000.
 

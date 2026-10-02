@@ -51,7 +51,7 @@ Upload each file in Customize, under Logo (light and dark) and Favicon. The PNG 
 
 1. Every sidebar group shows as an uppercase header with its pages under it.
 2. Each page shows its icon and the one-line description under the title.
-3. Hint blocks render as colored boxes, not as raw `{% hint %}` text.
+3. Hint blocks render as colored boxes, not as raw hint tags.
 4. Dark mode is the default on a fresh private window.
 5. The welcome page is the landing page.
 
