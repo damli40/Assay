@@ -1,4 +1,4 @@
-import { receiptHash } from "@assay/receipts";
+import { cosignerForAddress, receiptHash } from "@assay/receipts";
 import { recoverMessageAddress, type Hex } from "viem";
 import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
 import { addToVault, createVaultPasskey, loadSealed, meraCredential, meraMessage, storeSealed, unlockVault, withPrf } from "../mera.js";
@@ -208,6 +208,7 @@ function requesterCard() {
       sigOut.append(
         h("dl", { class: "kv" },
           h("dt", {}, "Signer"), h("dd", {}, mono(address)),
+          h("dt", {}, "X-Assay-Cosigner"), h("dd", {}, mono(cosignerForAddress(address)), " ", copyButton(cosignerForAddress(address))),
           h("dt", {}, "Signature"), h("dd", {}, mono(signature), " ", copyButton(signature)),
           h("dt", {}, "ecrecover"), h("dd", {}, recovered === address ? "recovers to the signer" : "MISMATCH"),
         ),

@@ -14,7 +14,7 @@ export const CHECKS: { key: keyof Checks; name: string; means: string; skipped: 
   { key: "anchored", name: "Anchored onchain", means: "ReceiptAnchor holds the batch root under the host's ERC-8004 agent id.", skipped: "Needs the batch root and a chain RPC." },
   { key: "outputCommit", name: "Output matches", means: "Your salt and output text reproduce the output commit, so this is exactly the text the host served.", skipped: "Paste the salt and the output text to run it." },
   { key: "promptCommit", name: "Prompt matches", means: "Your salt and messages reproduce the prompt commit, so this receipt answers that prompt.", skipped: "Paste the salt and the messages JSON to run it." },
-  { key: "cosigned", name: "Requester co-signed", means: "The passkey named in req.cosigner co-signed this receipt onchain.", skipped: "The receipt names no co-signer, or no chain RPC was given." },
+  { key: "cosigned", name: "Requester co-signed", means: "The key named in req.cosigner co-signed this receipt onchain: a passkey (cosign) or a per-app address (cosignK).", skipped: "The receipt names no co-signer, or no chain RPC was given." },
 ];
 
 export function formatReproduce(r: Reproduce, rpc: string): string {
