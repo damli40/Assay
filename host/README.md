@@ -29,6 +29,7 @@ The host reads the repo root `.env`. See `.env.example`. Relative paths resolve 
 | `MONAD_RPC_URL` | yes | | Primary RPC |
 | `MONAD_RPC_URL_2` | no | | Fallback RPC, tried once when the primary fails |
 | `ANCHOR_ADDRESS` | yes | | `ReceiptAnchor` address |
+| `VERIFIER_REGISTRY` | no | `0x0C86…a9a1` (testnet) | `VerifierRegistry` read by `GET /v1/grade` |
 | `HOST_AGENT_ID` | yes | | The host's ERC-8004 agentId |
 | `RELAYER_PRIVATE_KEY` | yes | | Wallet that pays anchor and co-sign gas |
 | `HOST_JWK_PATH` | no | `.keys/host.jwk.json` | Current signing key |
@@ -48,6 +49,7 @@ The host reads the repo root `.env`. See `.env.example`. Relative paths resolve 
 | `POST /v1/cosign` | Relays `ReceiptAnchor.cosign` for an anchored receipt this host issued. 10 per IP per hour |
 | `GET /.well-known/jwks.json` | Current key, plus retired keys marked `"status": "retired"` |
 | `GET /.well-known/agent-registration.json` | ERC-8004 registration file |
+| `GET /v1/grade?model=&host=&verifiers=[&reference=]` | Latest grade from the verifiers you trust, read from `VerifierRegistry`, as `pass`, `warn`, `unknown` or `fail`, with the `gradeOf` call that reproduces it. `host` is `erc8004:<chain>:<id>`, `openrouter:<tag>`, `direct:<host>` or a raw host key |
 | `GET /health` | Model, key id and queue length |
 
 `X-Assay-Receipt` is base64url of the JSON `{body, jws}`. The JWS payload is the JCS bytes of `body`, and the receipt hash is `sha256` of those bytes.
