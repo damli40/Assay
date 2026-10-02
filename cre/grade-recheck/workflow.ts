@@ -23,7 +23,8 @@ export const configSchema = z.object({
 	verifierRegistry: address,
 	creAttestor: address,
 	// Bundles are fetched from `${evidenceBaseUrl}/<sha256 hex>.tar.gz`, content-addressed by Grade.evidence.
-	evidenceBaseUrl: z.string().url(),
+	// Not z.string().url(): it needs the WHATWG URL class, which the QuickJS runtime lacks.
+	evidenceBaseUrl: z.string().regex(/^https:\/\/[^\s/]+(\/\S*)?$/),
 	// Run tag -> "erc8004:<chainId>:<agentId>" for Assay hosts (D21); other tags use the default preimage.
 	assayHosts: z.record(z.string(), z.string()).default({}),
 	gasLimit: z.string().default('300000'),
