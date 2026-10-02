@@ -46,3 +46,4 @@ export {
   type VerifyInput,
   type VerifyResult,
 } from "./verify.js";
+export { cosignerAddress, cosignerForAddress } from "./cosigner.js";

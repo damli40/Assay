@@ -2,6 +2,7 @@ import { decodeProtectedHeader, type JWK } from "jose";
 import type { Address, Hex } from "viem";
 import { commitRequest, commitResponse } from "./commit.js";
 import { verifyReceiptJws } from "./hostSigner.js";
+import { cosignerAddress } from "./cosigner.js";
 import { verifyProof } from "./merkle.js";
 import { receiptHash, type ReceiptBody } from "./receipt.js";
 
@@ -71,6 +72,13 @@ export const receiptAnchorAbi = [
     name: "cosigned",
     stateMutability: "view",
     inputs: [{ type: "bytes32" }, { type: "bytes32" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "cosignedK",
+    stateMutability: "view",
+    inputs: [{ type: "bytes32" }, { type: "address" }],
     outputs: [{ type: "bool" }],
   },
 ] as const;
@@ -151,21 +159,21 @@ export async function verifyReceipt(input: VerifyInput): Promise<VerifyResult> {
   }
 
   if (input.onchain && body.req.cosigner) {
+    // D25: a padded address names a secp256k1 (cosignK) requester, anything else a P-256 key hash.
+    const signer = cosignerAddress(body.req.cosigner);
+    const [functionName, fn, key] = signer
+      ? (["cosignedK", "cosignedK(bytes32,address)(bool)", signer] as const)
+      : (["cosigned", "cosigned(bytes32,bytes32)(bool)", body.req.cosigner] as const);
     const ok = (await input.onchain.client.readContract({
       address: input.onchain.anchor,
       abi: receiptAnchorAbi,
-      functionName: "cosigned",
-      args: [hash, body.req.cosigner],
+      functionName,
+      args: [hash, key],
     })) as boolean;
     checks.cosigned = check(ok);
-    reproduce.cosigned = {
-      kind: "contract-call",
-      address: input.onchain.anchor,
-      function: "cosigned(bytes32,bytes32)(bool)",
-      args: [hash, body.req.cosigner],
-      expect: "true",
-    };
+    reproduce.cosigned = { kind: "contract-call", address: input.onchain.anchor, function: fn, args: [hash, key], expect: "true" };
   }
+
 
   if (input.salt !== undefined && input.output !== undefined) {
     checks.outputCommit = check(commitResponse(input.salt, input.output) === body.res.commit);
