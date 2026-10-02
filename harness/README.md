@@ -1,11 +1,12 @@
 # harness
 
-The harness has two scripts, and both use only the Python 3 standard library.
+The harness has three scripts, and all use only the Python 3 standard library.
 
 | Script | Does |
 |---|---|
 | `assay_probe.py` | Grades hosts of one model against a reference endpoint and writes the raw log and a summary. |
 | `export_grade.py` | Turns one probe run into `VerifierRegistry` grades and an evidence bundle. |
+| `post_grade.py` | Prints the commands that post those grades onchain, holding back hosts still inside their right of reply. |
 
 ## assay_probe.py
 
@@ -87,10 +88,28 @@ python3 export_grade.py --stamp 20261005T101500Z --assay-agent 10143:1962 --assa
 
 Keccak uses `cast keccak` when Foundry is installed and a bundled pure-Python Keccak-256 otherwise. `hashlib.sha3_256` is a different hash and is not used.
 
+## post_grade.py
+
+Prints the `cast send` commands that post a run's grades to `VerifierRegistry`. It never touches a key: you run the commands with the registered verifier's Foundry keystore, from `contracts/`.
+
+```bash
+python3 harness/post_grade.py harness/assay_out/grades_<stamp>.json
+python3 harness/post_grade.py harness/assay_out/grades_<stamp>.json --feedback-agent 1962 --feedback-tag <tag> --evidence-url <url>
+```
+
+| Flag | Meaning |
+|---|---|
+| `--account` | Verifier keystore. Default `assay-verifier` |
+| `--only TAG ...` | Post only these endpoints |
+| `--include-below-reference` | Also post hosts whose interval sits below the reference. Use only after their 7-day right of reply |
+| `--feedback-agent ID --feedback-tag TAG` | Also print ERC-8004 reputation feedback for that agent, with the pass rate as the value and the evidence hash attached |
+
+Hosts below the reference are held back by default and listed on stderr.
+
 ## Tests
 
 ```bash
-python3 -m unittest harness/test_export_grade.py harness/test_assay_probe.py
+python3 -m unittest harness/test_export_grade.py harness/test_assay_probe.py harness/test_post_grade.py
 ```
 
 The tests mock every HTTP call, so they never reach the network.
