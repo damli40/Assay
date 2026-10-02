@@ -12,8 +12,9 @@ This folder is a standalone project. It is not part of the pnpm workspace and ha
 | VerifierRegistry | `0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91` | 67461086 | `VerifierRegistered`, `GradePosted` |
 | ERC-8004 IdentityRegistry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | 67269800 | `Registered` |
 | CreAttestor | `0xB4A1CB9e40aDa44570Ae790430C23876d460deDC` | 67462996 | `GradeAttested` |
+| ERC-8004 ReputationRegistry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` | 67461080 | `NewFeedback`, `FeedbackRevoked`, `ResponseAppended` |
 
-`CosignedK` only exists on the next ReceiptAnchor deployment. Add its address to `config.yaml` when it ships.
+The ReputationRegistry events are taken from the official ABI in erc-8004/erc-8004-contracts.
 
 ## Entities
 
@@ -33,6 +34,7 @@ Every id starts with the chain id (`10143-...`), so a second chain can be added 
 | `DriftEvent` | same as the new grade | Did a host get worse? Written when a new grade's `ciHighBps` is below the previous grade's `ciLowBps`. |
 | `ModelLeaderboard` | `10143-<verifier>-<model>` | Which host leads a model for this verifier? Entries are `HostModelStats` ranked by latest `ciLowBps`. |
 | `GradeAttestation` | `10143-<attestor>-<verifier>-<model>-<hostKey>-<t>` | Did the Chainlink DON agree with a posted grade? |
+| `Feedback` | `10143-<agentId>-<client>-<feedbackIndex>` | ERC-8004 feedback about an agent. `receiptBacked` is true when the sender co-signed, with `cosignK`, the receipt named in `feedbackHash`. `hostResponseURI` is the agent owner's reply. |
 
 A few rules the handlers follow:
 
@@ -40,6 +42,8 @@ A few rules the handlers follow:
 - Ranking order: higher `ciLowBps`, then higher `ciHighBps`, then `hostKey`.
 - `passRateBps` is the sum of `passed` over the sum of `total` across every grade for that host, model and verifier.
 - Drift needs the whole new interval below the old one, so an overlapping drop does not count.
+- Feedback counts on `Agent` (`receiptBackedFeedbackCount`, `receiptBackedNegativeCount`) only include receipt-backed feedback, and revoked feedback is taken out again.
+- Only a reply from the agent's owner is stored as `hostResponseURI`. Anyone can append a response in ERC-8004, so other replies are ignored.
 
 ## Agent cards
 
@@ -196,5 +200,4 @@ Open question: the CLI has `--root-dir` for a subfolder, but we have not run a h
 
 | Item | Why |
 |---|---|
-| ERC-8004 ReputationRegistry `NewFeedback` (`Feedback` entity) | The event signature was not confirmed against the official ABI. Add it once checked. |
 | Agent URI updates | Only `Registered` is indexed. |

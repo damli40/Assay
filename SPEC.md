@@ -144,6 +144,8 @@ A receipt proves where a response came from. It is not a bearer ticket, and anyt
 | Only the co-signature whose key matches `req.cosigner` counts as the requester's. | Verifiers and readers | The contract records every valid co-signature, one per key. Anyone who sees a receipt hash can co-sign it with their own passkey. |
 | Check the WebAuthn `origin` and `rpIdHash` offchain. | Verifiers | OpenZeppelin's `WebAuthn.verify` does not check them. The SDK has `checkOrigin` and `checkRpIdHash`. |
 | Treat a grade older than 7 days as unknown, and one with fewer than 30 samples as a warning. | Readers of grades | A stale grade says nothing about the host today. The SDK's `gradeStatus` applies both limits. |
+| Count ERC-8004 feedback about a host only when it is receipt-backed: its `feedbackHash` is a receipt hash, and the sender co-signed that receipt with `cosignK` (`cosignedK[receiptHash][sender]` is true). | Readers of reputation | Anyone can file feedback. A co-signed receipt shows the complaint comes from the person who asked, about a response the host anchored. |
+| Before paying a host, check its grade in the payment path, and refuse below your threshold. | Paying clients | Nobody checks by choice. The SDK's `wrap(fetch, { gate })` refuses before the request is sent. |
 
 ## 9. CRE attestations
 
