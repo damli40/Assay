@@ -1,4 +1,4 @@
-import { hostKeyForAgent, hostKeyForEndpoint } from "@assay/receipts";
+import { hostKeyForAgent, hostKeyForDirect, hostKeyForEndpoint } from "@assay/receipts";
 import { keccak256, stringToBytes } from "viem";
 import { describe, expect, it } from "vitest";
 import { hostKeyFromInput, modelKey, parseAddresses } from "../src/lib/grades.js";
@@ -14,6 +14,17 @@ describe("hostKeyFromInput", () => {
 
   it("anything else is an OpenRouter provider tag", () => {
     expect(hostKeyFromInput(" deepinfra/fp8 ")).toEqual({ kind: "endpoint", hostKey: hostKeyForEndpoint("deepinfra/fp8"), preimage: "openrouter:deepinfra/fp8" });
+  });
+
+  it("direct:<host> is a lab's own API, matching the posted reference grade", () => {
+    const g = hostKeyFromInput("direct:generativelanguage.googleapis.com");
+    expect(g).toEqual({ kind: "endpoint", hostKey: hostKeyForDirect("generativelanguage.googleapis.com"), preimage: "direct:generativelanguage.googleapis.com" });
+    expect(g.hostKey).toBe("0xd0fe1e8708e22bc3fe3b101f9ab21a41052eb11b27d4d994f91cccca881927c7");
+  });
+
+  it("a pasted openrouter: prefix is not doubled", () => {
+    expect(hostKeyFromInput("openrouter:google-ai-studio").hostKey).toBe("0x38e3ba25890a8d31a96ec36823ede8271d3df40b6d7ce2d94f4419b18344bcc9");
+    expect(hostKeyFromInput("google-ai-studio").preimage).toBe("openrouter:google-ai-studio");
   });
 
   it("agent and endpoint keys never coincide for the same text", () => {
