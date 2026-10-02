@@ -13,4 +13,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @assay/receipts typecheck
       - run: pnpm --filter @assay/host typecheck
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web build
       - run: pnpm -r test
