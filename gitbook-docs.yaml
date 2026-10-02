@@ -1,0 +1,11 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: Assay Docs
+  structure:
+    - type: space
+      key: space-assay
+      title: Assay
+      path: docs
+      default: true
+      content:
+        directory: ./gitbook
