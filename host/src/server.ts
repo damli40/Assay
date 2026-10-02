@@ -1,7 +1,15 @@
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { getConnInfo } from "@hono/node-server/conninfo";
-import { buildReceipt, commitRequest, commitResponse, createHostSigner, receiptHash, type HostSigner } from "@assay/receipts";
+import {
+  buildReceipt,
+  commitRequest,
+  commitResponse,
+  createHostSigner,
+  receiptHash,
+  type ContractReader,
+  type HostSigner,
+} from "@assay/receipts";
 import { Hono, type Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JWK } from "jose";
@@ -9,6 +17,7 @@ import { isHex, type Address, type Hex } from "viem";
 import { createBatcher, type Batcher } from "./batcher.js";
 import { anchorWriteAbi, makeClients, sendTx } from "./chain.js";
 import { CHAIN_ID, loadConfig, readJwk } from "./config.js";
+import { mountGrades, type GradeDeps } from "./grades.js";
 import { Store } from "./store.js";
 import { openRouter, providerMatches, providerPin, type Upstream } from "./upstream.js";
 
@@ -30,6 +39,8 @@ export interface AppDeps {
   publicUrl: string;
   batcher?: Pick<Batcher, "notify">;
   relayCosign: (args: readonly unknown[]) => Promise<Hex>;
+  /// Enables GET /v1/grade, read straight from VerifierRegistry.
+  grades?: GradeDeps;
   now?: () => number;
 }
 
@@ -182,6 +193,7 @@ export function createApp(d: AppDeps): Hono {
   });
 
   app.get("/health", (c) => c.json({ ok: true, model: d.model, kid: d.signer.kid, pending: d.store.pending().length }));
+  if (d.grades) mountGrades(app, d.grades);
 
   return app;
 }
@@ -215,6 +227,8 @@ async function main() {
     publicUrl: cfg.publicUrl,
     batcher,
     relayCosign: (args) => sendTx(clients, { address: cfg.anchorAddress, abi: anchorWriteAbi, functionName: "cosign", args }),
+    // The wallet clients extend publicActions, so they can read contracts too.
+    grades: { reader: clients[0] as unknown as ContractReader, registry: cfg.verifierRegistry },
   });
 
   await batcher.checkBalance();

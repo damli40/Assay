@@ -5,6 +5,7 @@ import { calculateJwkThumbprint, type JWK } from "jose";
 import { isAddress, type Address, type Hex } from "viem";
 
 export const CHAIN_ID = 10143;
+export const DEFAULT_VERIFIER_REGISTRY = "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1";
 const HOST_DIR = fileURLToPath(new URL("..", import.meta.url));
 
 export interface Config {
@@ -13,6 +14,7 @@ export interface Config {
   upstreamProvider?: string;
   rpcUrls: string[];
   anchorAddress: Address;
+  verifierRegistry: Address;
   hostAgentId: bigint;
   relayerPrivateKey: Hex;
   hostJwkPath: string;
@@ -52,6 +54,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const anchorAddress = required("ANCHOR_ADDRESS");
   if (anchorAddress && !isAddress(anchorAddress)) errors.push("ANCHOR_ADDRESS must be a 0x address");
 
+  const verifierRegistry = get("VERIFIER_REGISTRY") ?? DEFAULT_VERIFIER_REGISTRY;
+  if (!isAddress(verifierRegistry)) errors.push("VERIFIER_REGISTRY must be a 0x address");
+
   const agentRaw = required("HOST_AGENT_ID");
   if (agentRaw && !/^[1-9]\d*$/.test(agentRaw)) errors.push("HOST_AGENT_ID must be a positive integer (the ERC-8004 agentId)");
 
@@ -65,6 +70,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     upstreamProvider: get("UPSTREAM_PROVIDER"),
     rpcUrls: rpc2 ? [rpc1, rpc2] : [rpc1],
     anchorAddress: anchorAddress as Address,
+    verifierRegistry: verifierRegistry as Address,
     hostAgentId: agentRaw && /^[1-9]\d*$/.test(agentRaw) ? BigInt(agentRaw) : 0n,
     relayerPrivateKey: relayerPrivateKey as Hex,
     hostJwkPath: resolve(HOST_DIR, get("HOST_JWK_PATH") ?? ".keys/host.jwk.json"),
