@@ -2,36 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <title>Assay</title>
-    <link rel="icon" type="image/png" href="/logo-mark-transparent.png" />
+    <meta name="theme-color" content="#0C0C0B" />
+    <title>Assay: signed receipts for AI responses</title>
+    <meta name="description" content="Check who served an AI response: host-signed receipts anchored on Monad, passkey co-signatures, and open verifier grades." />
+    <meta property="og:title" content="Assay" />
+    <meta property="og:description" content="Signed receipts for AI responses, anchored on Monad." />
+    <meta property="og:image" content="/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/favicon-32.png" />
+    <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <header class="top">
-      <a class="brand" href="#verify" aria-label="Assay home">
-        <svg viewBox="0 0 520 160" role="img" aria-hidden="true">
-          <g fill="none" stroke="currentColor" class="mark">
-            <polygon stroke-width="5" points="38,14 102,14 126,38 126,122 102,146 38,146 14,122 14,38" />
-            <polygon stroke-width="2" points="42,24 98,24 116,42 116,118 98,136 42,136 24,118 24,42" />
-            <line stroke-width="4" x1="48" y1="114" x2="92" y2="114" />
-          </g>
-          <text x="70" y="96" text-anchor="middle" class="mark" font-family="Georgia, serif" font-weight="700" font-size="78" fill="currentColor">A</text>
-          <text x="158" y="106" font-family="Georgia, serif" font-weight="700" font-size="92" fill="currentColor">Assay</text>
-        </svg>
-      </a>
-      <nav aria-label="Pages">
-        <a href="#verify">Verify</a>
-        <a href="#ask">Ask &amp; co-sign</a>
-        <a href="#grades">Grades</a>
-        <a href="#vault">Vault</a>
-      </nav>
+      <div class="top-inner">
+        <a class="brand" href="#verify"><img src="/assay-logo-dark.svg" alt="Assay home" width="135" height="40" /></a>
+        <nav class="tabs" aria-label="Pages">
+          <a href="#verify" data-tab="verify">Verify</a>
+          <a href="#ask" data-tab="ask">Ask &amp; co-sign</a>
+          <a href="#grades" data-tab="grades">Grades</a>
+          <a href="#hosts" data-tab="hosts">Hosts</a>
+          <a href="#vault" data-tab="vault">Vault</a>
+        </nav>
+        <div class="top-end">
+          <span class="chip chip-violet"><span class="dot" aria-hidden="true"></span><span class="long">Monad testnet</span><span class="short">Testnet</span></span>
+          <a class="top-link" href="#developers">Developers</a>
+          <a class="top-link" href="https://assay.gitbook.io/assay-docs">Docs</a>
+        </div>
+      </div>
     </header>
     <main id="main" tabindex="-1"></main>
     <footer class="foot">
-      Receipts prove who served which bytes, not which weights ran. Monad testnet, chain 10143.
+      <p>Receipts prove who served which bytes, not which weights ran. Monad testnet, chain 10143.</p>
+      <p class="foot-links"><a href="#developers">Developers</a><a href="https://assay.gitbook.io/assay-docs">Docs</a><a href="https://github.com/trudransh/Assay">GitHub</a></p>
     </footer>
+    <nav class="bottom-bar" aria-label="Pages">
+      <a href="#verify" data-tab="verify"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /></svg>Verify</a>
+      <a href="#ask" data-tab="ask"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-5 4z" /></svg>Ask</a>
+      <a href="#grades" data-tab="grades"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 19v-6M12 19V6M17 19v-9" /></svg>Grades</a>
+      <a href="#hosts" data-tab="hosts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v5H5zM5 14h14v5H5z" /></svg>Hosts</a>
+      <a href="#vault" data-tab="vault"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3" /></svg>Vault</a>
+    </nav>
+    <div id="announce" class="sr-only" role="status" aria-live="polite"></div>
+    <div id="toast" class="toast-region" role="status" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
