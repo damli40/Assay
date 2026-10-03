@@ -21,6 +21,10 @@ The first version, without `cosignK`. The first anchor and the evidence files fr
 | ReceiptAnchor | [`0x049A73755cA3508ef3Daa4752A3406f6e00CfB13`](https://testnet.monadvision.com/address/0x049A73755cA3508ef3Daa4752A3406f6e00CfB13) | [`0x663de8f9…`](https://testnet.monadvision.com/tx/0x663de8f94888355de6baf5cba9a5c4b10af5f02ddebc9e9a878b638430fa97b4) | 67269630 |
 | VerifierRegistry | [`0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1`](https://testnet.monadvision.com/address/0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1) | [`0x835b8d6d…`](https://testnet.monadvision.com/tx/0x835b8d6d0039a3b383f1cd9d589727e3ac6a14a1b413217ad65cd2049ca8acb9) | 67269635 |
 
+## Web app
+
+Hosted on Vercel from the `web/` folder of `main`: https://assay-ten-xi.vercel.app (landing) and https://assay-ten-xi.vercel.app/app/ (verify, ask, grades, vault). Passkeys are bound to this domain, so a passkey made on localhost or on a later custom domain won't carry over.
+
 ## Indexer
 
 Envio HyperIndex 3.12.1 on the Envio Cloud development plan, built from `indexer/` on the `envio` branch. First deployment from commit `dfdb45d`, synced through block 67601813 in about a minute over HyperSync.
