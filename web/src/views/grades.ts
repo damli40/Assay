@@ -2,7 +2,7 @@ import { gradeOf, gradeStatus, type Grade, type GradeStatus } from "@assay/recei
 import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
 import { DEFAULT_RPC, EXPLORER, VERIFIER_REGISTRY } from "../lib/config.js";
 import { chainClient } from "../lib/chain.js";
-import { hostKeyFromInput, modelKey, parseAddresses } from "../lib/grades.js";
+import { hostKeyFromInput, loadTrusted, modelKey, parseAddresses, saveTrusted } from "../lib/grades.js";
 import type { Address } from "viem";
 
 const MEANING: Record<GradeStatus, string> = {
@@ -40,7 +40,8 @@ export function renderGrade(found: { grade: Grade; by: Address } | null, status:
 export function mountGrades(root: HTMLElement) {
   const model = field("Model", input("z-ai/glm-5.3"), "Hashed as keccak256(model).");
   const host = field("Host", input("1962"), "An ERC-8004 agent id for an Assay host, or an OpenRouter provider tag such as deepinfra/fp8.");
-  const trusted = field("Trusted verifiers", textarea({ rows: "2", placeholder: "0x… one per line" }), "Grades count only from these addresses. Ties go to the one listed first.");
+  const trusted = field("Trusted verifiers", textarea({ rows: "2", placeholder: "0x… one per line" }), "Grades count only from these addresses. Ties go to the one listed first. Remembered in this browser.");
+  trusted.input.value = loadTrusted().join("\n");
   const reference = field("Reference endpoint (optional)", input(""), "OpenRouter tag of the lab's own endpoint. With it, a host clearly below the reference shows as fail.");
   const evidence = field("Evidence base URL (optional)", input(""), "Where the verifier publishes its log bundles, named by sha256.");
   const rpc = field("RPC URL", input(DEFAULT_RPC));
@@ -69,6 +70,7 @@ export function mountGrades(root: HTMLElement) {
       const hk = hostKeyFromInput(host.input.value);
       const list = parseAddresses(trusted.input.value);
       if (list.length === 0) throw new Error("Add at least one verifier address you trust.");
+      saveTrusted(list);
       keyInfo.append(h("p", { class: "hint" }, `hostKey = keccak256("${hk.preimage}") = `, mono(hk.hostKey)));
       status.say("Reading VerifierRegistry…");
       const client = chainClient(rpc.input.value);

@@ -32,3 +32,22 @@ export function parseAddresses(text: string): Address[] {
   for (const a of list) if (!isAddress(a)) throw new Error(`Not an address: ${a}`);
   return list as Address[];
 }
+
+const TRUSTED = "assay.trustedVerifiers";
+
+/// Verifier addresses the reader trusts. Public addresses only, so localStorage is fine.
+export function loadTrusted(): Address[] {
+  try {
+    return parseAddresses(localStorage.getItem(TRUSTED) ?? "");
+  } catch {
+    return [];
+  }
+}
+
+export function saveTrusted(list: Address[]) {
+  try {
+    localStorage.setItem(TRUSTED, list.join("\n"));
+  } catch {
+    // Private mode: the list just isn't remembered.
+  }
+}
