@@ -25,6 +25,10 @@ The first version, without `cosignK`. The first anchor and the evidence files fr
 
 Hosted on Vercel from the `web/` folder of `main`: https://assay-ten-xi.vercel.app (landing) and https://assay-ten-xi.vercel.app/app/ (verify, ask, grades, vault). Passkeys are bound to this domain, so a passkey made on localhost or on a later custom domain won't carry over.
 
+## Host
+
+The reference host (agent 1962) runs on a Google Cloud VM behind Caddy: https://34-45-1-81.sslip.io (`/health`, `/.well-known/jwks.json`, `/v1/receipts/:hash`, `/v1/grade`). The web app reaches it same-origin through a Vercel rewrite of `/host/*` (`web/vercel.json`). Setup is `host/deploy/setup.sh` plus `host/deploy/push-secrets.sh`.
+
 ## Indexer
 
 Envio HyperIndex 3.12.1 on the Envio Cloud development plan, built from `indexer/` on the `envio` branch. First deployment from commit `dfdb45d`, synced through block 67601813 in about a minute over HyperSync.
