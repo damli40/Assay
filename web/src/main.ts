@@ -3,6 +3,7 @@ import { DOCS_URL } from "./lib/config.js";
 import { match, parseHash, tabOf, type Route } from "./router.js";
 import { mountAsk } from "./views/ask.js";
 import { mountGrades } from "./views/grades.js";
+import { mountHost } from "./views/host.js";
 import { mountReceipt } from "./views/receipt.js";
 import { mountVault } from "./views/vault.js";
 import { mountVerify } from "./views/verify.js";
@@ -39,6 +40,8 @@ function render(route: Route, focus: boolean) {
   if (m.view === "notFound") notFound(main, route);
   else if (m.view === "planned") planned(main, m.title, m.step);
   else if (m.view === "receipt") mountReceipt(main, route);
+  else if (m.view === "host") mountHost(main, route);
+  else if (m.view === "grades") mountGrades(main, route.params);
   else VIEWS[m.view](main);
   for (const a of document.querySelectorAll<HTMLAnchorElement>("[data-tab]")) {
     if (a.dataset.tab === tab) a.setAttribute("aria-current", "page");

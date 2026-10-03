@@ -70,3 +70,57 @@ export async function anchorInfo(opts: { agentId: bigint; root: Hex; receiptHash
   }
   return rpcAnchor(opts.client, opts.anchor, opts.agentId, opts.root, opts.anchorTx);
 }
+
+export interface HostProfile {
+  agent: {
+    agentId: string;
+    owner: string | null;
+    agentURI: string | null;
+    registeredBlock: number | null;
+    cardStatus: "OK" | "ERROR" | "UNSUPPORTED" | null;
+    name: string | null;
+    description: string | null;
+    services: { name: string; endpoint: string }[] | null;
+    anchorCount: number;
+    receiptCount: number;
+    cosignCount: number;
+    keyCount: number;
+    currentKey: { keyHash: string } | null;
+  };
+  keys: { keyHash: string; setBlock: number; retiredBlock: number | null; active: boolean; anchorCount: number }[];
+  rotations: { block: number; txHash: string; toKey: { keyHash: string } }[];
+  anchors: { root: string; count: number; cosignCount: number; block: number; txHash: string; hostKey: { keyHash: string } }[];
+  activity: { day: string; anchors: number; receipts: number; cosigns: number }[];
+  grades: { model: string; verifier: { address: string }; passed: number; total: number; ciLowBps: number; ciHighBps: number; t: string; txHash: string }[];
+}
+
+const HOST_QUERY = `query Host($id: String!, $hostKey: String!) {
+  Agent(where: { id: { _eq: $id } }) { agentId owner agentURI registeredBlock cardStatus name description services anchorCount receiptCount cosignCount keyCount currentKey { keyHash } }
+  HostKey(where: { agent_id: { _eq: $id } }, order_by: { setBlock: desc }) { keyHash setBlock retiredBlock active anchorCount }
+  KeyRotation(where: { agent_id: { _eq: $id } }, order_by: { block: desc }) { block txHash toKey { keyHash } }
+  Anchor(where: { agent_id: { _eq: $id } }, order_by: { block: desc }, limit: 20) { root count cosignCount block txHash hostKey { keyHash } }
+  HostActivity(where: { agent_id: { _eq: $id } }, order_by: { day: desc }, limit: 14) { day anchors receipts cosigns }
+  Grade(where: { hostKey: { _eq: $hostKey } }, order_by: { t: desc }) { model verifier { address } passed total ciLowBps ciHighBps t txHash }
+}`;
+
+/// Everything the host profile shows, in one GraphQL call. Null when the indexer has no such agent.
+export async function hostProfile(agentId: bigint, hostKey: Hex, url = INDEXER_URL, fetchFn: typeof fetch = fetch): Promise<HostProfile | null> {
+  const res = await fetchFn(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: HOST_QUERY, variables: { id: `${CHAIN_ID}-${agentId}`, hostKey } }),
+  });
+  if (!res.ok) throw new Error(`Indexer: HTTP ${res.status}`);
+  const json = (await res.json()) as { data?: Record<string, unknown[]>; errors?: { message: string }[] };
+  if (!json.data) throw new Error(`Indexer: ${json.errors?.[0]?.message ?? "no data"}`);
+  const d = json.data;
+  if (!d.Agent?.length) return null;
+  return {
+    agent: d.Agent[0] as HostProfile["agent"],
+    keys: d.HostKey as HostProfile["keys"],
+    rotations: d.KeyRotation as HostProfile["rotations"],
+    anchors: d.Anchor as HostProfile["anchors"],
+    activity: d.HostActivity as HostProfile["activity"],
+    grades: d.Grade as HostProfile["grades"],
+  };
+}

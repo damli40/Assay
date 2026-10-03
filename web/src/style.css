@@ -312,7 +312,7 @@ pre {
 .level.roadmap { border-style: dashed; border-color: var(--line); color: var(--muted); }
 
 .receipt-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
-.receipt-grid .col { display: grid; gap: var(--space-4); }
+.receipt-grid .col { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); min-width: 0; }
 .receipt-grid .card, .receipt-grid .empty { margin: 0; }
 .kv-mono dt { font-family: var(--font-mono); font-stretch: var(--stretch-mono); font-size: var(--fs-small); }
 .checks.compact { margin: 0; gap: var(--space-2); }
@@ -332,11 +332,50 @@ pre.raw { max-height: 22rem; }
 }
 @media (max-width: 900px) {
   .receipt-grid { grid-template-columns: minmax(0, 1fr); }
-  .receipt-grid .col:last-child { order: -1; }
+  .receipt .receipt-grid .col:last-child { order: -1; }
   .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
   .receipt-head { padding: var(--space-5); }
   .stamps { display: grid; grid-template-columns: repeat(2, auto); }
   .ladder { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- host profile ---------- */
+
+.crumbs { color: var(--muted); font-size: 14px; margin: 0 0 var(--space-4); }
+.host-title { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-5); align-items: center; margin: 0 0 var(--space-5); }
+.host-title .lede { max-width: 70ch; }
+.host-badge { display: grid; place-items: center; width: 80px; height: 80px; clip-path: var(--octagon); background: var(--gold); color: var(--stone-0); font-weight: 900; font-stretch: var(--stretch-wordmark); font-size: 20px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin: 0 0 var(--space-4); }
+.tile { background: var(--stone-1); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); }
+.tile-label { margin: 0; color: var(--muted); font-size: 14px; }
+.tile-value { margin: var(--space-2) 0 0; font-size: 40px; font-weight: 900; font-stretch: var(--stretch-display); color: var(--c); line-height: 1; }
+.tile .hint { margin: var(--space-2) 0 0; }
+.bars { list-style: none; margin: 0; padding: var(--space-3); height: 150px; display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: var(--space-2); align-items: end; background: var(--stone-2); border-radius: var(--radius-md); }
+.bars li { height: 100%; display: flex; align-items: flex-end; gap: 2px; }
+.bar { flex: 1; min-height: 2px; background: var(--c); border-radius: 3px 3px 0 0; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.timeline { list-style: none; margin: 0; padding: 0 0 0 var(--space-5); border-left: 2px dashed var(--line-strong); display: grid; gap: var(--space-4); }
+.timeline li { position: relative; }
+.timeline li::before { content: ""; position: absolute; left: calc(-1 * var(--space-5) - 9px); top: 4px; width: 16px; height: 16px; clip-path: var(--octagon); background: var(--muted); }
+.timeline li.active::before { background: var(--gold); }
+.timeline .row { margin: 0; align-items: center; }
+.timeline p { margin: var(--space-1) 0; }
+.endpoints { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+.endpoints li code { flex: none; }
+.endpoints li { display: flex; gap: var(--space-3); align-items: center; background: var(--stone-2); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); overflow-wrap: anywhere; }
+.source { margin-top: var(--space-4); }
+@media (max-width: 900px) {
+  .host-title { grid-template-columns: auto minmax(0, 1fr); }
+  .host-title > .row { grid-column: 1 / -1; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .host-badge { width: 60px; height: 60px; font-size: 15px; }
+  .tile-value { font-size: 30px; }
 }

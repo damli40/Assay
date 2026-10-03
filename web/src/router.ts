@@ -20,6 +20,7 @@ export function tabOf(route: Route): string {
 export type Match =
   | { view: "verify" | "ask" | "grades" | "vault" }
   | { view: "receipt"; hash: string }
+  | { view: "host"; agentId: string }
   | { view: "planned"; title: string; step: number }
   | { view: "notFound" };
 
@@ -38,7 +39,9 @@ export function match({ path }: Route): Match {
       if (sub === undefined) return { view: "grades" };
       return sub === "verifiers" ? { view: "planned", title: "Verifiers", step: 7 } : { view: "notFound" };
     case "hosts":
-      return sub === undefined ? { view: "planned", title: "Hosts", step: 7 } : { view: "planned", title: "Host profile", step: 2 };
+      if (sub === undefined) return { view: "planned", title: "Hosts", step: 7 };
+      // Agent ids open the profile now; OpenRouter tags (graded-only hosts) come with the leaderboard.
+      return /^[1-9]\d*$/.test(sub) ? { view: "host", agentId: sub } : { view: "planned", title: "Host profile", step: 7 };
     case "developers":
       return sub === undefined ? { view: "planned", title: "Developers", step: 8 } : { view: "notFound" };
     case "r":

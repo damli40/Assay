@@ -16,7 +16,8 @@ describe("router", () => {
     for (const v of ["verify", "ask", "grades", "vault"]) expect(match(parseHash(`#${v}`))).toEqual({ view: v });
     expect(match(parseHash("#grades/verifiers"))).toMatchObject({ view: "planned", step: 7 });
     expect(match(parseHash("#hosts"))).toMatchObject({ view: "planned", title: "Hosts" });
-    expect(match(parseHash("#hosts/1962"))).toMatchObject({ view: "planned", title: "Host profile" });
+    expect(match(parseHash("#hosts/1962"))).toEqual({ view: "host", agentId: "1962" });
+    expect(match(parseHash("#hosts/deepinfra"))).toMatchObject({ view: "planned", title: "Host profile" });
     expect(match(parseHash("#developers"))).toMatchObject({ view: "planned" });
     expect(match(parseHash(`#r/${hash}?host=https://h.example`))).toEqual({ view: "receipt", hash });
   });
