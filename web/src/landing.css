@@ -140,7 +140,7 @@ button.l-close { display: inline-flex; align-items: center; justify-content: cen
 /* ---------- tapes ---------- */
 
 .l-tapes { position: relative; height: 150px; overflow: hidden; margin-top: -10px; }
-.l-tape { position: absolute; left: -5%; width: 110%; padding: 14px 0; white-space: nowrap; overflow: hidden; color: var(--stone-0); }
+.l-tape { position: absolute; left: -15%; width: 130%; padding: 14px 0; white-space: nowrap; overflow: hidden; color: var(--stone-0); }
 .l-tape-v { background: var(--violet); top: 52px; transform: rotate(1.8deg); }
 .l-tape-g { background: var(--gold); top: 44px; transform: rotate(-2.2deg); }
 .l-ticker {
