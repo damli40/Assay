@@ -1,0 +1,15 @@
+[Unit]
+Description=Assay host (OpenAI-compatible proxy that signs receipts)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=assay
+WorkingDirectory=/opt/assay/host
+EnvironmentFile=/etc/assay/host.env
+ExecStart=/opt/assay/host/node_modules/.bin/tsx src/server.ts
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
