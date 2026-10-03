@@ -37,12 +37,12 @@ export function renderGrade(found: { grade: Grade; by: Address } | null, status:
   );
 }
 
-export function mountGrades(root: HTMLElement) {
-  const model = field("Model", input("z-ai/glm-5.3"), "Hashed as keccak256(model).");
-  const host = field("Host", input("1962"), "An ERC-8004 agent id for an Assay host, or an OpenRouter provider tag such as deepinfra/fp8.");
+export function mountGrades(root: HTMLElement, params: URLSearchParams = new URLSearchParams()) {
+  const model = field("Model", input(params.get("model") ?? "z-ai/glm-5.3"), "Hashed as keccak256(model).");
+  const host = field("Host", input(params.get("host") ?? "1962"), "An ERC-8004 agent id for an Assay host, or an OpenRouter provider tag such as deepinfra/fp8.");
   const trusted = field("Trusted verifiers", textarea({ rows: "2", placeholder: "0x… one per line" }), "Grades count only from these addresses. Ties go to the one listed first. Remembered in this browser.");
-  trusted.input.value = loadTrusted().join("\n");
-  const reference = field("Reference endpoint (optional)", input(""), "OpenRouter tag of the lab's own endpoint. With it, a host clearly below the reference shows as fail.");
+  trusted.input.value = params.get("v")?.split(",").join("\n") ?? loadTrusted().join("\n");
+  const reference = field("Reference endpoint (optional)", input(params.get("ref") ?? ""), "OpenRouter tag of the lab's own endpoint. With it, a host clearly below the reference shows as fail.");
   const evidence = field("Evidence base URL (optional)", input(""), "Where the verifier publishes its log bundles, named by sha256.");
   const rpc = field("RPC URL", input(DEFAULT_RPC));
   const registry = field("VerifierRegistry", input(VERIFIER_REGISTRY));
@@ -85,5 +85,7 @@ export function mountGrades(root: HTMLElement) {
     }
   });
 
+  // A deep link with everything filled in runs the lookup straight away.
+  if (params.get("model") && params.get("host") && trusted.input.value.trim()) queueMicrotask(() => form.requestSubmit());
   root.append(section("Grades", "Open verifiers compare a host's answers with the lab's own endpoint and post grades onchain. You choose whose grades count.", form, keyInfo, results));
 }
