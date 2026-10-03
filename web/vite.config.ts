@@ -6,6 +6,8 @@ export default defineConfig(({ mode }) => {
   // The host sends no CORS headers, so the dev and preview servers serve it under /host.
   const proxy = { "/host": { target, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/host/, "") } };
   return {
+    // Two pages on one origin: the landing at / and the app at /app/, so passkeys work in both.
+    build: { rolldownOptions: { input: { landing: "index.html", app: "app/index.html" } } },
     server: { proxy },
     preview: { proxy },
     test: { environment: "node" },
