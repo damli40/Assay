@@ -1,6 +1,7 @@
 import { receiptHash, verifyReceipt, type Checks, type Reproduce, type VerifyInput, type VerifyResult } from "@assay/receipts";
 import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
-import { chainClient, DEFAULT_HOST, DEFAULT_RPC, RECEIPT_ANCHOR } from "../lib/config.js";
+import { DEFAULT_HOST, DEFAULT_RPC, RECEIPT_ANCHOR } from "../lib/config.js";
+import { chainClient } from "../lib/chain.js";
 import { fetchJwks, fetchReceiptStatus } from "../lib/host.js";
 import { parseReceipt, parseSalt } from "../lib/receipt.js";
 import type { Address } from "viem";

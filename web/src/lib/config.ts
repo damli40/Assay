@@ -1,5 +1,4 @@
-import { createPublicClient, http, type Address } from "viem";
-import { monadTestnet } from "viem/chains";
+import type { Address } from "viem";
 
 export const CHAIN_ID = 10143;
 export const DEFAULT_RPC = "https://testnet-rpc.monad.xyz";
@@ -14,5 +13,3 @@ export const GITHUB_URL = "https://github.com/trudransh/Assay";
 export const DEFAULT_HOST: string = import.meta.env.VITE_HOST_URL ?? "/host";
 // Envio Cloud GraphQL. Public and read-only, so it is safe in the bundle; never put a token in a VITE_ variable.
 export const INDEXER_URL: string = import.meta.env.VITE_INDEXER_URL ?? "https://indexer.dev.hyperindex.xyz/7c1753d/v1/graphql";
-
-export const chainClient = (rpc: string) => createPublicClient({ chain: monadTestnet, transport: http(rpc.trim()) });

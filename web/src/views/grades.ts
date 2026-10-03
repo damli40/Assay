@@ -1,6 +1,7 @@
 import { gradeOf, gradeStatus, type Grade, type GradeStatus } from "@assay/receipts";
 import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
-import { chainClient, DEFAULT_RPC, EXPLORER, VERIFIER_REGISTRY } from "../lib/config.js";
+import { DEFAULT_RPC, EXPLORER, VERIFIER_REGISTRY } from "../lib/config.js";
+import { chainClient } from "../lib/chain.js";
 import { hostKeyFromInput, modelKey, parseAddresses } from "../lib/grades.js";
 import type { Address } from "viem";
 
