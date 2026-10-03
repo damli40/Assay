@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/host/:path*", "destination": "https://34-45-1-81.sslip.io/:path*" }]
+}
