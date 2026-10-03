@@ -19,6 +19,7 @@ export function tabOf(route: Route): string {
 
 export type Match =
   | { view: "verify" | "ask" | "grades" | "vault" }
+  | { view: "receipt"; hash: string }
   | { view: "planned"; title: string; step: number }
   | { view: "notFound" };
 
@@ -41,7 +42,7 @@ export function match({ path }: Route): Match {
     case "developers":
       return sub === undefined ? { view: "planned", title: "Developers", step: 8 } : { view: "notFound" };
     case "r":
-      return sub !== undefined && RECEIPT_HASH.test(sub) ? { view: "planned", title: "Receipt", step: 1 } : { view: "notFound" };
+      return sub !== undefined && RECEIPT_HASH.test(sub) ? { view: "receipt", hash: sub.toLowerCase() } : { view: "notFound" };
     default:
       return { view: "notFound" };
   }

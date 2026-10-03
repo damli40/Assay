@@ -2,7 +2,7 @@ import { cosignerForAddress, receiptHash } from "@assay/receipts";
 import { recoverMessageAddress, type Hex } from "viem";
 import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
 import { addToVault, createVaultPasskey, loadSealed, meraCredential, meraMessage, storeSealed, unlockVault, withPrf } from "../mera.js";
-import { parseReceipt, parseSalt, toBase64url } from "../lib/receipt.js";
+import { parseReceipt, parseSalt, rememberReceipt, toBase64url } from "../lib/receipt.js";
 import {
   openDisclosure,
   requesterAddress,
@@ -50,6 +50,7 @@ function vaultCard() {
     for (const e of entries) {
       const btn = h("button", { type: "button", class: "secondary" }, "Share this receipt");
       btn.addEventListener("click", () => disclose(e));
+      rememberReceipt(e.receiptHash, { body: e.body, jws: e.jws });
       const verifyCopy = toBase64url(JSON.stringify({ body: e.body, jws: e.jws }));
       ul.append(
         h("li", {}, mono(e.receiptHash), h("span", { class: "hint" }, ` ${e.body.model} · ${new Date(e.savedAt).toISOString()}`), h("div", { class: "row" }, copyButton(verifyCopy, "Copy receipt"), copyButton(e.salt, "Copy salt"), btn)),

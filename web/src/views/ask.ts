@@ -3,7 +3,7 @@ import { copyButton, errorText, field, h, input, liveRegion, mono, section, text
 import { addToVault, meraMessage } from "../mera.js";
 import { DEFAULT_HOST, EXPLORER } from "../lib/config.js";
 import { fetchReceiptStatus, hostUrl, relayCosign } from "../lib/host.js";
-import { toBase64url } from "../lib/receipt.js";
+import { rememberReceipt, toBase64url } from "../lib/receipt.js";
 
 // Public key material only (credential id, qx, qy, key hash).
 const PASSKEY = "assay.passkey";
@@ -77,6 +77,7 @@ export function mountAsk(root: HTMLElement) {
     const saveBtn = h("button", { type: "button", class: "secondary" }, "Save to vault");
     const vaultStatus = liveRegion();
     const hash = r.receipt.hash;
+    rememberReceipt(hash, { body: r.receipt.body, jws: r.receipt.jws });
 
     saveBtn.addEventListener("click", async () => {
       try {

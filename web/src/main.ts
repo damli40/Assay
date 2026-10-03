@@ -3,6 +3,7 @@ import { DOCS_URL } from "./lib/config.js";
 import { match, parseHash, tabOf, type Route } from "./router.js";
 import { mountAsk } from "./views/ask.js";
 import { mountGrades } from "./views/grades.js";
+import { mountReceipt } from "./views/receipt.js";
 import { mountVault } from "./views/vault.js";
 import { mountVerify } from "./views/verify.js";
 
@@ -14,11 +15,11 @@ function link(label: string, href: string, variant: "primary" | "secondary") {
   return h("a", { class: `btn btn-${variant}`, href }, label);
 }
 
-function notFound(root: HTMLElement) {
+function notFound(root: HTMLElement, route: Route) {
   root.append(
     section(
       "That page isn't here",
-      "The link may be old, or the route moved.",
+      route.path[0] === "r" ? "A receipt hash is 0x followed by 64 hex characters." : "The link may be old, or the route moved.",
       h("div", { class: "row" }, link("Verify a receipt", "#verify", "primary"), link("Docs", DOCS_URL, "secondary")),
     ),
   );
@@ -35,8 +36,9 @@ function render(route: Route, focus: boolean) {
   const tab = m.view === "notFound" ? "" : tabOf(route);
   setPageTab(TAB_NAMES[tab] ?? "");
   main.replaceChildren();
-  if (m.view === "notFound") notFound(main);
+  if (m.view === "notFound") notFound(main, route);
   else if (m.view === "planned") planned(main, m.title, m.step);
+  else if (m.view === "receipt") mountReceipt(main, route);
   else VIEWS[m.view](main);
   for (const a of document.querySelectorAll<HTMLAnchorElement>("[data-tab]")) {
     if (a.dataset.tab === tab) a.setAttribute("aria-current", "page");

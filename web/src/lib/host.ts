@@ -6,7 +6,7 @@ export const hostUrl = (base: string, path: string) => `${base.trim().replace(/\
 async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}${json.error?.message ? `, ${json.error.message}` : ""}`);
+  if (!res.ok) throw Object.assign(new Error(`${url}: HTTP ${res.status}${json.error?.message ? `, ${json.error.message}` : ""}`), { status: res.status });
   return json;
 }
 
@@ -15,6 +15,9 @@ export const fetchJwks = (base: string) => getJson<VerifyInput["jwks"]>(hostUrl(
 export type ReceiptStatus =
   | { status: "pending" }
   | { status: "anchored"; body: ReceiptBody; jws: string; root: Hex; proof: Hex[]; anchorTx?: Hex; reproduce?: { cast?: string } };
+
+/// The HTTP status of a failed host call, or undefined when the host never answered.
+export const httpStatus = (e: unknown): number | undefined => (e as { status?: number } | null)?.status;
 
 export const fetchReceiptStatus = (base: string, hash: Hex) => getJson<ReceiptStatus>(hostUrl(base, `/v1/receipts/${hash}`));
 

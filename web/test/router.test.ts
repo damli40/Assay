@@ -18,7 +18,7 @@ describe("router", () => {
     expect(match(parseHash("#hosts"))).toMatchObject({ view: "planned", title: "Hosts" });
     expect(match(parseHash("#hosts/1962"))).toMatchObject({ view: "planned", title: "Host profile" });
     expect(match(parseHash("#developers"))).toMatchObject({ view: "planned" });
-    expect(match(parseHash(`#r/${hash}?host=https://h.example`))).toMatchObject({ view: "planned", title: "Receipt" });
+    expect(match(parseHash(`#r/${hash}?host=https://h.example`))).toEqual({ view: "receipt", hash });
   });
 
   it("sends unknown routes and malformed ids to 404", () => {

@@ -202,3 +202,42 @@ export function section(title: string, intro: string, ...children: Child[]): HTM
   const head = h("header", { class: "page-head" }, tabName ? chip(tabName, "lime") : null, h("h1", { id: "page-title" }, title), h("p", { class: "lede" }, intro));
   return h("section", { class: "page", "aria-labelledby": "page-title" }, head, ...children);
 }
+
+const STAMP_TONE = { host: "gold", model: "bone", anchor: "violet", you: "pink", grade: "lime" } as const;
+const svgEl = (tag: string, attrs: Record<string, string>, text?: string) => {
+  const el = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  if (text) el.textContent = text;
+  return el;
+};
+
+/// An octagon mark. Lit = filled; unlit = outline only (not reached yet).
+export function stamp(kind: keyof typeof STAMP_TONE, sub: string, lit: boolean, label: string): HTMLElement {
+  const svg = svgEl("svg", { viewBox: "0 0 100 100", "aria-hidden": "true" });
+  const word = kind.toUpperCase();
+  svg.append(
+    svgEl("polygon", { class: "st-fill", points: "29,4 71,4 96,29 96,71 71,96 29,96 4,71 4,29" }),
+    svgEl("polygon", { class: "st-ring", points: "32,13 68,13 87,32 87,68 68,87 32,87 13,68 13,32" }),
+    svgEl("text", { class: `st-big${word.length > 5 ? " st-xs" : word.length > 4 ? " st-sm" : ""}`, x: "50", y: "48" }, word),
+    svgEl("text", { class: "st-small", x: "50", y: "66" }, sub.length > 9 ? `${sub.slice(0, 8)}…` : sub),
+  );
+  return h("div", { class: `stamp k-${STAMP_TONE[kind]}${lit ? "" : " unlit"}`, role: "img", "aria-label": label }, svg);
+}
+
+const LEVELS = [
+  ["Signed and anchored", "The host signed what it served and the batch is on Monad. A lie can't be denied later."],
+  ["Host graded", "A verifier you trust tested this host against the lab's endpoint. It grades the host, not this response."],
+  ["Re-executable", "A deterministic runtime lets a verifier re-run a revealed request and compare output hashes."],
+  ["TEE attested", "The host signs from an enclave whose attestation includes a model hash."],
+] as const;
+
+/// Levels 0 to 3. `reached` covers levels 0 and 1; 2 and 3 are always Roadmap.
+export function levelLadder(reached: [boolean, boolean]): HTMLElement {
+  const ol = h("ol", { class: "ladder" });
+  LEVELS.forEach(([name, text], i) => {
+    const state = i > 1 ? "roadmap" : reached[i as 0 | 1] ? "reached" : "notreached";
+    const tag = state === "roadmap" ? chip("Roadmap", "muted", { dashed: true }) : state === "reached" ? chip("Reached", i ? "lime" : "gold", { dot: true }) : chip("Not reached", "muted");
+    ol.append(h("li", { class: `level ${state} ${["k-gold", "k-lime", "", ""][i]}`, "data-level": String(i) }, tag, h("h3", {}, `Level ${i} · ${name}`), h("p", {}, text)));
+  });
+  return ol;
+}

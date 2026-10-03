@@ -3,7 +3,7 @@ import { copyButton, errorText, field, h, input, liveRegion, mono, section, text
 import { DEFAULT_HOST, DEFAULT_RPC, RECEIPT_ANCHOR } from "../lib/config.js";
 import { chainClient } from "../lib/chain.js";
 import { fetchJwks, fetchReceiptStatus } from "../lib/host.js";
-import { parseReceipt, parseSalt } from "../lib/receipt.js";
+import { parseReceipt, parseSalt, takeVerifyPrefill } from "../lib/receipt.js";
 import type { Address } from "viem";
 
 /// Order shown on the page, with what a pass means and what a skip is waiting for.
@@ -62,6 +62,7 @@ export function renderResult(result: VerifyResult, opts: { rpc: string; notes?: 
 
 export function mountVerify(root: HTMLElement) {
   const receipt = field("Receipt", textarea({ rows: "5", placeholder: "X-Assay-Receipt header value, or JSON {body, jws}" }), "Base64url header or JSON. Nothing you paste leaves this page except the receipt hash, sent to the host to fetch the proof.");
+  receipt.input.value = takeVerifyPrefill() ?? "";
   const salt = field("Salt (optional)", input("", { placeholder: "64 hex characters" }), "The X-Assay-Salt sent with the request. Needed to open the commits.");
   const output = field("Output text (optional)", textarea({ rows: "3" }), "The assistant message exactly as received, whitespace included.");
   const messages = field("Messages JSON (optional)", textarea({ rows: "3", placeholder: '[{"role":"user","content":"..."}]' }));

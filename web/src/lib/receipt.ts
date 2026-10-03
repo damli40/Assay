@@ -50,3 +50,17 @@ export function parseSalt(input: string): Hex {
   if (hex.length !== 66 || !isHex(hex)) throw new Error("The salt must be 32 bytes: 64 hex characters.");
   return hex;
 }
+
+/// Receipts this tab made (Ask) or unlocked (Vault), by hash. Memory only: gone on reload.
+const held = new Map<string, HeldReceipt>();
+export const rememberReceipt = (hash: string, r: HeldReceipt) => held.set(hash.toLowerCase(), r);
+export const heldReceipt = (hash: string) => held.get(hash.toLowerCase());
+
+/// "Verify with your salt" hands the receipt to the Verify form in memory, never through the URL.
+let verifyPrefill: string | undefined;
+export const setVerifyPrefill = (text: string) => (verifyPrefill = text);
+export function takeVerifyPrefill() {
+  const t = verifyPrefill;
+  verifyPrefill = undefined;
+  return t;
+}
