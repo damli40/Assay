@@ -1,6 +1,3 @@
-import "../tokens.css";
-import "../style.css";
-import "../landing.css";
 import { h, shortHash } from "../dom.js";
 import { CRE_ATTESTOR, EXPLORER, RECEIPT_ANCHOR, VERIFIER_REGISTRY } from "../lib/config.js";
 

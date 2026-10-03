@@ -1,5 +1,3 @@
-import "./tokens.css";
-import "./style.css";
 import { emptyState, h, section, setPageTab } from "./dom.js";
 import { DOCS_URL } from "./lib/config.js";
 import { match, parseHash, tabOf, type Route } from "./router.js";
