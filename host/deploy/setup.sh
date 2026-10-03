@@ -27,5 +27,13 @@ systemctl enable assay-host
 systemctl reload-or-restart caddy
 
 # Only SSH and HTTPS from outside; the host port stays behind Caddy.
-if command -v ufw >/dev/null; then ufw allow 22/tcp; ufw allow 80/tcp; ufw allow 443/tcp; ufw --force enable; fi
+if [ -f /etc/iptables/rules.v4 ]; then
+  # Oracle Cloud images reject everything but SSH in iptables; ufw would fight those rules.
+  for port in 80 443; do
+    iptables -C INPUT -p tcp --dport $port -m state --state NEW -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport $port -m state --state NEW -j ACCEPT
+  done
+  netfilter-persistent save
+elif command -v ufw >/dev/null; then
+  ufw allow 22/tcp; ufw allow 80/tcp; ufw allow 443/tcp; ufw --force enable
+fi
 echo "Next, from your machine: host/deploy/push-secrets.sh <ssh-target> $DOMAIN"
