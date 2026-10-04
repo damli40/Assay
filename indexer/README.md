@@ -201,3 +201,13 @@ Open question: the CLI has `--root-dir` for a subfolder, but we have not run a h
 | Item | Why |
 |---|---|
 | Agent URI updates | Only `Registered` is indexed. |
+
+## HyperSync analytics
+
+`scripts/hypersync_stats.py` reads every `Anchored` event and its transaction's gas straight from HyperSync, with no RPC and no indexer, and reports per host: batches, receipts, gas per batch, MON spent and MON per receipt. Monad bills the gas limit, so the gas shown is what was paid.
+
+```bash
+ENVIO_API_TOKEN=... python3 indexer/scripts/hypersync_stats.py          # markdown table
+ENVIO_API_TOKEN=... python3 indexer/scripts/hypersync_stats.py --json   # raw numbers
+python3 -m unittest discover indexer/scripts                            # test
+```
