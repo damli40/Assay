@@ -12,7 +12,7 @@ import type { JWK } from "jose";
 import type { Address, Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { createBatcher } from "../src/batcher.js";
-import { createApp, type AppDeps } from "../src/server.js";
+import { createApp, DEFAULT_MAX_TOKENS, type AppDeps } from "../src/server.js";
 import { Store } from "../src/store.js";
 import type { Upstream } from "../src/upstream.js";
 import { mockClient, newSigner, quietLog, tempDir } from "./helpers.js";
@@ -104,6 +104,17 @@ describe("POST /v1/chat/completions", () => {
     expect(streaming.status).toBe(400);
     expect(((await streaming.json()) as any).error.message).toMatch(/v0 is non-streaming/);
     expect(store.pending()).toHaveLength(0);
+  });
+
+  it("fills max_tokens when the request has no budget, and signs what it forwarded", async () => {
+    const { up, calls } = fakeUpstream();
+    const { app } = await setup({ upstream: up });
+    const res = await chat(app, { max_tokens: undefined });
+    expect(res.status).toBe(200);
+    const { body } = receiptOf(res);
+    expect(body.req.params).toEqual({ temperature: 0, max_tokens: DEFAULT_MAX_TOKENS });
+    expect(body.req.commit).toBe(commitRequest(`0x${SALT}`, messages, { temperature: 0, max_tokens: DEFAULT_MAX_TOKENS }));
+    expect((calls[0] as Record<string, unknown>).max_tokens).toBe(DEFAULT_MAX_TOKENS);
   });
 
   it("commits to the bytes received and returned, and returns the upstream JSON with receipt headers", async () => {

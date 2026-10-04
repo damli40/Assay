@@ -49,6 +49,9 @@ const isObj = (v: unknown): v is Record<string, any> => typeof v === "object" &&
 const count = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 ? (v as number) : 0);
 const publicPart = ({ kty, crv, x, y, kid }: JWK): JWK => ({ kty, crv, x, y, kid, alg: "ES256", use: "sig" });
 
+/// Used when a request sets neither max_tokens nor max_completion_tokens.
+export const DEFAULT_MAX_TOKENS = 1024;
+
 export function createApp(d: AppDeps): Hono {
   const app = new Hono();
   const now = d.now ?? Date.now;
@@ -68,7 +71,10 @@ export function createApp(d: AppDeps): Hono {
     if (req.stream) return fail(c, 400, "v0 is non-streaming: send stream false or omit it");
 
     // `provider` is the host's choice, not the client's, so it is neither forwarded nor committed.
-    const { messages, model: _model, stream: _stream, provider: _provider, ...params } = req;
+    const { messages, model: _model, stream: _stream, provider: _provider, ...rest } = req;
+    // Some upstreams (Google's Gemma endpoint) return 500 without a token budget, so fill one in.
+    // The filled value is what is forwarded, committed and signed, so the receipt matches the call.
+    const params = rest.max_tokens === undefined && rest.max_completion_tokens === undefined ? { ...rest, max_tokens: DEFAULT_MAX_TOKENS } : rest;
     const up = await d.upstream({ ...params, messages, model: d.model, ...providerPin(d.provider) });
     if (up.status !== 200) return c.json(up.json as object, up.status as ContentfulStatusCode);
 
