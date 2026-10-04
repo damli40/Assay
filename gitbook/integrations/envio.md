@@ -27,12 +27,13 @@ Assay's data is spread across events in its own contracts and the ERC-8004 regis
 
 | Piece | Detail |
 |---|---|
-| Sources | ReceiptAnchor, VerifierRegistry, ERC-8004 IdentityRegistry and CreAttestor |
+| Sources | ReceiptAnchor, VerifierRegistry, CreAttestor, and the ERC-8004 Identity and Reputation registries, synced through HyperSync with no RPC |
 | 12 entities | Including `HostModelStats`, `DriftEvent`, `ModelLeaderboard`, `KeyRotation` and `HostActivity` |
 | Derived at index time | Drift, per-verifier leaderboards, daily activity, key history |
 | Agent cards | Fetched from `agentURI` through the Effect API, with timeouts and size limits |
 | Chain-prefixed ids | `10143-…`, so a second chain is a config change and not a migration |
-| Handler tests | Simulated events, no network |
+| Handler tests | 22, on simulated events with no network |
+| Live | Envio Cloud dev plan, synced to the chain head: `https://indexer.dev.hyperindex.xyz/7c1753d/v1/graphql` |
 
 ## How to try it
 
@@ -40,17 +41,25 @@ Assay's data is spread across events in its own contracts and the ERC-8004 regis
 2. With Docker running and `ENVIO_API_TOKEN` set: `corepack pnpm dev`, then open `http://localhost:8080`.
 3. Paste the "Activity" query from [Indexer and GraphQL](../developers/indexer.md).
 
-To deploy on Envio Cloud's free development plan, install the `envio-deployments` GitHub app on the repo, push an `envio` branch, and add the indexer with `pnpx envio-cloud indexer add --name assay-indexer --repo Assay --branch envio --root-dir indexer --yes`.
+It's deployed on Envio Cloud's free development plan from the `indexer/` folder (dashboard "Indexer Directory" `./indexer`) and redeploys on every push to the `envio` branch.
 
-## Where else this shows up
+## What it drives
 
-| Place | Uses |
+| Page | From the indexer |
 |---|---|
-| [Web app](../developers/web-app.md) | Grade history and drift |
-| [Verifiers and grades](../how-it-works/verifiers-and-grades.md) | What a drift event means |
+| [Receipt page](https://assay-ten-xi.vercel.app/app/#r/0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5) | One query by batch root: batch size, block, transaction, **the key that signed this batch**, and every co-signature of the receipt. The contract only stores the current key, so after a rotation this card can't be built from the chain |
+| [Host profile](https://assay-ten-xi.vercel.app/app/#hosts/1962) | One query for the whole page: counts, 14 days of activity, batches with their signing keys, key history, identity and endpoints |
 
-{% hint style="warning" %}
-Envio Cloud has not built from the `indexer/` subfolder yet. If the hosted build fails, push an `envio` branch whose root is that folder (`git subtree split --prefix indexer`).
-{% endhint %}
+A new receipt goes from the request to an anchor on Monad in a few seconds, and to the indexer and these pages in under a minute.
+
+## HyperSync analytics
+
+`indexer/scripts/hypersync_stats.py` asks HyperSync directly, with no RPC and no indexer, for every `Anchored` event and its transaction's gas, then reports per host: batches, receipts, gas per batch, MON spent and MON per receipt.
+
+```bash
+ENVIO_API_TOKEN=... python3 indexer/scripts/hypersync_stats.py
+```
+
+On Monad testnet (4 Oct 2026), host 1962 had 6 batches of 1 receipt each, at 86,581 gas billed per batch (Monad bills the gas limit). That's about 0.0088 MON per receipt at one receipt per batch, or about 0.00014 MON per receipt at 64 per batch.
 
 Next: [Chainlink CRE](chainlink-cre.md)

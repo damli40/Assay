@@ -53,4 +53,4 @@ The same passkey, rpId and PRF salt always give the same 32 bytes, on every sync
 On desktop Chrome, only passkeys saved to Google Password Manager return PRF. A passkey in the local profile fails with `PRF_UNAVAILABLE`. Hardware keys don't sync, so the second-device test needs a synced platform passkey.
 {% endhint %}
 
-Next: [Threat model](../security/threat-model.md)
+Next: [MonadGuard and Mandate](other-teams.md)

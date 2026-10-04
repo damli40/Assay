@@ -32,6 +32,7 @@
 * [Envio](integrations/envio.md)
 * [Chainlink CRE](integrations/chainlink-cre.md)
 * [Mera](integrations/mera.md)
+* [MonadGuard and Mandate](integrations/other-teams.md)
 
 ## Security
 

@@ -32,6 +32,10 @@ The host does not send a transaction per request. It collects receipt hashes, bu
 6. The contract checks the key, the count, replay and the signature, then stores the record and emits `Anchored(agentId, root, count, keyHash)`.
 7. `GET /v1/receipts/:hash` now returns the root, the proof, the anchor transaction and a ready `cast call` line.
 
+## What's checked when
+
+The contract checks one signature per batch when it's written: the host's P-256 signature over the Merkle root. Each receipt is checked when someone reads it: the host's ES256 signature against its published keys, plus the Merkle proof against an anchored root. Registries that verify every record on the way in, as [MonadGuard](../integrations/other-teams.md) does, give a stronger guarantee per row and pay for it on every row. Assay keeps the onchain cost to one check per batch and leaves the per-receipt check to the reader.
+
 ## Revert reasons
 
 | Error | When |

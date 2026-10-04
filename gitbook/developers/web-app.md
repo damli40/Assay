@@ -1,13 +1,15 @@
 ---
-description: The four tabs of the Assay web app, what each button does, and the exact messages you will see.
+description: The Assay web app, page by page: what each one shows, where its data comes from, and what each button does.
 icon: window-maximize
 ---
 
 # Web app
 
-**Where:** `web/` (Vite, vanilla TypeScript). Run it with `pnpm --filter web dev` at `http://localhost:5173`. Every hash, signature and proof check goes through `@assay/receipts`.
+**Live:** https://assay-ten-xi.vercel.app/app/ · **Where:** `web/` (Vite, vanilla TypeScript). Run it locally with `pnpm --filter web dev` at `http://localhost:5173`. Every hash, signature and proof check goes through `@assay/receipts`.
 
-One page, four tabs: Verify, Ask & co-sign, Grades and Vault. The dev server proxies `/host` to `HOST_TARGET` (default `http://localhost:8787`), so the default host URL in the app is `/host`.
+The app talks to an Assay host at `/host`. On the live site, Vercel rewrites `/host/*` to the reference host (`web/vercel.json`), so it's the same origin and needs no CORS. In dev, Vite proxies `/host` to `HOST_TARGET` (default `http://localhost:8787`). Batch and host data come from the Envio indexer.
+
+Each receipt names its chain in `host.agentId` (`erc8004:<chainId>:<agentId>`), and the app picks that chain's contracts, RPC, explorer and indexer ids from it, so receipts from every chain Assay is deployed on open in the same app.
 
 ## Verify
 
@@ -37,12 +39,41 @@ The summary reads "Done. No check failed." or "Done. At least one check failed."
 
 ## Ask & co-sign
 
-1. Click "Register a passkey". Without one you can still ask, but you can't co-sign.
-2. Type a question. The app sends it with `wrap(fetch, { cosigner })`, so the receipt names your passkey.
-3. The answer shows with "Answer received with a signed receipt." and a check that "The output commit matches the bytes you received."
-4. The app waits: "Waiting for the host's next batch to be anchored…". It gives up after 15 minutes.
-5. Click "Co-sign with passkey". The app checks the assertion origin, then relays through `POST /v1/cosign` and shows "Co-signed onchain." with a MonadVision link.
-6. Click "Save to vault" to keep the receipt, salt and output encrypted under your passkey.
+Anyone can try this in the browser, with no wallet and no terminal: https://assay-ten-xi.vercel.app/app/#ask
+
+1. Type a question, or click one of the examples, then click **Ask**. The app sends it with `wrap(fetch)`, which adds a fresh salt and checks the receipt that comes back.
+2. The answer shows with a gold "Signed by host 1962" chip. If the model wrapped its reasoning in `<thought>…</thought>`, the page hides it behind a toggle. It's still part of the signed output.
+3. "Where your receipt is" tracks the receipt live: signed by the host, waiting for the batch (with the time waited and how many receipts are in the host's queue), then anchored onchain with a link to the transaction. On the reference host this takes a few seconds.
+4. **Open receipt page** shows the receipt's own page. **Copy receipt link** copies a link that works anywhere. **Download bundle** saves `{ body, jws, salt, output, messages }`, plus the Merkle root and proof once anchored.
+
+**Passkeys are optional.** "Send without a passkey" is on by default if you don't have one. The receipt is still signed and anchored, but nobody can co-sign it later. With a passkey, the receipt names your key as co-signer, and once the batch is anchored you can click **Co-sign with passkey**. The app checks the assertion's origin, relays it through `POST /v1/cosign`, and shows the transaction. If the batch isn't anchored yet you'll see a banner saying so (HTTP 409). The relay is rate-limited per IP (HTTP 429). Registering a new passkey asks for confirmation first, because receipts that already name your old key can only be co-signed with that key.
+
+**Save to vault** keeps the receipt, salt and output encrypted under your passkey.
+
+## Receipt page (`#r/<receiptHash>`)
+
+Every receipt has its own page, for example [the first live receipt](https://assay-ten-xi.vercel.app/app/#r/0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5).
+
+- **The four marks:** the host's identity, the model it claimed, the anchor on Monad, and whether you co-signed. Each stamp is lit or unlit.
+- **How far it was checked:** Level 0 (signed and anchored) and Level 1 (the host is graded by a verifier you trust). Levels 2 and 3 are on the roadmap.
+- **What the host signed:** every field of the receipt body. The raw JSON is there too, and Copy JSON copies the exact JCS bytes.
+- **Checks,** run in your browser: host signature, body unchanged, signing key, in the batch, anchored onchain, and requester co-signed. Output and prompt show "Needs salt".
+- **Anchor:** batch size, block, transaction, and the key that signed this batch. These come from one GraphQL query to the Envio indexer. The contract only stores a host's current key, so after a key rotation the indexer is the only place that still knows which key signed an older batch. If the indexer doesn't answer, the page reads the chain instead and labels the key "current key". The card also shows the host's `cast call` line, so you can check the anchor yourself.
+- **Host grade,** from the verifiers you trust (saved on the Grades tab).
+
+A receipt that isn't anchored yet shows "Waiting for batch" with **Check again**. A hash the host doesn't know shows "This host doesn't know that receipt". A malformed hash shows "A receipt hash is 0x followed by 64 hex characters."
+
+## Host profile (`#hosts/<agentId>`)
+
+[Host 1962](https://assay-ten-xi.vercel.app/app/#hosts/1962) is the reference host. The whole page comes from one query to the Envio indexer:
+
+- batches anchored, receipts anchored, co-signatures and signing keys
+- activity for the last 14 days, one group per UTC day
+- every batch, newest first, with the key that signed it
+- grades by model for this host's identity, `erc8004:<chainId>:<agentId>`
+- the identity (owner, registration block, current key), the key history with each key's transaction, and the endpoints from the agent card
+
+Add `?chain=<chainId>` to open a host on another chain.
 
 ## Grades
 
@@ -53,6 +84,8 @@ The summary reads "Done. No check failed." or "Done. At least one check failed."
 | Trusted verifiers | "Grades count only from these addresses. Ties go to the one listed first." |
 | Reference endpoint (optional) | "OpenRouter tag of the lab's own endpoint. With it, a host clearly below the reference shows as fail." |
 | Evidence base URL (optional) | "Where the verifier publishes its log bundles, named by sha256." |
+
+A link such as `#grades?model=google/gemma-4-31b-it&host=google-ai-studio&ref=direct:generativelanguage.googleapis.com&v=0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7` fills the form and runs the lookup straight away. The trusted verifiers you enter are remembered in this browser, and the receipt page uses them for its grade card.
 
 Click "Look up grade". The result shows status, pass count, the 95% interval, samples (n), the verifier, the evidence sha256 and an "Open evidence" link. Empty state: "None of the verifiers you trust has graded this model on this host. Add another verifier or check the host input."
 

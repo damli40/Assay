@@ -5,9 +5,9 @@ icon: server
 
 # Host API
 
-**Where:** `host/src/server.ts`, package `@assay/host` (Hono). Runs on `http://localhost:8787` with `pnpm --filter @assay/host dev`.
+**Live:** https://34-45-1-81.sslip.io (agent 1962, Gemma 4 31B through Google AI Studio) · **Where:** `host/src/server.ts`, package `@assay/host` (Hono). Runs locally on `http://localhost:8787` with `pnpm --filter @assay/host dev`. To run your own on a VM, see `host/deploy/setup.sh` and `host/deploy/push-secrets.sh`.
 
-The reference host is an OpenAI-compatible proxy in front of OpenRouter. It signs a receipt for every response and anchors batches on Monad. Errors come back as `{"error": {"message": "…"}}`.
+The reference host is an OpenAI-compatible proxy in front of OpenRouter, or any OpenAI-compatible API set with `UPSTREAM_URL`. It signs a receipt for every response and anchors batches on Monad. Errors come back as `{"error": {"message": "…"}}`.
 
 ## Routes
 
@@ -28,7 +28,9 @@ The reference host is an OpenAI-compatible proxy in front of OpenRouter. It sign
 | `X-Assay-Salt` | yes | 32 random bytes as 64 hex characters, with or without `0x` |
 | `X-Assay-Cosigner` | no | `0x` + 64 hex, the passkey key hash `keccak256(abi.encode(qx, qy))` |
 
-The body is an OpenAI chat request with a `messages` array. The host sets `model`, `stream` and `provider` itself, so those fields are neither forwarded nor committed.
+The body is an OpenAI chat request with a `messages` array. The host sets `model`, `stream` and `provider` itself, so those fields are neither forwarded nor committed. If the request sets neither `max_tokens` nor `max_completion_tokens`, the host fills in `max_tokens: 1024` (some upstreams fail without a budget), and that value is what it forwards, commits and signs in `req.params`.
+
+The output commit covers the assistant's text. When the model answers only with tool calls, it covers the JCS bytes of `tool_calls` exactly as returned, so tool-using agents get receipts too. `assistantOutput()` in the SDK implements the rule.
 
 | Response header | Value |
 |---|---|
@@ -44,13 +46,13 @@ The body is an OpenAI chat request with a `messages` array. The host sets `model
 | 400 | `v0 is non-streaming: send stream false or omit it` | `stream: true` |
 | upstream status | upstream JSON | OpenRouter returned a non-200. No receipt is signed |
 | 502 | `upstream served by "<provider>", not the pinned provider <slug>; no receipt signed` | `UPSTREAM_PROVIDER` is set and OpenRouter served another provider |
-| 502 | `upstream returned no assistant text; no receipt signed` | No string in `choices[0].message.content`, for example a tool-call only reply |
+| 502 | `upstream returned neither assistant text nor tool calls; no receipt signed` | `choices[0].message` has no text and no `tool_calls` |
 
 ```bash
 SALT=$(openssl rand -hex 32)
-curl -s localhost:8787/v1/chat/completions -D - \
+curl -s https://34-45-1-81.sslip.io/v1/chat/completions -D - \
   -H "content-type: application/json" -H "X-Assay-Salt: $SALT" \
-  -d '{"messages":[{"role":"user","content":"Say OK"}],"max_tokens":16,"temperature":0}'
+  -d '{"messages":[{"role":"user","content":"Say OK"}],"max_tokens":256,"temperature":0}'
 ```
 
 ## `GET /v1/receipts/:hash`
