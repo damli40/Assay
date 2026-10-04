@@ -10,6 +10,9 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   return json;
 }
 
+/// `pending` is how many receipts wait for the host's next batch.
+export const fetchHealth = (base: string) => getJson<{ ok: boolean; pending: number }>(hostUrl(base, "/health"));
+
 export const fetchJwks = (base: string) => getJson<VerifyInput["jwks"]>(hostUrl(base, "/.well-known/jwks.json"));
 
 export type ReceiptStatus =

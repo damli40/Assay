@@ -241,3 +241,50 @@ export function levelLadder(reached: [boolean, boolean]): HTMLElement {
   });
   return ol;
 }
+
+export type StepState = "done" | "now" | "todo";
+
+/// Numbered steps with octagon markers. The `now` step pulses (off under reduced motion).
+export function stepper(steps: { label: string; state: StepState; detail?: Node | string }[]): HTMLElement {
+  return h(
+    "ol",
+    { class: "steps" },
+    ...steps.map((s, i) =>
+      h("li", { class: `step ${s.state}`, "aria-current": s.state === "now" ? "step" : false }, h("span", { class: "step-mark", "aria-hidden": "true" }, s.state === "done" ? "✓" : String(i + 1)), h("div", {}, h("strong", {}, s.label), s.detail ? h("p", {}, s.detail) : null)),
+    ),
+  );
+}
+
+export function progress(opts: { value: number; max: number; valueText: string; label: string }): HTMLElement {
+  const pct = Math.min(100, Math.round((opts.value / opts.max) * 100));
+  return h(
+    "div",
+    { class: "progress", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(opts.max), "aria-valuenow": String(Math.round(opts.value)), "aria-valuetext": opts.valueText, "aria-label": opts.label },
+    h("span", { style: `width:${pct}%` }),
+  );
+}
+
+/// Native modal dialog. Cancel has focus; Escape cancels; focus returns to the opener.
+export function confirmDialog(opts: { title: string; body: string; confirm: string; danger?: boolean }): Promise<boolean> {
+  const opener = document.activeElement as HTMLElement | null;
+  const cancel = button("Cancel");
+  cancel.autofocus = true;
+  const ok = button(opts.confirm, { variant: opts.danger ? "danger" : "primary" });
+  const dlg = h("dialog", { class: "dialog", "aria-labelledby": "dlg-title" }, h("h2", { id: "dlg-title" }, opts.title), h("p", {}, opts.body), h("div", { class: "row" }, cancel, ok));
+  document.body.append(dlg);
+  return new Promise((resolve) => {
+    const done = (v: boolean) => {
+      dlg.close();
+      dlg.remove();
+      opener?.focus();
+      resolve(v);
+    };
+    cancel.addEventListener("click", () => done(false));
+    ok.addEventListener("click", () => done(true));
+    dlg.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      done(false);
+    });
+    dlg.showModal();
+  });
+}
