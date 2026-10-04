@@ -47,3 +47,4 @@ export {
   type VerifyResult,
 } from "./verify.js";
 export { cosignerAddress, cosignerForAddress } from "./cosigner.js";
+export { assistantOutput } from "./output.js";

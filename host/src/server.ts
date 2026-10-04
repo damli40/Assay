@@ -2,6 +2,7 @@ import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import {
+  assistantOutput,
   buildReceipt,
   commitRequest,
   commitResponse,
@@ -83,8 +84,9 @@ export function createApp(d: AppDeps): Hono {
       return fail(c, 502, `upstream served by ${JSON.stringify(out.provider)}, not the pinned provider ${d.provider}; no receipt signed`);
     }
     const choice = Array.isArray(out.choices) ? out.choices[0] : undefined;
-    const text = choice?.message?.content;
-    if (typeof text !== "string") return fail(c, 502, "upstream returned no assistant text; no receipt signed");
+    // Text, or the JCS of tool_calls for a tool-only answer (SPEC §1): the same rule wrap() checks.
+    const text = assistantOutput(choice?.message);
+    if (text === undefined) return fail(c, 502, "upstream returned neither assistant text nor tool calls; no receipt signed");
 
     const body = buildReceipt({
       model: d.model,

@@ -1,4 +1,5 @@
 import {
+  assistantOutput,
   commitRequest,
   commitResponse,
   receiptHash,
@@ -104,6 +105,17 @@ describe("POST /v1/chat/completions", () => {
     expect(streaming.status).toBe(400);
     expect(((await streaming.json()) as any).error.message).toMatch(/v0 is non-streaming/);
     expect(store.pending()).toHaveLength(0);
+  });
+
+  it("signs a tool-call-only answer, committing to the JCS of tool_calls", async () => {
+    const toolCalls = [{ type: "function", id: "c1", function: { name: "get_weather", arguments: '{"city":"Paris"}' } }];
+    const { up } = fakeUpstream({ choices: [{ message: { role: "assistant", content: null, tool_calls: toolCalls }, finish_reason: "tool_calls" }] });
+    const { app } = await setup({ upstream: up });
+    const res = await chat(app);
+    expect(res.status).toBe(200);
+    const { body } = receiptOf(res);
+    expect(body.res.commit).toBe(commitResponse(`0x${SALT}`, assistantOutput({ tool_calls: toolCalls })!));
+    expect(body.res.finish).toBe("tool_calls");
   });
 
   it("fills max_tokens when the request has no budget, and signs what it forwarded", async () => {

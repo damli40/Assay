@@ -1,6 +1,7 @@
 import { base64url } from "jose";
 import type { Hex } from "viem";
 import { assertBytes32, commitResponse, newSalt } from "./commit.js";
+import { assistantOutput } from "./output.js";
 import type { GradeStatus } from "./grade.js";
 import { receiptHash, type ReceiptBody } from "./receipt.js";
 
@@ -70,9 +71,9 @@ export function wrap(fetchImpl: typeof fetch, opts: { cosigner?: Hex; gate?: Gra
     const claimed = response.headers.get("X-Assay-Receipt-Hash");
     if (claimed !== null && claimed.toLowerCase() !== hash) throw new Error(`X-Assay-Receipt-Hash ${claimed} != sha256(JCS(body)) ${hash}`);
 
-    const json = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
-    const text = json.choices?.[0]?.message?.content;
-    const outputCommitOk = typeof text === "string" && commitResponse(salt, text) === body.res.commit;
+    const json = (await response.json()) as { choices?: { message?: unknown }[] };
+    const text = assistantOutput(json.choices?.[0]?.message);
+    const outputCommitOk = text !== undefined && commitResponse(salt, text) === body.res.commit;
     return { response, json, receipt: { body, jws, hash }, salt, outputCommitOk };
   };
 }
