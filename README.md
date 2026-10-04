@@ -11,15 +11,15 @@
 [![Live app](https://img.shields.io/badge/live%20app-assay--ten--xi.vercel.app-C9A227?style=for-the-badge&logo=googlechrome&logoColor=white)](https://assay-ten-xi.vercel.app)
 [![Docs](https://img.shields.io/badge/docs-assay.gitbook.io-4FC3F7?style=for-the-badge&logo=gitbook&logoColor=white)](https://assay.gitbook.io/assay-docs)
 [![Monad testnet](https://img.shields.io/badge/Monad-testnet%2010143-8B73FF?style=for-the-badge)](https://testnet.monadvision.com/address/0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24)
-[![Tests](https://img.shields.io/badge/tests-420-B8F03C?style=for-the-badge)](#security)
+[![Tests](https://img.shields.io/badge/tests-442-B8F03C?style=for-the-badge)](#security)
 [![CI](https://img.shields.io/github/actions/workflow/status/trudransh/Assay/contracts.yml?branch=main&style=for-the-badge&label=contracts)](https://github.com/trudransh/Assay/actions)
 [![License](https://img.shields.io/badge/license-MIT-EDE6D6?style=for-the-badge)](LICENSE)
 
 <br />
 
-| 🖥️ **Live app** | 📚 **Docs** | 📜 **Spec** | 📊 **Report** | ⛓️ **First receipt onchain** |
-|:--:|:--:|:--:|:--:|:--:|
-| [assay-ten-xi.vercel.app](https://assay-ten-xi.vercel.app) | [gitbook](https://assay.gitbook.io/assay-docs) | [SPEC.md](SPEC.md) | [REPORT_v0](report/REPORT_v0.md) | [block 67577033](https://testnet.monadvision.com/tx/0x41f73bcaa5270d16df2cbdafc920b0fa7f6e87890f968acece7f3c6a99a7a867) |
+| 💬 **Ask, get a receipt** | 🧾 **A live receipt** | 🖥️ **Host profile** | 📚 **Docs** | 📜 **Spec** | 📊 **Report** |
+|:--:|:--:|:--:|:--:|:--:|:--:|
+| [/app/#ask](https://assay-ten-xi.vercel.app/app/#ask) | [0x9a166cac…](https://assay-ten-xi.vercel.app/app/#r/0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5) | [agent 1962](https://assay-ten-xi.vercel.app/app/#hosts/1962) | [gitbook](https://assay.gitbook.io/assay-docs) | [SPEC.md](SPEC.md) | [REPORT_v0](report/REPORT_v0.md) |
 
 </div>
 
@@ -133,7 +133,7 @@ All three are verified on Sourcify (exact match).
 | 🎯 Reference grade: same model on Google's own API, 19/19, 83.18% to 100% | [tx `0x137f910d…`](https://testnet.monadvision.com/tx/0x137f910d3e2181a9b2930170d47126370ae282e8dab7f8f91287b6aaa1dd16f6) |
 | 🪪 Host agent 1962 key set · verifier agent 1981 registered | [`0xcfd45e43…`](https://testnet.monadvision.com/tx/0xcfd45e4304e7de3c0337eb83288d657e978efc2a0df614c74cfb1a9adcc7b8b4) · [`0x752c6fe5…`](https://testnet.monadvision.com/tx/0x752c6fe566c60f390a79c449c812afc1fcd8b6802b1877da7bdc6231da52d178) |
 
-Both grades read `warn` until a host has 30 samples. Every address and tx is in [`docs/deployments.md`](docs/deployments.md).
+Both grades read `warn` until a host has 30 samples. The reference host runs at https://34-45-1-81.sslip.io and anchors each batch within seconds. Every address and tx is in [`docs/deployments.md`](docs/deployments.md).
 
 ## Integrations
 
@@ -182,6 +182,28 @@ Proof: `test_post_afterIdentityTransferred_reverts` · 3 fork tests against the 
 
 </td>
 </tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🛡️ MonadGuard
+**Same receipt format, verified both ways**
+
+MonadGuard checks the tool, Assay checks the model host that answered. Both sign ES256 over JCS with keys in a JWKS. Assay's verifier passes MonadGuard's mainnet receipts, and MonadGuard's `verify-foreign.mjs` passes ours with 10 of 10 checks, including a byte-for-byte JCS match. Each side pins the other's receipts as offline CI fixtures.
+
+Proof: [`docs/interop/`](docs/interop/) · `sdk/test/interop.test.ts`
+
+</td>
+<td width="50%" valign="top">
+
+### 📜 Mandate
+**Only pay for inference from graded hosts**
+
+A mandate bounds how much an agent spends. [PR #12](https://github.com/aliveevie/mandate/pull/12) adds `@ibxlab/mandate/assay`, so an agent under a mandate only pays inference hosts that verifiers it trusts grade `pass`. One view call to `gradeOf`, fails closed, no new dependencies, 10 tests.
+
+Proof: [aliveevie/mandate#12](https://github.com/aliveevie/mandate/pull/12)
+
+</td>
+</tr>
 </table>
 
 ## Security
@@ -204,13 +226,13 @@ The threat model maps every attack to the test that blocks it: [docs](https://as
 | Package | Tests |
 |---|---|
 | Contracts (Foundry) | 99 + 3 fork tests against the real ERC-8004 registry |
-| SDK `@assay/receipts` | 123 |
-| Host | 47, plus a 16/16 end-to-end run on a local chain in CI |
-| Web app | 59 |
+| SDK `@assay/receipts` | 133, including cross-implementation checks of MonadGuard's receipts |
+| Host | 49, plus a 16/16 end-to-end run on a local chain in CI |
+| Web app | 68 |
 | Grader (Python) | 43 |
-| Envio indexer | 22 |
+| Envio indexer | 22, plus the HyperSync stats script |
 | Chainlink CRE workflow | 27 |
-| **Total** | **420**, across 6 CI workflows |
+| **Total** | **442**, across 6 CI workflows |
 
 TypeScript and Solidity check each other: the SDK generates the signatures and Merkle proofs that the Foundry tests verify.
 
