@@ -1,4 +1,4 @@
 import { createPublicClient, http } from "viem";
-import { monadTestnet } from "viem/chains";
 
-export const chainClient = (rpc: string) => createPublicClient({ chain: monadTestnet, transport: http(rpc.trim()) });
+// Reads only (eth_call, receipts), so no chain object is needed: the RPC decides the chain.
+export const chainClient = (rpc: string) => createPublicClient({ transport: http(rpc.trim()) });

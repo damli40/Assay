@@ -41,9 +41,11 @@ function deps(over: Partial<ReceiptDeps>): ReceiptDeps {
   return {
     status: async () => ({ status: "anchored", body, jws: "a.b.c", root, proof: [], anchorTx: tx, reproduce: { cast } }),
     jwks: async () => ({ keys: [] }),
-    client,
-    anchor: (o) => anchorInfo({ ...o, client, anchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24", indexer: (a, r, h) => indexedAnchor(a, r, h, "https://idx.example", gql(indexed)) }),
-    grade: async () => null,
+    chain: () => ({
+      client,
+      anchor: (o) => anchorInfo({ ...o, client, anchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24", indexer: (a, r, h) => indexedAnchor(a, r, h, "https://idx.example", gql(indexed)) }),
+      grade: async () => null,
+    }),
     ...over,
   };
 }
@@ -98,5 +100,11 @@ describe("receipt page", () => {
     expect(el.querySelector('[data-check="outputCommit"] .badge')!.textContent).toBe("Needs salt");
     expect(el.querySelector("h1")!.textContent).toBe("Served by agent 1962, claiming gemma-4-31b-it");
     expect(hash).toBe("0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5");
+  });
+
+  it("says so when a receipt comes from a chain the app doesn't know", async () => {
+    const foreign = { ...body, host: { ...body.host, agentId: "erc8004:999:1" } };
+    const el = mount(deps({ status: async () => ({ status: "anchored", body: foreign, jws: "a.b.c", root, proof: [] }) }));
+    await vi.waitFor(() => expect(el.textContent).toContain("chain 999, which this app doesn't know"));
   });
 });

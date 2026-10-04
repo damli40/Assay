@@ -16,7 +16,7 @@ import {
 import type { Address, Hex } from "viem";
 import { badge, banner, button, chip, copyButton, emptyState, errorText, h, kv, levelLadder, shortHash, skeleton, stamp, toast } from "../dom.js";
 import { chainClient } from "../lib/chain.js";
-import { CHAIN_ID, DEFAULT_HOST, DEFAULT_RPC, EXPLORER, RECEIPT_ANCHOR, VERIFIER_REGISTRY } from "../lib/config.js";
+import { CHAIN_ID, CHAINS, DEFAULT_HOST, chainConfig, chainOfAgentId } from "../lib/config.js";
 import { loadTrusted, modelKey } from "../lib/grades.js";
 import { fetchJwks, fetchReceiptStatus, httpStatus, type ReceiptStatus } from "../lib/host.js";
 import { anchorInfo, type AnchorInfo, type AnchorReader } from "../lib/indexer.js";
@@ -26,23 +26,31 @@ import { CHECKS } from "./verify.js";
 
 type Found = { grade: Grade; by: Address } | null;
 
-export interface ReceiptDeps {
-  status(hash: Hex): Promise<ReceiptStatus>;
-  jwks(): Promise<VerifyInput["jwks"]>;
+/// Reads that depend on the receipt's chain: its RPC, its ReceiptAnchor and its VerifierRegistry.
+export interface ChainDeps {
   client: AnchorReader;
   anchor(o: { agentId: bigint; root: Hex; receiptHash: Hex; anchorTx?: Hex }): Promise<AnchorInfo>;
   grade(model: Hex, hostKey: Hex, trusted: Address[]): Promise<Found>;
 }
 
-function defaultDeps(host: string): ReceiptDeps {
-  const client = chainClient(DEFAULT_RPC) as unknown as AnchorReader;
+export interface ReceiptDeps {
+  status(hash: Hex): Promise<ReceiptStatus>;
+  jwks(): Promise<VerifyInput["jwks"]>;
+  chain(chainId: number): ChainDeps;
+}
+
+function chainDeps(chainId: number): ChainDeps {
+  const c = chainConfig(chainId);
+  const client = chainClient(c.rpc) as unknown as AnchorReader;
   return {
-    status: (hash) => fetchReceiptStatus(host, hash),
-    jwks: () => fetchJwks(host),
     client,
-    anchor: (o) => anchorInfo({ ...o, client, anchor: RECEIPT_ANCHOR }),
-    grade: (model, hostKey, trusted) => gradeOf(client, VERIFIER_REGISTRY, model, hostKey, trusted),
+    anchor: (o) => anchorInfo({ ...o, client, anchor: c.receiptAnchor, chainId }),
+    grade: (model, hostKey, trusted) => gradeOf(client, c.verifierRegistry, model, hostKey, trusted),
   };
+}
+
+function defaultDeps(host: string): ReceiptDeps {
+  return { status: (hash) => fetchReceiptStatus(host, hash), jwks: () => fetchJwks(host), chain: chainDeps };
 }
 
 const link = (label: string, href: string, cls = "") => h("a", { href, class: cls, ...(href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {}) }, label);
@@ -115,7 +123,8 @@ function rawCard(body: ReceiptBody): HTMLElement {
   );
 }
 
-export function renderAnchorCard(info: AnchorInfo, root: Hex, cast?: string): HTMLElement {
+export function renderAnchorCard(info: AnchorInfo, root: Hex, cast?: string, chainId: number = CHAIN_ID): HTMLElement {
+  const { explorer: EXPLORER, receiptAnchor: RECEIPT_ANCHOR, name } = chainConfig(chainId);
   const block = info.block !== undefined ? (info.txHash ? link(`${info.block}`, `${EXPLORER}/tx/${info.txHash}`) : String(info.block)) : "unknown";
   const key = info.keyHash ? h("span", { class: "kv-hash" }, shortHash(info.keyHash), info.source === "rpc" ? chip("Current key", "muted") : null) : "unknown";
   const rows: [string, Node | string][] = [
@@ -133,7 +142,7 @@ export function renderAnchorCard(info: AnchorInfo, root: Hex, cast?: string): HT
   return h(
     "section",
     { class: "card anchor-card" },
-    h("div", { class: "card-head" }, h("h2", {}, "Anchor"), chip("Anchored", "violet", { dot: true })),
+    h("div", { class: "card-head" }, h("h2", {}, "Anchor"), chip(`Anchored · ${name}`, "violet", { dot: true })),
     kv(rows),
     cast ? h("div", { class: "repro" }, h("pre", {}, cast), copyButton(cast, "Copy cast line")) : null,
     h("p", { class: "hint", "data-source": info.source }, source),
@@ -146,7 +155,7 @@ function gradeCard(body: ReceiptBody, found: Found | undefined, status: GradeSta
   if (found === undefined && !error) {
     return emptyState({ title: "No trusted verifiers saved", text: "Choose whose grades count on the Grades tab. This page then shows their grade for this host.", tone: "lime", action: link("Open Grades", "#grades", "btn btn-secondary") });
   }
-  const scope = `For ${body.model} on erc8004:${CHAIN_ID}:${agent}, from verifiers you trust. It grades the host, not this one response.`;
+  const scope = `For ${body.model} on ${body.host.agentId}, from verifiers you trust. It grades the host, not this one response.`;
   if (error) return card("Host grade", badge("notchecked", "Not checked"), h("p", { class: "hint" }, `Couldn't read the grade (${error}).`));
   if (!found) return card("Host grade", badge("unknown", "unknown"), h("p", {}, "No grade yet. ", scope), open);
   const g = found.grade;
@@ -245,8 +254,14 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
   async function anchored(st: Extract<ReceiptStatus, { status: "anchored" }>) {
     const { body, jws, root: batchRoot, proof, anchorTx } = st;
     const agentId = parseAgentId(body.host.agentId);
+    const chainId = chainOfAgentId(body.host.agentId) ?? CHAIN_ID;
+    if (!CHAINS[chainId]) {
+      page.replaceChildren(head(hash, body, undefined, false, null), banner("coral", `This receipt was anchored on chain ${chainId}, which this app doesn't know yet, so it can't be checked here.`));
+      return;
+    }
+    const chain = deps.chain(chainId);
     const jwks = await deps.jwks().catch(() => ({ keys: [] }));
-    const result = await verifyReceipt({ body, jws, jwks, proof, root: batchRoot, onchain: { client: deps.client, anchor: RECEIPT_ANCHOR } });
+    const result = await verifyReceipt({ body, jws, jwks, proof, root: batchRoot, onchain: { client: chain.client, anchor: chainConfig(chainId).receiptAnchor } });
     const isAnchored = result.checks.anchored === "pass";
     const ladder = h("div", {}, levelLadder([isAnchored, false]));
     const anchorSlot = h("div", {}, skeleton(1, 220));
@@ -264,14 +279,14 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
       ),
     );
 
-    const info = await deps.anchor({ agentId, root: batchRoot, receiptHash: hash, anchorTx }).catch(() => null);
-    anchorSlot.replaceChildren(info ? renderAnchorCard(info, batchRoot, st.reproduce?.cast) : banner("coral", "Couldn't read the batch from the indexer or the chain.", again()));
+    const info = await chain.anchor({ agentId, root: batchRoot, receiptHash: hash, anchorTx }).catch(() => null);
+    anchorSlot.replaceChildren(info ? renderAnchorCard(info, batchRoot, st.reproduce?.cast, chainId) : banner("coral", "Couldn't read the batch from the indexer or the chain.", again()));
     cosignSlot.replaceChildren(cosignCard(body, info));
 
     const trusted = loadTrusted();
     if (!trusted.length) return gradeSlot.replaceChildren(gradeCard(body, undefined, "unknown"));
     try {
-      const found = await deps.grade(modelKey(body.model), hostKeyForAgent(CHAIN_ID, agentId), trusted);
+      const found = await chain.grade(modelKey(body.model), hostKeyForAgent(chainId, agentId), trusted);
       const status = gradeStatus(found?.grade, { now: BigInt(Math.floor(Date.now() / 1000)) });
       gradeSlot.replaceChildren(gradeCard(body, found, status));
       ladder.replaceChildren(levelLadder([isAnchored, !!found && status !== "unknown"]));

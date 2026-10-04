@@ -1,6 +1,6 @@
 import { hostKeyForAgent } from "@assay/receipts";
 import { badge, chip, emptyState, errorText, h, kv, shortHash, skeleton } from "../dom.js";
-import { CHAIN_ID, EXPLORER } from "../lib/config.js";
+import { CHAIN_ID, CHAINS, chainConfig } from "../lib/config.js";
 import { hostProfile, type HostProfile } from "../lib/indexer.js";
 import type { Route } from "../router.js";
 
@@ -45,7 +45,8 @@ function table(head: string[], rows: (Node | string)[][]) {
   );
 }
 
-export function renderHost(p: HostProfile): HTMLElement {
+export function renderHost(p: HostProfile, chainId: number = CHAIN_ID): HTMLElement {
+  const { explorer: EXPLORER, name: network } = chainConfig(chainId);
   const a = p.agent;
   const id = a.agentId;
   const name = a.name ?? `Agent ${id}`;
@@ -84,10 +85,11 @@ export function renderHost(p: HostProfile): HTMLElement {
         ["Model", "Verifier", "Passed", "95% interval"],
         p.grades.map((g) => [shortHash(g.model), shortHash(g.verifier.address), `${g.passed} of ${g.total}`, `${pct(g.ciLowBps)} to ${pct(g.ciHighBps)}`]),
       )
-    : emptyState({ title: "No grade yet", text: `No verifier has graded erc8004:${CHAIN_ID}:${id} yet. Receipts from this host stay at Level 0 until one does.`, tone: "lime" });
+    : emptyState({ title: "No grade yet", text: `No verifier has graded erc8004:${chainId}:${id} yet. Receipts from this host stay at Level 0 until one does.`, tone: "lime" });
 
   const identity = kv([
-    ["Agent", `erc8004:${CHAIN_ID}:${id}`],
+    ["Agent", `erc8004:${chainId}:${id}`],
+    ["Network", network],
     ["Owner", a.owner ? link(`${a.owner.slice(0, 6)}…${a.owner.slice(-4)}`, `${EXPLORER}/address/${a.owner}`) : "unknown"],
     ["Registered", a.registeredBlock ? `block ${a.registeredBlock}` : "unknown"],
     ["Current key", a.currentKey?.keyHash ?? "none"],
@@ -141,12 +143,17 @@ export function renderHost(p: HostProfile): HTMLElement {
 
 export function mountHost(root: HTMLElement, route: Route, load: typeof hostProfile = hostProfile) {
   const agentId = BigInt(route.path[1]);
+  const chainId = Number(route.params.get("chain") ?? CHAIN_ID);
+  if (!CHAINS[chainId]) {
+    root.append(emptyState({ title: `This app doesn't know chain ${chainId}`, text: "Open the host profile without ?chain=, or with a chain Assay is deployed on.", tone: "muted", action: link("Hosts", "#hosts") }));
+    return;
+  }
   const slot = h("div", {}, skeleton(4, 120));
   root.append(slot);
-  load(agentId, hostKeyForAgent(CHAIN_ID, agentId))
+  load(agentId, hostKeyForAgent(chainId, agentId), undefined, undefined, chainId)
     .then((p) => {
       slot.replaceChildren(
-        p ? renderHost(p) : emptyState({ title: `No agent ${agentId} on Monad testnet`, text: "The indexer has no ERC-8004 agent with that id. Check the number, or open the hosts list.", tone: "muted", action: link("Hosts", "#hosts") }),
+        p ? renderHost(p, chainId) : emptyState({ title: `No agent ${agentId} on ${chainConfig(chainId).name}`, text: "The indexer has no ERC-8004 agent with that id. Check the number, or open the hosts list.", tone: "muted", action: link("Hosts", "#hosts") }),
       );
     })
     .catch((e) => {

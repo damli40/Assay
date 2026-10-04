@@ -28,11 +28,11 @@ const QUERY = `query Receipt($id: String!, $hash: String!) {
 }`;
 
 /// One GraphQL call to Envio for the batch and its co-signs. Null when the indexer doesn't have the batch (yet).
-export async function indexedAnchor(agentId: bigint, root: Hex, receiptHash: Hex, url = INDEXER_URL, fetchFn: typeof fetch = fetch): Promise<AnchorInfo | null> {
+export async function indexedAnchor(agentId: bigint, root: Hex, receiptHash: Hex, url = INDEXER_URL, fetchFn: typeof fetch = fetch, chainId: number = CHAIN_ID): Promise<AnchorInfo | null> {
   const res = await fetchFn(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query: QUERY, variables: { id: `${CHAIN_ID}-${agentId}-${root.toLowerCase()}`, hash: receiptHash.toLowerCase() } }),
+    body: JSON.stringify({ query: QUERY, variables: { id: `${chainId}-${agentId}-${root.toLowerCase()}`, hash: receiptHash.toLowerCase() } }),
   });
   if (!res.ok) throw new Error(`Indexer: HTTP ${res.status}`);
   const json = (await res.json()) as {
@@ -61,9 +61,9 @@ export async function rpcAnchor(client: AnchorReader, anchor: Address, agentId: 
 }
 
 /// Indexer first (the Envio path); RPC when it fails or hasn't synced the batch.
-export async function anchorInfo(opts: { agentId: bigint; root: Hex; receiptHash: Hex; anchorTx?: Hex; client: AnchorReader; anchor: Address; indexer?: typeof indexedAnchor }): Promise<AnchorInfo> {
+export async function anchorInfo(opts: { agentId: bigint; root: Hex; receiptHash: Hex; anchorTx?: Hex; client: AnchorReader; anchor: Address; chainId?: number; indexer?: typeof indexedAnchor }): Promise<AnchorInfo> {
   try {
-    const found = await (opts.indexer ?? indexedAnchor)(opts.agentId, opts.root, opts.receiptHash);
+    const found = await (opts.indexer ?? indexedAnchor)(opts.agentId, opts.root, opts.receiptHash, INDEXER_URL, fetch, opts.chainId ?? CHAIN_ID);
     if (found) return found;
   } catch {
     // Fall through to RPC.
@@ -104,11 +104,11 @@ const HOST_QUERY = `query Host($id: String!, $hostKey: String!) {
 }`;
 
 /// Everything the host profile shows, in one GraphQL call. Null when the indexer has no such agent.
-export async function hostProfile(agentId: bigint, hostKey: Hex, url = INDEXER_URL, fetchFn: typeof fetch = fetch): Promise<HostProfile | null> {
+export async function hostProfile(agentId: bigint, hostKey: Hex, url = INDEXER_URL, fetchFn: typeof fetch = fetch, chainId: number = CHAIN_ID): Promise<HostProfile | null> {
   const res = await fetchFn(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query: HOST_QUERY, variables: { id: `${CHAIN_ID}-${agentId}`, hostKey } }),
+    body: JSON.stringify({ query: HOST_QUERY, variables: { id: `${chainId}-${agentId}`, hostKey } }),
   });
   if (!res.ok) throw new Error(`Indexer: HTTP ${res.status}`);
   const json = (await res.json()) as { data?: Record<string, unknown[]>; errors?: { message: string }[] };
