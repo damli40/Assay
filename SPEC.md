@@ -44,6 +44,8 @@ The requester generates a fresh 32-byte salt for each request and sends it in th
 
 The host computes both commits from the bytes it actually received and sent, so it can't sign for a request it didn't serve.
 
+`output_text` is the assistant message's `content` when it has text. When the model answers only with tool calls, it's the JCS bytes of `tool_calls` exactly as returned, so tool-using agents get receipts too. The SDK's `assistantOutput()` implements this rule, and both the host and `wrap()` use it.
+
 The receipt hash is `receiptHash = sha256(JCS(body))`, and it's the value every signature covers.
 
 ## 2. Signatures
