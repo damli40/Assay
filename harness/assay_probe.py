@@ -73,7 +73,8 @@ def http(method, url, body=None, key=None, timeout=120):
         time.sleep(min(60, 5 * 2 ** attempt))
 
 def _http_once(method, url, body, key, timeout):
-    headers = {"Content-Type": "application/json", "User-Agent": "assay-probe/0.1"}
+    # Assay hosts require a fresh 32-byte salt per request (SPEC §1); other APIs ignore the header.
+    headers = {"Content-Type": "application/json", "User-Agent": "assay-probe/0.1", "X-Assay-Salt": os.urandom(32).hex()}
     if key:
         headers["Authorization"] = f"Bearer {key}"
     data = json.dumps(body).encode() if body is not None else None
