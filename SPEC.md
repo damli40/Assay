@@ -68,6 +68,8 @@ Hosts don't send a transaction per request. They batch receipts like this:
 3. The contract checks the signature against the host's registered key, so nobody can anchor a batch the host didn't sign.
 4. Anyone can then check a single receipt with `verifyReceipt(agentId, receiptHash, proof, root)`, which takes a Merkle proof and the root that host anchored. Anchors are stored per host, so one host can't block or claim another host's batch by anchoring the same root first.
 
+**What's checked when.** The contract checks one signature per batch, at write time: the host's P-256 signature over the root. Each individual receipt is checked on read, by whoever relies on it: the host's ES256 JWS against its published JWKS, plus the Merkle proof against an anchored root. Attestation registries that verify every record on the way in (MonadGuard's `ScanRegistry` does) give a stronger guarantee per row and pay for it per row. Assay amortises the onchain cost and moves the per-receipt check to the reader. A consumer should know which of the two models it's looking at.
+
 ## 4. Requester co-signature (optional)
 
 The client calls `navigator.credentials.get` with `challenge = receiptHash`. The contract, or any offchain verifier, then does the following:
@@ -111,6 +113,8 @@ The `hostKey` field names who was graded. Grades follow the host's identity, not
 | A lab's own API, graded directly | `keccak256(utf8("direct:<host>"))` | `direct:api.z.ai` |
 
 The SDK computes these with `hostKeyForAgent`, `hostKeyForEndpoint` and `hostKeyForDirect`. The harness export uses the same strings, and both test suites pin the same vectors. A host can still register a new identity to escape its history, so readers should also weigh identity age and grade count.
+
+**Running a grader is not the same as vouching for a grade.** A verifier that posts a grade puts its identity behind the number. A party that only ran someone else's grader can honestly attest "I ran this grader at this commit against this host, and it produced this output", but not that it stands behind the methodology. v0 grades are the first kind. The second kind belongs in the evidence bundle (the grader's commit and the operator's identity), and a reader can decide which one to trust. Thanks to MonadGuard's poteshniy for drawing this line.
 
 Readers call `gradeOf(model, hostKey, trustedVerifiers[])` and choose whose grades count. ERC-8004 recommends the same pattern for reputation, because unfiltered feedback is easy to spam. Assay runs the first verifier, but the registry doesn't depend on Assay in any way.
 
