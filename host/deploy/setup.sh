@@ -17,13 +17,14 @@ id assay >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nol
 chown -R assay:assay /opt/assay
 cd /opt/assay
 sudo -u assay COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm install --frozen-lockfile --filter @assay/host...
-install -d -o assay -g assay -m 700 host/.keys host/data
+install -d -o assay -g assay -m 700 host/.keys host/data host/data-mainnet
 install -d -m 750 -g assay /etc/assay
 
-install -m 644 host/deploy/assay-host.service /etc/systemd/system/assay-host.service
-printf '%s {\n\treverse_proxy 127.0.0.1:8787\n}\n' "$DOMAIN" > /etc/caddy/Caddyfile
+install -m 644 host/deploy/assay-host@.service /etc/systemd/system/assay-host@.service
+# Testnet at the root (older receipt links keep working), mainnet under /mainnet/.
+printf '%s {\n\thandle_path /mainnet/* {\n\t\treverse_proxy 127.0.0.1:8788\n\t}\n\thandle {\n\t\treverse_proxy 127.0.0.1:8787\n\t}\n}\n' "$DOMAIN" > /etc/caddy/Caddyfile
 systemctl daemon-reload
-systemctl enable assay-host
+# Each instance is enabled by push-secrets.sh once its env file exists.
 systemctl reload-or-restart caddy
 
 # Only SSH and HTTPS from outside; the host port stays behind Caddy.
@@ -36,4 +37,4 @@ if [ -f /etc/iptables/rules.v4 ]; then
 elif command -v ufw >/dev/null; then
   ufw allow 22/tcp; ufw allow 80/tcp; ufw allow 443/tcp; ufw --force enable
 fi
-echo "Next, from your machine: host/deploy/push-secrets.sh <ssh-target> $DOMAIN"
+echo "Next, from your machine: host/deploy/push-secrets.sh <ssh-target> $DOMAIN testnet (and mainnet)"
