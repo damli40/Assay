@@ -8,7 +8,7 @@
     <title>Assay: proof of who served every AI response</title>
     <meta name="description" content="Assay gives every AI response a signed receipt. The host signs it and anchors it in a batch on Monad, and you can co-sign it with your passkey." />
     <meta property="og:title" content="Assay: proof of who served every AI response" />
-    <meta property="og:description" content="Signed receipts for AI responses, anchored on Monad testnet. Co-sign with a passkey, check grades from open verifiers." />
+    <meta property="og:description" content="Signed receipts for AI responses, anchored on Monad. Co-sign with a passkey, check grades from open verifiers." />
     <meta property="og:image" content="/og.png" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -32,7 +32,7 @@
           <a href="https://github.com/trudransh/Assay">GitHub</a>
         </nav>
         <div class="l-navcta">
-          <span class="chip chip-violet l-navchip"><span class="dot" aria-hidden="true"></span>Monad testnet</span>
+          <span class="chip chip-violet l-navchip"><span class="dot" aria-hidden="true"></span>Monad mainnet</span>
           <a class="btn btn-primary" href="/app/#verify"><span class="l-long">Verify a receipt</span><span class="l-short">Verify</span></a>
           <button class="l-menu" type="button" aria-expanded="false" aria-controls="l-sheet" aria-label="Open menu">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" /></svg>
@@ -56,7 +56,7 @@
         <a href="https://github.com/trudransh/Assay">GitHub<span aria-hidden="true">↗</span></a>
       </nav>
       <div class="l-sheet-foot">
-        <span class="chip chip-violet"><span class="dot" aria-hidden="true"></span>Monad testnet · chain 10143</span>
+        <span class="chip chip-violet"><span class="dot" aria-hidden="true"></span>Monad mainnet · chain 143</span>
         <a class="btn btn-primary" href="/app/#verify">Verify a receipt</a>
         <a class="btn btn-secondary" href="/app/#ask">Ask and co-sign</a>
       </div>
@@ -66,7 +66,7 @@
       <section class="l-wrap l-hero" aria-labelledby="hero-title">
         <div class="l-hero-copy">
           <div class="l-chips">
-            <span class="chip chip-lime"><span class="dot" aria-hidden="true"></span>Live on Monad testnet</span>
+            <span class="chip chip-lime"><span class="dot" aria-hidden="true"></span>Live on Monad mainnet</span>
             <span class="chip chip-muted">3 contracts verified on Sourcify</span>
           </div>
           <h1 class="l-h1" id="hero-title">Proof of<br /> <span class="l-hl">who served</span><br /> every<br /> AI response.</h1>
@@ -110,7 +110,7 @@
             </div>
             <dl class="l-fields mono">
               <div><dt>model</dt><dd>z-ai/glm-5.3</dd></div>
-              <div><dt>host</dt><dd>erc8004:10143:1962</dd></div>
+              <div><dt>host</dt><dd>erc8004:143:10278</dd></div>
               <div><dt>alg</dt><dd>ES256</dd></div>
               <div><dt>req</dt><dd>sha256(salt ‖ prompt)</dd></div>
               <div><dt>res</dt><dd>sha256(salt ‖ output)</dd></div>
@@ -234,8 +234,8 @@
           </div>
         </div>
         <ol class="l-ladder">
-          <li class="k-lime"><span class="l-lv">Level 0 · Live on testnet</span><b>Signed and anchored</b><p>The host signed what it served and the batch is on Monad.</p></li>
-          <li class="k-lime"><span class="l-lv">Level 1 · Live on testnet</span><b>Host graded</b><p>Open verifiers test the host against the lab's own endpoint.</p></li>
+          <li class="k-lime"><span class="l-lv">Level 0 · Live on Monad</span><b>Signed and anchored</b><p>The host signed what it served and the batch is on Monad.</p></li>
+          <li class="k-lime"><span class="l-lv">Level 1 · Live on Monad</span><b>Host graded</b><p>Open verifiers test the host against the lab's own endpoint.</p></li>
           <li class="l-road"><span class="l-lv">Level 2 · Roadmap</span><b>Re-executable</b><p>A deterministic runtime lets anyone re-run a revealed request.</p></li>
           <li class="l-road"><span class="l-lv">Level 3 · Roadmap</span><b>TEE attested</b><p>The host signs from an enclave whose attestation names the model.</p></li>
         </ol>
@@ -298,7 +298,7 @@
               <line class="s-ink" x1="40" y1="290" x2="470" y2="290" stroke-width="34" />
             </g>
           </svg>
-          <span class="chip l-chip-ink">Try it on testnet</span>
+          <span class="chip l-chip-ink">Try it live</span>
           <h2 class="l-h2" id="cta-title">Got an AI answer? Check where it came from.</h2>
           <p>Paste a receipt, and the salt and output if you kept them. Every check runs in your browser or as a free onchain read. No wallet needed.</p>
           <div class="l-row">
@@ -321,7 +321,7 @@
           <div><h2 class="l-foot-h">Docs</h2><ul><li><a href="https://assay.gitbook.io/assay-docs/getting-started/quickstart">Quickstart</a></li><li><a href="https://assay.gitbook.io/assay-docs/getting-started/core-concepts">Core concepts</a></li><li><a href="https://assay.gitbook.io/assay-docs/security/threat-model">Threat model</a></li><li><a href="https://assay.gitbook.io/assay-docs/resources/hosting-report">Hosting report</a></li></ul></div>
           <div><h2 class="l-foot-h">Code</h2><ul><li><a href="https://github.com/trudransh/Assay">GitHub</a></li><li><a href="https://github.com/trudransh/Assay/blob/main/SPEC.md">Receipt spec</a></li><li><a href="https://assay.gitbook.io/assay-docs/getting-started/network-and-contracts">Contracts</a></li></ul></div>
         </div>
-        <div class="l-legal"><span>MIT licensed. Built for Monad Metropolis.</span><span>Monad testnet, chain 10143. Addresses can change after a testnet reset.</span></div>
+        <div class="l-legal"><span>MIT licensed. Built for Monad Metropolis.</span><span>Monad mainnet, chain 143. Testnet (10143) stays live for experiments.</span></div>
       </div>
     </footer>
     <script type="module" src="/src/landing/main.ts"></script>
