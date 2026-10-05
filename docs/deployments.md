@@ -1,5 +1,25 @@
 # Deployments
 
+## Monad mainnet (chain 143)
+
+Deployed 5 Oct 2026 with Foundry 1.7.1, solc 0.8.30 and `evm_version = "osaka"`, the same source as testnet. All three contracts are verified on Sourcify with an exact match. ReceiptAnchor uses `requireUV = true`. Both contracts point at the mainnet ERC-8004 IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`. The deploy cost 0.426 MON.
+
+| Contract | Address | Deploy tx | Block |
+|---|---|---|---|
+| ReceiptAnchor | [`0x049A73755cA3508ef3Daa4752A3406f6e00CfB13`](https://monadvision.com/address/0x049A73755cA3508ef3Daa4752A3406f6e00CfB13) | [`0x293c2684…`](https://monadvision.com/tx/0x293c2684a3fefd2ae2deec1a432eee78c591d41eed848efe02f5a5c1b89d1545) | 110678733 |
+| VerifierRegistry | [`0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1`](https://monadvision.com/address/0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1) | [`0x8649c6ab…`](https://monadvision.com/tx/0x8649c6abab999a902feb4d8ba79b14b3b553dfd5374313ca8c6a88f8f6372dfe) | 110678737 |
+| CreAttestor | [`0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a`](https://monadvision.com/address/0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a) | [`0x7949a60e…`](https://monadvision.com/tx/0x7949a60e38f42352079e082e8b85fa2337023dde5d181b3096856268be68219e) | 110678745 |
+
+| Identity or action | Tx | Block |
+|---|---|---|
+| Host agent **10278** registered (owner `0xF3CbD8aaf1f2350bFd8a3220Ab4E83FDd8fa18d9`) | [`0x5d0ae535…`](https://monadvision.com/tx/0x5d0ae5359f45b73b7b75596bb5cbb293ac0882f519b0efb2f74fa9621c8620ec) | 110682707 |
+| Verifier agent **10279** registered (owner `0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7`) | [`0xd70e4728…`](https://monadvision.com/tx/0xd70e4728f598933eebaa574eea5ed5c4a764813417e992a3c58f604d0b1c4bd1) | 110682770 |
+| `setHostKey(10278, …)`, key hash `0x6c73fb3e…a68e` (the same ES256 key as testnet host 1962) | [`0x332de53b…`](https://monadvision.com/tx/0x332de53b00e295d0a39619921728a0c9586679f7a89bf125ae4c4987e67fee69) | 110683264 |
+| `registerVerifier(10279)` | [`0x16132ea7…`](https://monadvision.com/tx/0x16132ea7ff35e4b5bce957385670f03b3f991c2f3008e7f2c13c5e10497e8f15) | 110683320 |
+| **First mainnet receipt anchored:** receipt `0x1b443b45…c5f2` from Gemma 4 31B through the host, root `0x406615dd…60cb`. `verifyReceipt` returns true | [`0x48bcf6ab…`](https://monadvision.com/tx/0x48bcf6abe5914a1a8aee3678a6f84eeb2773c4131bd670e995e44e34dd49a9a4) | 110684366 |
+
+The mainnet host runs at https://34-45-1-81.sslip.io/mainnet (the web app reaches it at `/host-mainnet`). Testnet stays live below as the place to experiment for free.
+
 ## Monad testnet (chain 10143)
 
 Current deployment, 3 Oct 2026, with Foundry 1.7.1, solc 0.8.30 and `evm_version = "osaka"`. All three contracts are verified on Sourcify with an exact match. This version adds `cosignK` (secp256k1 requester co-signatures) to ReceiptAnchor. `CreAttestor` is owned by the `assay-host` address. Its `configure(forwarder, workflowOwner, workflowId)` call waits for the CRE workflow deploy, so it accepts no reports yet.
@@ -27,7 +47,7 @@ Hosted on Vercel from the `web/` folder of `main`: https://assay-ten-xi.vercel.a
 
 ## Host
 
-The reference host (agent 1962) runs on a Google Cloud VM behind Caddy: https://34-45-1-81.sslip.io (`/health`, `/.well-known/jwks.json`, `/v1/receipts/:hash`, `/v1/grade`). The web app reaches it same-origin through a Vercel rewrite of `/host/*` (`web/vercel.json`). Setup is `host/deploy/setup.sh` plus `host/deploy/push-secrets.sh`.
+The reference hosts run on a Google Cloud VM behind Caddy, one per network: testnet (agent 1962) at https://34-45-1-81.sslip.io and mainnet (agent 10278) at https://34-45-1-81.sslip.io/mainnet (`/health`, `/.well-known/jwks.json`, `/v1/receipts/:hash`, `/v1/grade`). The web app reaches it same-origin through a Vercel rewrite of `/host/*` (`web/vercel.json`). Setup is `host/deploy/setup.sh` plus `host/deploy/push-secrets.sh`.
 
 ## Indexer
 
