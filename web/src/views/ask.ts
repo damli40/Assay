@@ -5,6 +5,7 @@ import { addToVault, meraMessage } from "../mera.js";
 import { DEFAULT_HOST, EXPLORER } from "../lib/config.js";
 import { fetchHealth, fetchReceiptStatus, httpStatus, hostUrl, relayCosign, type ReceiptStatus } from "../lib/host.js";
 import { rememberReceipt, toBase64url } from "../lib/receipt.js";
+import { typewrite } from "../ui/motion.js";
 
 // Public key material only (credential id, qx, qy, key hash).
 const PASSKEY = "assay.passkey";
@@ -227,7 +228,11 @@ export function mountAsk(root: HTMLElement) {
       "section",
       { class: "card" },
       h("div", { class: "card-head" }, h("h2", {}, "Answer"), chip(`Signed by host ${r.receipt.body.host.agentId.split(":").pop()}`, "gold", { dot: true })),
-      h("p", { class: "answer" }, shown),
+      (() => {
+        const p = h("p", { class: "answer" });
+        void typewrite(p, shown);
+        return p;
+      })(),
       thought ? h("details", {}, h("summary", {}, "The model's reasoning (part of the signed output)"), h("pre", {}, thought)) : null,
       h("p", { class: "hint" }, r.outputCommitOk ? "The output commit matches the bytes you received." : "Warning: the output commit does not match the bytes you received."),
       kv([

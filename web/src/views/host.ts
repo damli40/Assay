@@ -3,6 +3,7 @@ import { badge, chip, emptyState, errorText, h, kv, shortHash } from "../dom.js"
 import { CHAIN_ID, CHAINS, chainConfig } from "../lib/config.js";
 import { hostProfile, type HostProfile } from "../lib/indexer.js";
 import type { Route } from "../router.js";
+import { showPageChain } from "../ui/network-switch.js";
 
 const DAYS = 14;
 const link = (label: string, href: string) => h("a", { href, ...(href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {}) }, label);
@@ -148,6 +149,7 @@ export function mountHost(root: HTMLElement, route: Route, load: typeof hostProf
     root.append(emptyState({ title: `This app doesn't know chain ${chainId}`, text: "Open the host profile without ?chain=, or with a chain Assay is deployed on.", tone: "muted", action: link("Hosts", "#hosts") }));
     return;
   }
+  showPageChain(chainId);
   const box = (height: number) => h("div", { class: "skeleton-row", style: `height:${height}px` });
   // Same shape as the profile: title, four tiles, then two columns.
   const slot = h(

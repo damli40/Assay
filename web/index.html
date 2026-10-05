@@ -17,8 +17,10 @@
     <link rel="stylesheet" href="/src/tokens.css" />
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="stylesheet" href="/src/landing.css" />
+    <link rel="stylesheet" href="/src/polish.css" />
   </head>
   <body class="landing">
+    <div class="ambient" aria-hidden="true"></div>
     <a class="skip" href="#top">Skip to content</a>
 
     <header class="l-nav">
@@ -145,12 +147,12 @@
       </div>
 
       <section class="l-wrap l-sec l-live" id="live" aria-labelledby="live-title">
-        <div class="l-sec-head">
+        <div class="l-sec-head" data-reveal>
           <span class="chip chip-lime"><span class="dot" aria-hidden="true"></span>Live now</span>
           <h2 class="l-h2" id="live-title">Don't take our word for it. Open the real thing.</h2>
           <p class="l-sub">Everything below is live data: onchain on Monad, read through our Envio indexer, or produced by our grader. Nothing is a mockup.</p>
         </div>
-        <ul class="l-live-grid">
+        <ul class="l-live-grid" data-reveal-group>
           <li><a class="l-live-card k-violet" href="/app/#r/0x1b443b455e55360cec874215c9d1ae3113794f6d3a6c2a0c480387b12e35c5f2">
             <span class="l-live-tag">Receipt · Monad mainnet</span>
             <b>The first mainnet receipt</b>
@@ -175,7 +177,7 @@
       </section>
 
       <section class="l-wrap l-sec" id="problem" aria-labelledby="problem-title">
-        <div class="l-sec-head">
+        <div class="l-sec-head" data-reveal>
           <span class="chip chip-coral">The problem</span>
           <h2 class="l-h2" id="problem-title">One model, served 37 different ways.</h2>
           <p class="l-sub">On 26 Sep 2026, OpenRouter's public API listed 37 endpoints for GLM-5.3. They share a model name, but not the precision, the price or the context window, and the text you get back carries no proof of who served it.</p>
@@ -183,25 +185,25 @@
         <div class="l-bento">
           <div class="l-tile l-ink l-bg-gold l-span2 l-tall">
             <span class="l-tile-tag">GLM-5.3 on OpenRouter</span>
-            <span class="l-num l-num-xl">37</span>
+            <span data-count class="l-num l-num-xl">37</span>
             <p>distinct endpoints serving one open-weight model, from different providers.</p>
           </div>
-          <div class="l-tile l-ink l-bg-coral"><span class="l-num">16</span><p>of them don't state their precision at all.</p></div>
-          <div class="l-tile l-ink l-bg-violet"><span class="l-num">8</span><p>declare a 4-bit format.</p></div>
+          <div class="l-tile l-ink l-bg-coral"><span data-count class="l-num">16</span><p>of them don't state their precision at all.</p></div>
+          <div class="l-tile l-ink l-bg-violet"><span data-count class="l-num">8</span><p>declare a 4-bit format.</p></div>
           <div class="l-tile l-ink l-bg-lime l-span2"><span class="l-num">$1.19 to $8.80</span><p>per million output tokens, from the cheapest endpoint to the priciest.</p></div>
           <div class="l-tile l-surface l-span2"><span class="l-num k-pink l-c">90% vs 75%</span><p>DeepSeek V4 Flash on GPQA through the lab's own API, and through one third-party host. Measured by Olly.</p></div>
-          <div class="l-tile l-surface l-span2"><span class="l-num k-sky l-c">39%</span><p>of 735 endpoints across 140 open-weight models list their precision as unknown.</p></div>
+          <div class="l-tile l-surface l-span2"><span data-count class="l-num k-sky l-c">39%</span><p>of 735 endpoints across 140 open-weight models list their precision as unknown.</p></div>
         </div>
         <p class="l-small l-source">Source: the Assay hosting report v0, built from OpenRouter's public endpoints API on 26 Sep 2026. <a href="https://github.com/trudransh/Assay/blob/main/report/REPORT_v0.md">Read the report</a></p>
       </section>
 
       <section class="l-wrap l-sec" id="marks" aria-labelledby="marks-title">
-        <div class="l-sec-head">
+        <div class="l-sec-head" data-reveal>
           <span class="chip chip-gold">What you get</span>
           <h2 class="l-h2" id="marks-title">Every response gets four marks.</h2>
           <p class="l-sub">An assay office stamps metal after it tests it. Assay stamps each AI response with who served it, what they claimed, where it's anchored and who asked.</p>
         </div>
-        <div class="l-marks">
+        <div class="l-marks" data-reveal-group>
           <article class="l-mark k-gold">
             <svg viewBox="0 0 100 100" aria-hidden="true"><polygon class="st-fill" points="29,4 71,4 96,29 96,71 71,96 29,96 4,71 4,29" /><polygon class="st-ring" points="32,13 68,13 87,32 87,68 68,87 32,87 13,68 13,32" /><text class="st-num" x="50" y="58">01</text></svg>
             <div class="l-mark-body"><span class="l-mark-tag">Host mark</span><h3 class="l-h3">Who served it</h3><p>The host signs every receipt with its ES256 key, tied to an ERC-8004 identity anyone can look up.</p><code class="l-code">alg ES256 · agent 10278</code></div>
@@ -240,7 +242,7 @@
       </section>
 
       <section class="l-wrap l-sec" id="limits" aria-labelledby="limits-title">
-        <div class="l-sec-head">
+        <div class="l-sec-head" data-reveal>
           <span class="chip chip-sky">Honest limits</span>
           <h2 class="l-h2" id="limits-title">What a receipt proves, and what it doesn't.</h2>
         </div>
@@ -263,7 +265,7 @@
             <a href="https://assay.gitbook.io/assay-docs/security/threat-model">Read the threat model</a>
           </div>
         </div>
-        <ol class="l-ladder">
+        <ol class="l-ladder" data-reveal-group>
           <li class="k-lime"><span class="l-lv">Level 0 · Live on mainnet</span><b>Signed and anchored</b><p>The host signed what it served and the batch is on Monad.</p></li>
           <li class="k-lime"><span class="l-lv">Level 1 · Live on mainnet</span><b>Host graded</b><p>Open verifiers test the host against the lab's own endpoint.</p></li>
           <li class="l-road"><span class="l-lv">Level 2 · Roadmap</span><b>Re-executable</b><p>A deterministic runtime lets anyone re-run a revealed request.</p></li>
@@ -272,11 +274,11 @@
       </section>
 
       <section class="l-wrap l-sec" id="how" aria-labelledby="how-title">
-        <div class="l-sec-head">
+        <div class="l-sec-head" data-reveal>
           <span class="chip chip-violet">How it works</span>
           <h2 class="l-h2" id="how-title">From question to stamped answer.</h2>
         </div>
-        <ol class="l-steps">
+        <ol class="l-steps" data-reveal-group>
           <li class="l-step k-pink"><span class="l-step-n">1</span><div><h3 class="l-h3">Pick a passkey</h3><p>Its key hash goes out with your request, so the host signs it into the receipt.</p></div></li>
           <li class="l-step k-gold"><span class="l-step-n">2</span><div><h3 class="l-h3">Ask the host</h3><p>A normal OpenAI-compatible call. A fresh salt rides along in a header.</p></div></li>
           <li class="l-step k-gold"><span class="l-step-n">3</span><div><h3 class="l-h3">Get a receipt</h3><p>The answer comes back with a signed receipt. Keep the salt: it proves the text later.</p></div></li>

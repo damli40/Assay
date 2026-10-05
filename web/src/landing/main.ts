@@ -1,4 +1,5 @@
 import { h, shortHash } from "../dom.js";
+import { countUp, initReveal } from "../ui/motion.js";
 import { CRE_ATTESTOR, EXPLORER, RECEIPT_ANCHOR, VERIFIER_REGISTRY } from "../lib/config.js";
 
 // Footer addresses come from config, so they're never typed twice.
@@ -40,3 +41,7 @@ sheet.addEventListener("keydown", (e) => {
 });
 // A section link closes the sheet first, then the browser scrolls to the anchor.
 for (const a of sheet.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')) a.addEventListener("click", () => setOpen(false));
+
+// Polish layer: sections fade up as they arrive, the problem numbers count up once.
+initReveal();
+for (const el of document.querySelectorAll<HTMLElement>(".l-num[data-count]")) countUp(el);

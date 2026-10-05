@@ -23,6 +23,9 @@ import { anchorInfo, type AnchorInfo, type AnchorReader } from "../lib/indexer.j
 import { heldReceipt, setVerifyPrefill } from "../lib/receipt.js";
 import type { Route } from "../router.js";
 import { CHECKS } from "./verify.js";
+import { ASSAY_VERIFIER } from "./grades.js";
+import { decode } from "../ui/motion.js";
+import { showPageChain } from "../ui/network-switch.js";
 
 type Found = { grade: Grade; by: Address } | null;
 
@@ -177,7 +180,9 @@ function gradeCard(body: ReceiptBody, found: Found | undefined, status: GradeSta
   const agent = parseAgentId(body.host.agentId);
   const open = link("Open in Grades", `#grades?model=${encodeURIComponent(body.model)}&host=${encodeURIComponent(body.host.agentId)}`);
   if (found === undefined && !error) {
-    return emptyState({ title: "No trusted verifiers saved", text: "Choose whose grades count on the Grades tab. This page then shows their grade for this host.", tone: "lime", action: link("Open Grades", "#grades", "btn btn-secondary") });
+    const chainId = chainOfAgentId(body.host.agentId) ?? CHAIN_ID;
+    const assay = `#grades?model=${encodeURIComponent(body.model)}&host=${encodeURIComponent(body.host.agentId)}&chain=${chainId}&v=${ASSAY_VERIFIER}`;
+    return emptyState({ title: "No trusted verifiers saved", text: "Choose whose grades count. Assay runs the only verifier posting so far; the link below uses it, and you can change it there.", tone: "lime", action: link("See Assay's grade for this host", assay, "btn btn-secondary") });
   }
   const scope = `For ${body.model} on ${body.host.agentId}, from verifiers you trust. It grades the host, not this one response.`;
   if (error) return card("Host grade", badge("notchecked", "Not checked"), h("p", { class: "hint" }, `Couldn't read the grade (${error}).`));
@@ -190,7 +195,9 @@ function gradeCard(body: ReceiptBody, found: Found | undefined, status: GradeSta
 function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | undefined, cosigned: boolean, actions: HTMLElement | null): HTMLElement {
   const agent = body ? parseAgentId(body.host.agentId).toString() : undefined;
   const title = body ? `Served by agent ${agent}, claiming ${body.model}` : "Receipt";
-  const lede = h("p", { class: "lede" }, "Receipt ", shortHash(hash), " ", copyButton(hash, "Copy hash"), " ", anchored === undefined ? "" : anchored ? "Anchored in a batch on Monad." : "Signed, not anchored yet.", cosigned ? " Co-signed by the requester." : "");
+  const hashEl = shortHash(hash);
+  decode(hashEl);
+  const lede = h("p", { class: "lede" }, "Receipt ", hashEl, " ", copyButton(hash, "Copy hash"), " ", anchored === undefined ? "" : anchored ? "Anchored in a batch on Monad." : "Signed, not anchored yet.", cosigned ? " Co-signed by the requester." : "");
   const stamps = body
     ? h(
         "div",
@@ -295,6 +302,7 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
       page.replaceChildren(head(hash, body, undefined, false, null), banner("coral", `This receipt was anchored on chain ${chainId}, which this app doesn't know yet, so it can't be checked here.`));
       return;
     }
+    showPageChain(chainId);
     const chain = deps.chain(chainId);
     const acts = actions(hash, { body, jws }, { root: batchRoot, proof, anchorTx });
 
