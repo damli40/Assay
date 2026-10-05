@@ -175,11 +175,11 @@ main { scroll-margin-top: 84px; }
 
 /* A skeleton only shows if the wait passes 180ms, so fast answers never flash. */
 .skeleton { animation: fade-in var(--dur-2) var(--ease-out) 180ms both; }
-.skeleton-row { position: relative; overflow: hidden; }
+.skeleton-row { position: relative; overflow: hidden; animation: none; background: var(--stone-2); }
 .skeleton-row::after {
   content: ""; position: absolute; inset: 0; transform: translateX(-100%);
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bone) 7%, transparent), transparent);
-  animation: shimmer 1.3s linear infinite;
+  animation: sheen 1.3s linear infinite;
 }
 [aria-busy="true"] { cursor: progress; }
 .btn[aria-busy="true"], button[aria-busy="true"] { position: relative; color: transparent !important; }
@@ -225,7 +225,7 @@ summary:hover { color: var(--bone); }
 @keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes fade-out { to { opacity: 0; } }
-@keyframes shimmer { to { transform: translateX(100%); } }
+@keyframes sheen { to { transform: translateX(100%); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes caret { 50% { opacity: 0; } }
 

@@ -1,15 +1,18 @@
 import { checkOrigin, cosignReceipt, registerPasskey, wrap, type Passkey, type ReceiptBody, type WrappedResult } from "@assay/receipts";
 import type { Hex } from "viem";
-import { banner, button, chip, confirmDialog, copyButton, emptyState, errorText, field, h, kv, liveRegion, progress, section, stepper, textarea, input, toast, type StepState } from "../dom.js";
+import { banner, button, chip, confirmDialog, copyButton, emptyState, errorText, field, h, kv, liveRegion, section, skeleton, textarea, input, toast } from "../dom.js";
 import { addToVault, meraMessage } from "../mera.js";
-import { DEFAULT_HOST, EXPLORER } from "../lib/config.js";
+import { CHAIN_ID, chainConfig, DEFAULT_HOST, EXPLORER } from "../lib/config.js";
 import { fetchHealth, fetchReceiptStatus, httpStatus, hostUrl, relayCosign, type ReceiptStatus } from "../lib/host.js";
 import { rememberReceipt, toBase64url } from "../lib/receipt.js";
-import { typewrite } from "../ui/motion.js";
+import { reducedMotion, typewrite } from "../ui/motion.js";
+import { batchEta, createTracker, fmtClock } from "../ui/tracker.js";
 
 // Public key material only (credential id, qx, qy, key hash).
 const PASSKEY = "assay.passkey";
 const POLL_MS = 5000;
+const POLL_FAST_MS = 2000;
+const POLL_BACKOFF_MAX_MS = 20_000;
 const POLL_LIMIT_MS = 15 * 60 * 1000;
 
 const loadPasskey = (): Passkey | null => {
@@ -22,7 +25,6 @@ const loadPasskey = (): Passkey | null => {
 };
 
 const txLink = (hash: string) => h("a", { href: `${EXPLORER}/tx/${hash}`, target: "_blank", rel: "noopener" }, `${hash.slice(0, 10)}…${hash.slice(-8)}`);
-const mmss = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
 /// Gemma wraps its reasoning in <thought>…</thought>. Hide it on screen; the signed output still includes it.
 export function answerText(raw: string): { shown: string; thought: string | null } {
@@ -42,6 +44,38 @@ export function bundleOf(r: { receipt: { body: ReceiptBody; jws: string }; salt:
 export const canCosign = (st: ReceiptStatus | undefined, body: ReceiptBody, passkey: Passkey | null) =>
   st?.status === "anchored" && !!passkey && body.req.cosigner === passkey.keyHash;
 
+/// "every 2 minutes" for a BATCH_SECONDS value.
+export const batchEvery = (seconds: number) =>
+  seconds === 60 ? "every minute" : seconds % 60 === 0 ? `every ${seconds / 60} minutes` : `every ${seconds} seconds`;
+
+/// fetch for wrap(): a host error becomes an Error with the host's own message and the HTTP status,
+/// before wrap() goes looking for a receipt header the error response never has.
+export const strictFetch =
+  (f: typeof fetch): typeof fetch =>
+  async (input, init) => {
+    const res = await f(input, init);
+    if (!res.ok) {
+      const j = (await res
+        .clone()
+        .json()
+        .catch(() => ({}))) as { error?: { message?: string } };
+      throw Object.assign(new Error(j.error?.message ?? `HTTP ${res.status}`), { status: res.status });
+    }
+    return res;
+  };
+
+const sentence = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).replace(/\.?$/, ".") : s);
+
+/// Plain words for a failed Ask.
+export function askErrorText(e: unknown): string {
+  const code = httpStatus(e);
+  const msg = errorText(e);
+  if (code === 429) return `${sentence(msg)} Try again later.`;
+  if (code !== undefined && code >= 500) return `The host couldn't answer (HTTP ${code}). Try again in a moment.`;
+  if (code === undefined && /fetch|network|load failed/i.test(msg)) return "Couldn't reach the host. Check your connection and try again.";
+  return sentence(msg);
+}
+
 function download(name: string, data: unknown) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
   h("a", { href: url, download: name }).click();
@@ -49,6 +83,7 @@ function download(name: string, data: unknown) {
 }
 
 export function mountAsk(root: HTMLElement) {
+  const chain = chainConfig(CHAIN_ID);
   let passkey = loadPasskey();
   const pkStatus = liveRegion();
   const pkInfo = h("div");
@@ -87,8 +122,13 @@ export function mountAsk(root: HTMLElement) {
   const host = field("Host base URL", input(DEFAULT_HOST));
   const question = field("Question", textarea({ rows: "3", required: true, placeholder: "Ask anything. The answer comes back with a signed receipt." }));
   const status = liveRegion();
-  const idle = () => emptyState({ title: "Your answer and its receipt appear here", text: "Every answer comes back with a receipt the host signed. A few seconds later it's anchored on Monad, and you can open its receipt page.", tone: "gold" });
-  const answer = h("div", { class: "col" }, idle());
+  const idle = () =>
+    emptyState({
+      title: "Your answer and its receipt appear here",
+      text: `Every answer comes back with a receipt the host signed. ${chain.name} anchors a batch ${batchEvery(chain.batchSeconds)}, and you can follow each step here.`,
+      tone: "gold",
+    });
+  const answer = h("div", { class: "ask-result" }, idle());
   const examples = h(
     "div",
     { class: "row examples" },
@@ -104,7 +144,7 @@ export function mountAsk(root: HTMLElement) {
   const ask = button("Ask", { variant: "primary", type: "submit" });
   const form = h(
     "form",
-    { class: "card" },
+    { class: "card ask-form" },
     h("h2", {}, "Ask"),
     question.row,
     examples,
@@ -115,7 +155,7 @@ export function mountAsk(root: HTMLElement) {
 
   const passkeyCard = h(
     "section",
-    { class: "card" },
+    { class: "card ask-passkey" },
     h("div", { class: "card-head" }, h("h2", {}, "Your passkey"), chip("Optional", "pink")),
     pkInfo,
     h("div", { class: "check-row" }, without, h("label", { for: "ask-without" }, "Send without a passkey. The receipt is still signed and anchored, but nobody can co-sign it later.")),
@@ -124,61 +164,300 @@ export function mountAsk(root: HTMLElement) {
     pkStatus.el,
   );
 
+  let stopFlow: (() => void) | undefined;
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    answer.replaceChildren();
+    stopFlow?.();
     const base = host.input.value;
     const messages = [{ role: "user", content: question.input.value }];
+    const opts = wrapOptions(passkey, without.checked);
+    const f = flow(base, question.input.value, messages, !!opts.cosigner, () => form.requestSubmit());
+    stopFlow = f.stop;
+    answer.replaceChildren(f.el);
+    // On one column the result sits under the form: bring it into view.
+    if (typeof matchMedia === "function" && matchMedia("(max-width: 900px)").matches) {
+      f.el.scrollIntoView?.({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" });
+      f.heading.focus({ preventScroll: true });
+    }
     ask.disabled = true;
+    ask.setAttribute("aria-busy", "true");
+    status.say("Asking the host…", "pending");
     try {
-      status.say("Asking the host…", "pending");
-      const r = await wrap(fetch.bind(globalThis), wrapOptions(passkey, without.checked))(hostUrl(base, "/v1/chat/completions"), {
+      const r = await wrap(strictFetch(fetch.bind(globalThis)), opts)(hostUrl(base, "/v1/chat/completions"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ messages }),
       });
-      if (!r.response.ok) throw new Error(`Host answered HTTP ${r.response.status}`);
-      answer.append(renderAnswer(r, base, messages));
+      f.signed(r);
       status.say("Answer received with a signed receipt.", "ok");
     } catch (e) {
-      status.say(httpStatus(e) === undefined && /fetch/i.test(errorText(e)) ? "Couldn't reach the host. Try again in a moment." : errorText(e), "error");
+      f.failed(askErrorText(e));
+      status.say(askErrorText(e), "error");
     } finally {
       ask.disabled = false;
+      ask.removeAttribute("aria-busy");
     }
   });
 
-  function renderAnswer(r: WrappedResult, base: string, messages: unknown) {
-    const output = (r.json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message?.content ?? "";
-    const { shown, thought } = answerText(output);
-    const hash = r.receipt.hash;
-    const named = !!r.receipt.body.req.cosigner;
-    rememberReceipt(hash, { body: r.receipt.body, jws: r.receipt.jws });
+  /// One question's journey: asked, signed, batched, anchored, and co-signed when a passkey is named.
+  function flow(base: string, asked: string, messages: unknown, named: boolean, retry: () => void) {
+    const t0 = Date.now();
+    let signedAt = 0;
+    let anchoredAt = 0;
+    let intervalMs = chain.batchSeconds * 1000;
+    let nextAt: number | undefined;
+    let queue: number | undefined;
+    // Until the first poll answers, the countdown has nothing honest to show.
+    let synced = false;
     let st: ReceiptStatus | undefined;
+    let r: WrappedResult | undefined;
+    let output = "";
+    let hash: Hex | undefined;
+    let stopped = false;
 
-    // Stepper: named as co-signer (only when it was), signed, waiting, anchored, co-signed.
-    const steps = h("div");
-    const wait = h("div");
-    const drawSteps = (waiting: Node | string | undefined, cosigned: boolean) => {
-      const anchored = st?.status === "anchored";
-      const s: { label: string; state: StepState; detail?: Node | string }[] = [];
-      if (named) s.push({ label: "Passkey named as co-signer", state: "done" });
-      s.push({ label: "Signed by the host", state: "done" });
-      s.push({ label: "Waiting for batch", state: anchored ? "done" : "now", detail: anchored ? undefined : waiting });
-      s.push({ label: "Anchored onchain", state: anchored ? "done" : "todo", detail: anchored && st?.status === "anchored" && st.anchorTx ? txLink(st.anchorTx) : undefined });
-      if (named) s.push({ label: "Co-signed by you", state: cosigned ? "done" : anchored ? "now" : "todo" });
-      steps.replaceChildren(stepper(s));
-    };
-    drawSteps("Starting…", false);
+    // Panels: built once, filled in as steps finish, so live parts keep their nodes.
+    const askedClock = h("strong", { class: "track-num" }, "0:00");
+    const askedPanel = h(
+      "div",
+      { class: "track-body" },
+      h("blockquote", { class: "ask-q" }, asked),
+      h("p", { class: "track-lead" }, "Waiting for the host's answer ", askedClock),
+      h("p", { class: "hint" }, "Your question went to the host with a fresh salt. The receipt commits to your question with that salt, so only someone holding the salt can later prove what was asked."),
+    );
+    const signedPanel = h("div", { class: "track-body" }, h("p", { class: "track-lead" }, "The host signs a receipt over commits to your question and its answer. It appears here when the answer arrives."));
 
-    const reasonId = `cosign-why-${hash.slice(2, 10)}`;
-    const cosignBtn = button("Co-sign with passkey", { variant: "cosign", describedBy: reasonId });
+    const countNum = h("strong", { class: "track-num track-num-lg" }, fmtClock(intervalMs));
+    const countWord = h("span", { class: "track-count-word" }, "until the next batch");
+    const barFill = h("span");
+    const queueLine = h("p", { class: "hint" });
+    const quiet = h("p", { class: "hint track-quiet", role: "status" });
+    const late = h("div");
+    const everyLine = h("p", { class: "track-lead" });
+    const batchedPanel = h("div", { class: "track-body" }, h("p", { class: "track-lead" }, "Once signed, the receipt waits for the host's next batch."));
+    const batchedLive = h(
+      "div",
+      { class: "track-body" },
+      h("div", { class: "track-count" }, countNum, countWord),
+      h("div", { class: "track-bar", "aria-hidden": "true" }, barFill),
+      everyLine,
+      queueLine,
+      quiet,
+      late,
+      h("p", { class: "hint" }, "You can close this page. The receipt page and the vault keep what you need to co-sign later."),
+    );
+    const anchoredPanel = h("div", { class: "track-body" }, h("p", { class: "track-lead" }, "When the batch lands, the transaction appears here with the Merkle proof that places your receipt in it."));
+
+    // Co-sign: same rules as before, now inside its own step.
+    const cosignBtn = button("Co-sign with passkey", { variant: "cosign" });
     cosignBtn.disabled = true;
-    const reason = h("p", { class: "hint", id: reasonId }, named ? "Co-signing unlocks when the host anchors this batch." : "This receipt names no co-signer from this browser, so it can't be co-signed here.");
+    const cosignReason = h("p", { class: "hint" }, "Co-signing unlocks when the batch is anchored.");
     const cosignStatus = liveRegion();
-    const errors = h("div");
+    const cosignErrors = h("div");
+    const cosignPanel = h(
+      "div",
+      { class: "track-body" },
+      h("p", { class: "track-lead" }, "Co-sign with the passkey this receipt names, so the chain records that you were the one who asked."),
+      h("div", { class: "row" }, cosignBtn),
+      cosignReason,
+      cosignErrors,
+      cosignStatus.el,
+    );
+
+    const steps = [
+      { id: "asked", label: "Asked", tone: "bone" as const, state: "now" as const, meta: "0:00", panel: () => askedPanel },
+      { id: "signed", label: "Signed", tone: "gold" as const, state: "todo" as const, panel: () => signedPanel },
+      { id: "batched", label: "Batched", tone: "sky" as const, state: "todo" as const, panel: () => batchedPanel },
+      { id: "anchored", label: "Anchored", tone: "violet" as const, state: "todo" as const, panel: () => anchoredPanel },
+      ...(named ? [{ id: "cosign", label: "Co-signed", tone: "pink" as const, state: "todo" as const, panel: () => cosignPanel }] : []),
+    ];
+    const track = createTracker(steps, { label: "Where your receipt is" });
+
+    const heading = h("h2", { tabindex: "-1" }, "Your receipt");
+    const answerSlot = h("div", { class: "ask-answer" }, skeleton(3, 14));
+    const actions = h("div", { class: "row ask-actions", hidden: true });
+    const vaultStatus = liveRegion();
+    const noCosign = named ? null : h("p", { class: "hint" }, "This receipt names no passkey, so nobody can co-sign it. Register a passkey to co-sign your next one.");
+    const el = h(
+      "section",
+      { class: "card ask-flow", "aria-labelledby": "ask-flow-title" },
+      h("div", { class: "card-head" }, heading, chip(chain.name, CHAIN_ID === 143 ? "violet" : "sky", { dot: true })),
+      answerSlot,
+      track.el,
+      noCosign,
+      actions,
+      vaultStatus.el,
+    );
+    heading.id = "ask-flow-title";
+
+    const tick = () => {
+      if (stopped) return;
+      if (!el.isConnected && signedAt) return stop();
+      const now = Date.now();
+      if (!signedAt) {
+        const t = fmtClock(now - t0);
+        askedClock.textContent = t;
+        track.update("asked", { meta: t });
+        return;
+      }
+      if (anchoredAt) return;
+      if (!synced) {
+        countNum.textContent = "…";
+        countWord.textContent = "checking the host's batch clock";
+        track.update("batched", { meta: "…" });
+        return;
+      }
+      const eta = batchEta({ signedAt, now, intervalMs, nextAt });
+      const t = eta.phase === "counting" ? fmtClock(eta.remaining) : eta.phase === "due" ? "any moment" : fmtClock(now - signedAt);
+      countNum.textContent = eta.phase === "counting" ? fmtClock(eta.remaining) : fmtClock(now - signedAt);
+      countWord.textContent = eta.phase === "counting" ? "until the next batch" : eta.phase === "due" ? "the batch is landing now" : "waiting, longer than usual";
+      barFill.style.transform = `scaleX(${eta.frac})`;
+      el.dataset.phase = eta.phase;
+      if (eta.phase === "late" && !late.firstChild) late.append(banner("warn", "Taking longer than usual. Receipts stay queued until the host's anchor transaction goes through, so yours isn't lost."));
+      track.update("batched", { meta: t });
+    };
+    const clock = setInterval(tick, 1000);
+
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
+    let inflight = false;
+    let fails = 0;
+    async function poll() {
+      clearTimeout(pollTimer);
+      if (stopped || !hash || inflight) return;
+      if (!el.isConnected) return stop();
+      inflight = true;
+      const sent = Date.now();
+      const [s, hl] = await Promise.allSettled([fetchReceiptStatus(base, hash), fetchHealth(base)]);
+      inflight = false;
+      if (stopped) return;
+      synced = true;
+      if (hl.status === "fulfilled") {
+        queue = hl.value.pending;
+        if (hl.value.batchSeconds) intervalMs = hl.value.batchSeconds * 1000;
+        if (typeof hl.value.nextBatchInMs === "number") nextAt = sent + hl.value.nextBatchInMs;
+        everyLine.textContent = `${chain.name} anchors a batch ${batchEvery(intervalMs / 1000)}. Every receipt waiting at that moment goes into one Merkle tree, and one transaction puts its root on Monad.`;
+        queueLine.textContent = queue ? `${queue} receipt${queue === 1 ? "" : "s"} in the host's queue, yours included.` : "";
+      }
+      if (s.status === "fulfilled") {
+        fails = 0;
+        quiet.textContent = "";
+        st = s.value;
+        if (st.status === "anchored") return onAnchored(st);
+        tick();
+      } else {
+        fails += 1;
+        quiet.textContent = "Couldn't reach the host to check. Trying again.";
+      }
+      if (Date.now() - signedAt > POLL_LIMIT_MS) {
+        late.replaceChildren(banner("warn", "Not anchored after 15 minutes. Open the receipt page later to check again."));
+        return stop();
+      }
+      const eta = batchEta({ signedAt, now: Date.now(), intervalMs, nextAt });
+      const delay = fails
+        ? Math.min(POLL_BACKOFF_MAX_MS, POLL_MS * 2 ** (fails - 1))
+        : eta.phase !== "late" && eta.remaining < 10_000
+          ? POLL_FAST_MS
+          : POLL_MS;
+      pollTimer = setTimeout(poll, delay);
+    }
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+        void poll();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    function stop() {
+      stopped = true;
+      clearInterval(clock);
+      clearTimeout(pollTimer);
+      document.removeEventListener("visibilitychange", onVisible);
+    }
+
+    function signed(res: WrappedResult) {
+      r = res;
+      hash = res.receipt.hash;
+      signedAt = Date.now();
+      output = (res.json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message?.content ?? "";
+      const { shown, thought } = answerText(output);
+      rememberReceipt(hash, { body: res.receipt.body, jws: res.receipt.jws });
+      const agent = res.receipt.body.host.agentId.split(":").pop();
+
+      const p = h("p", { class: "answer" });
+      void typewrite(p, shown);
+      answerSlot.replaceChildren(p, thought ? h("details", {}, h("summary", {}, "The model's reasoning (part of the signed output)"), h("pre", {}, thought)) : "");
+
+      askedPanel.querySelector(".track-lead")!.replaceChildren(`Answered in ${fmtClock(signedAt - t0, true)}.`);
+      signedPanel.replaceChildren(
+        h("p", { class: "track-lead" }, `Host ${agent} signed a receipt (${res.receipt.body.host.alg}).`),
+        h("p", { class: res.outputCommitOk ? "track-ok" : "track-bad" }, res.outputCommitOk ? "The output commit matches the bytes you received." : "Warning: the output commit does not match the bytes you received."),
+        kv([
+          ["Receipt hash", hash],
+          ["Salt", res.salt],
+          ["Model", res.receipt.body.model],
+          ["Tokens", `${res.receipt.body.res.tokensIn} in · ${res.receipt.body.res.tokensOut} out`],
+        ]),
+        h("div", { class: "row" }, copyButton(toBase64url(JSON.stringify({ body: res.receipt.body, jws: res.receipt.jws })), "Copy receipt for Verify")),
+        h("p", { class: "hint" }, "Keep the salt. It is the only way to prove later that this output answered this prompt. The vault keeps it encrypted under your passkey."),
+      );
+      everyLine.textContent = `${chain.name} anchors a batch ${batchEvery(chain.batchSeconds)}. Every receipt waiting at that moment goes into one Merkle tree, and one transaction puts its root on Monad.`;
+      batchedPanel.replaceChildren(...batchedLive.childNodes);
+
+      track.update("asked", { state: "done", meta: fmtClock(signedAt - t0, true) });
+      track.update("signed", { state: "done", meta: res.receipt.body.host.alg });
+      track.update("batched", { state: "now", meta: "…" });
+      actions.replaceChildren(...actionButtons(res));
+      actions.hidden = false;
+      tick();
+      void poll();
+    }
+
+    function onAnchored(a: Extract<ReceiptStatus, { status: "anchored" }>) {
+      anchoredAt = Date.now();
+      const waited = fmtClock(anchoredAt - signedAt);
+      clearInterval(clock);
+      batchedPanel.replaceChildren(h("p", { class: "track-lead" }, `Joined a batch ${waited} after signing.`), queueLine);
+      const cast = a.reproduce?.cast;
+      anchoredPanel.replaceChildren(
+        h("p", { class: "track-lead" }, `Anchored on ${chain.name}.`),
+        kv([
+          ["Transaction", a.anchorTx ? txLink(a.anchorTx) : "Not reported by the host"],
+          ["Batch root", a.root],
+          ["Proof", `${a.proof.length} hash${a.proof.length === 1 ? "" : "es"}`],
+        ]),
+        cast ? h("details", { class: "track-cast" }, h("summary", {}, "Check it yourself with cast"), h("pre", {}, cast), copyButton(cast, "Copy cast command")) : "",
+        h("div", { class: "row" }, h("a", { class: "btn btn-primary btn-sm", href: `#r/${hash}` }, "Open receipt page")),
+      );
+      track.update("batched", { state: "done", meta: waited });
+      track.update("anchored", { state: "done", meta: chain.short });
+      toast(`Anchored on ${chain.name} · ${waited}`);
+      if (named) {
+        track.update("cosign", { state: "now", meta: "your turn" });
+        if (r && canCosign(a, r.receipt.body, passkey)) {
+          cosignBtn.disabled = false;
+          cosignReason.textContent = "The batch is anchored. Your passkey will ask for Face ID, a fingerprint or your PIN.";
+        } else {
+          cosignReason.textContent = "This browser's passkey isn't the one the receipt names, so it can't co-sign here.";
+        }
+      } else stop();
+    }
+
+    function failed(msg: string) {
+      clearInterval(clock);
+      const again = button("Try again", { size: "sm" });
+      again.addEventListener("click", retry);
+      answerSlot.replaceChildren();
+      noCosign?.remove();
+      askedPanel.querySelector(".track-lead")!.replaceChildren(banner("coral", msg, again));
+      askedPanel.querySelector(".hint")!.textContent = "Nothing was signed, so this question has no receipt.";
+      track.update("asked", { state: "error", meta: "failed" });
+      stop();
+    }
+
     cosignBtn.addEventListener("click", async () => {
-      if (!passkey) return;
-      errors.replaceChildren();
+      if (!passkey || !hash) return;
+      cosignErrors.replaceChildren();
+      cosignBtn.setAttribute("aria-busy", "true");
       try {
         cosignStatus.say("Waiting for the passkey prompt…", "pending");
         const auth = await cosignReceipt(hash, { rpId: location.hostname, credentialId: passkey.credentialId });
@@ -189,109 +468,56 @@ export function mountAsk(root: HTMLElement) {
         cosignStatus.say("Co-signed onchain.", "ok");
         cosignStatus.el.append(" ", txLink(txHash));
         cosignBtn.disabled = true;
-        drawSteps(undefined, true);
+        track.update("cosign", { state: "done", meta: "passkey" });
+        stop();
       } catch (e) {
         cosignStatus.say("");
         const code = httpStatus(e);
-        if (code === 409) errors.append(banner("warn", "The batch isn't anchored yet. Try again in a moment."));
-        else if (code === 429) errors.append(banner("coral", `${errorText(e)}. Try again later.`));
-        else errors.append(banner("coral", errorText(e)));
+        if (code === 409) cosignErrors.append(banner("warn", "The batch isn't anchored yet. Try again in a moment."));
+        else if (code === 429) cosignErrors.append(banner("coral", `${errorText(e)}. Try again later.`));
+        else cosignErrors.append(banner("coral", errorText(e)));
+      } finally {
+        cosignBtn.removeAttribute("aria-busy");
       }
     });
 
-    const vaultStatus = liveRegion();
-    const saveBtn = button("Save to vault", { size: "sm" });
-    saveBtn.addEventListener("click", async () => {
-      try {
-        vaultStatus.say("Waiting for the passkey prompt…", "pending");
-        const all = await addToVault({ receiptHash: hash, body: r.receipt.body, jws: r.receipt.jws, salt: r.salt, output, messages, savedAt: Date.now() });
-        vaultStatus.say(`Saved, encrypted. The vault holds ${all.length} receipt(s).`, "ok");
-      } catch (e) {
-        vaultStatus.say(meraMessage(e), "error");
-      }
-    });
-    const linkBtn = button("Copy receipt link", { size: "sm" });
-    linkBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(`${location.origin}/app/#r/${hash}`);
-        toast("Receipt link copied");
-      } catch {
-        linkBtn.textContent = "Copy failed";
-      }
-    });
-    const bundleBtn = button("Download bundle", { size: "sm" });
-    bundleBtn.addEventListener("click", () =>
-      download(`assay-receipt-${hash.slice(2, 10)}.json`, bundleOf(r, output, messages, st?.status === "anchored" ? { root: st.root, proof: st.proof } : undefined)),
-    );
-
-    const card = h(
-      "section",
-      { class: "card" },
-      h("div", { class: "card-head" }, h("h2", {}, "Answer"), chip(`Signed by host ${r.receipt.body.host.agentId.split(":").pop()}`, "gold", { dot: true })),
-      (() => {
-        const p = h("p", { class: "answer" });
-        void typewrite(p, shown);
-        return p;
-      })(),
-      thought ? h("details", {}, h("summary", {}, "The model's reasoning (part of the signed output)"), h("pre", {}, thought)) : null,
-      h("p", { class: "hint" }, r.outputCommitOk ? "The output commit matches the bytes you received." : "Warning: the output commit does not match the bytes you received."),
-      kv([
-        ["Receipt hash", hash],
-        ["Salt", r.salt],
-        ["Receipt", copyButton(toBase64url(JSON.stringify({ body: r.receipt.body, jws: r.receipt.jws })), "Copy receipt for Verify")],
-      ]),
-      h("p", { class: "hint" }, "Keep the salt. It is the only way to prove later that this output answered this prompt. The vault keeps it encrypted under your passkey."),
-      h("div", { class: "row" }, h("a", { class: "btn btn-primary btn-sm", href: `#r/${hash}` }, "Open receipt page"), linkBtn, bundleBtn, saveBtn),
-      vaultStatus.el,
-    );
-    const where = h(
-      "section",
-      { class: "card" },
-      h("h2", {}, "Where your receipt is"),
-      steps,
-      wait,
-      h("p", { class: "hint" }, "You can close this page. The receipt link and the vault let you co-sign later."),
-      h("div", { class: "row" }, cosignBtn),
-      reason,
-      errors,
-      cosignStatus.el,
-    );
-
-    void (async () => {
-      const started = Date.now();
-      while (Date.now() - started < POLL_LIMIT_MS) {
+    function actionButtons(res: WrappedResult) {
+      const id = res.receipt.hash;
+      const saveBtn = button("Save to vault", { size: "sm" });
+      saveBtn.addEventListener("click", async () => {
         try {
-          st = await fetchReceiptStatus(base, hash);
-          if (st.status === "anchored") {
-            wait.replaceChildren();
-            drawSteps(undefined, false);
-            if (canCosign(st, r.receipt.body, passkey)) {
-              cosignBtn.disabled = false;
-              reason.textContent = "The batch is anchored. Co-sign to record onchain that you asked.";
-            }
-            return;
-          }
-          const pending = await fetchHealth(base).then((x) => x.pending).catch(() => undefined);
-          const elapsed = Date.now() - started;
-          const text = `Waiting ${mmss(elapsed)}${pending === undefined ? "" : ` · ${pending} receipt${pending === 1 ? "" : "s"} in the host's queue`}`;
-          drawSteps(text, false);
-          wait.replaceChildren(progress({ value: elapsed / 1000, max: POLL_LIMIT_MS / 1000, valueText: text, label: "Time waiting for the batch" }));
+          vaultStatus.say("Waiting for the passkey prompt…", "pending");
+          const all = await addToVault({ receiptHash: id, body: res.receipt.body, jws: res.receipt.jws, salt: res.salt, output, messages, savedAt: Date.now() });
+          vaultStatus.say(`Saved, encrypted. The vault holds ${all.length} receipt(s).`, "ok");
         } catch (e) {
-          drawSteps(`Could not check anchoring: ${errorText(e)}`, false);
+          vaultStatus.say(meraMessage(e), "error");
         }
-        await new Promise((res) => setTimeout(res, POLL_MS));
-        if (!card.isConnected) return;
-      }
-      drawSteps("Not anchored after 15 minutes. Check again later on the Verify page.", false);
-    })();
-    return h("div", { class: "col" }, card, where);
+      });
+      const bundleBtn = button("Download bundle", { size: "sm" });
+      bundleBtn.addEventListener("click", () =>
+        download(`assay-receipt-${id.slice(2, 10)}.json`, bundleOf(res, output, messages, st?.status === "anchored" ? { root: st.root, proof: st.proof } : undefined)),
+      );
+      const linkBtn = button("Copy link", { variant: "ghost", size: "sm" });
+      linkBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(`${location.origin}/app/#r/${id}`);
+          toast("Receipt link copied");
+        } catch {
+          linkBtn.textContent = "Copy failed";
+        }
+      });
+      return [h("a", { class: "btn btn-primary btn-sm", href: `#r/${id}` }, "Open receipt page"), saveBtn, bundleBtn, linkBtn];
+    }
+
+    tick();
+    return { el, heading, signed, failed, stop };
   }
 
   root.append(
     section(
       "Ask and co-sign",
-      "Ask a question through an Assay host. The answer comes back with a receipt the host signed, and a few seconds later the batch is anchored on Monad. With a passkey, you can co-sign it too, so the chain records that you were the one who asked.",
-      h("div", { class: "receipt-grid ask-grid" }, h("div", { class: "col" }, form, passkeyCard), answer),
+      `Ask a question through an Assay host. The answer comes back with a receipt the host signed, and ${chain.name} anchors a batch of receipts ${batchEvery(chain.batchSeconds)}. With a passkey, you can co-sign yours too, so the chain records that you were the one who asked.`,
+      h("div", { class: "receipt-grid ask-grid ask-layout" }, form, answer, passkeyCard),
     ),
   );
 }

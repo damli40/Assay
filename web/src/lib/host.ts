@@ -10,8 +10,15 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   return json;
 }
 
-/// `pending` is how many receipts wait for the host's next batch.
-export const fetchHealth = (base: string) => getJson<{ ok: boolean; pending: number }>(hostUrl(base, "/health"));
+/// `pending` is how many receipts wait for the host's next batch. Hosts with the batch clock also report
+/// `batchSeconds` and `nextBatchInMs` (relative, so the reader's clock skew doesn't matter).
+export interface Health {
+  ok: boolean;
+  pending: number;
+  batchSeconds?: number;
+  nextBatchInMs?: number | null;
+}
+export const fetchHealth = (base: string) => getJson<Health>(hostUrl(base, "/health"));
 
 export const fetchJwks = (base: string) => getJson<VerifyInput["jwks"]>(hostUrl(base, "/.well-known/jwks.json"));
 
