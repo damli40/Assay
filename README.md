@@ -10,7 +10,7 @@
 
 [![Live app](https://img.shields.io/badge/live%20app-assay--ten--xi.vercel.app-C9A227?style=for-the-badge&logo=googlechrome&logoColor=white)](https://assay-ten-xi.vercel.app)
 [![Docs](https://img.shields.io/badge/docs-assay.gitbook.io-4FC3F7?style=for-the-badge&logo=gitbook&logoColor=white)](https://assay.gitbook.io/assay-docs)
-[![Monad testnet](https://img.shields.io/badge/Monad-testnet%2010143-8B73FF?style=for-the-badge)](https://testnet.monadvision.com/address/0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24)
+[![Monad mainnet](https://img.shields.io/badge/Monad-mainnet%20143-8B73FF?style=for-the-badge)](https://monadvision.com/address/0x049A73755cA3508ef3Daa4752A3406f6e00CfB13)
 [![Tests](https://img.shields.io/badge/tests-442-B8F03C?style=for-the-badge)](#security)
 [![CI](https://img.shields.io/github/actions/workflow/status/trudransh/Assay/contracts.yml?branch=main&style=for-the-badge&label=contracts)](https://github.com/trudransh/Assay/actions)
 [![License](https://img.shields.io/badge/license-MIT-EDE6D6?style=for-the-badge)](LICENSE)
@@ -19,7 +19,7 @@
 
 | 💬 **Ask, get a receipt** | 🧾 **A live receipt** | 🖥️ **Host profile** | 📚 **Docs** | 📜 **Spec** | 📊 **Report** |
 |:--:|:--:|:--:|:--:|:--:|:--:|
-| [/app/#ask](https://assay-ten-xi.vercel.app/app/#ask) | [0x9a166cac…](https://assay-ten-xi.vercel.app/app/#r/0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5) | [agent 1962](https://assay-ten-xi.vercel.app/app/#hosts/1962) | [gitbook](https://assay.gitbook.io/assay-docs) | [SPEC.md](SPEC.md) | [REPORT_v0](report/REPORT_v0.md) |
+| [/app/#ask](https://assay-ten-xi.vercel.app/app/#ask) | [first on mainnet](https://assay-ten-xi.vercel.app/app/#r/0x1b443b455e55360cec874215c9d1ae3113794f6d3a6c2a0c480387b12e35c5f2) | [agent 10278](https://assay-ten-xi.vercel.app/app/#hosts/10278) | [gitbook](https://assay.gitbook.io/assay-docs) | [SPEC.md](SPEC.md) | [REPORT_v0](report/REPORT_v0.md) |
 
 </div>
 
@@ -116,7 +116,19 @@ result.reproduce.anchored;  // { kind: "contract-call", address, function, args 
 
 `@assay/receipts` is the `sdk/` workspace package. [SDK reference](https://assay.gitbook.io/assay-docs/for-developers/sdk) · [Quickstart](https://assay.gitbook.io/assay-docs/getting-started/quickstart)
 
-## Live on Monad testnet (chain 10143)
+## Live on Monad mainnet (chain 143)
+
+| Contract | Address | Deploy |
+|---|---|---|
+| **ReceiptAnchor** | [`0x049A73755cA3508ef3Daa4752A3406f6e00CfB13`](https://monadvision.com/address/0x049A73755cA3508ef3Daa4752A3406f6e00CfB13) | [tx](https://monadvision.com/tx/0x293c2684a3fefd2ae2deec1a432eee78c591d41eed848efe02f5a5c1b89d1545) |
+| **VerifierRegistry** | [`0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1`](https://monadvision.com/address/0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1) | [tx](https://monadvision.com/tx/0x8649c6abab999a902feb4d8ba79b14b3b553dfd5374313ca8c6a88f8f6372dfe) |
+| **CreAttestor** | [`0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a`](https://monadvision.com/address/0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a) | [tx](https://monadvision.com/tx/0x7949a60e38f42352079e082e8b85fa2337023dde5d181b3096856268be68219e) |
+
+Verified on Sourcify (exact match). Host agent **10278** and verifier agent **10279** are registered on the mainnet ERC-8004 registry. ⛓️ The [first mainnet receipt](https://monadvision.com/tx/0x48bcf6abe5914a1a8aee3678a6f84eeb2773c4131bd670e995e44e34dd49a9a4) is anchored, and `verifyReceipt` returns true onchain.
+
+## Also on Monad testnet (chain 10143)
+
+Testnet stays live as the free place to try things. The app has a network switch in the top bar.
 
 | Contract | Address | Deploy |
 |---|---|---|
@@ -133,7 +145,7 @@ All three are verified on Sourcify (exact match).
 | 🎯 Reference grade: same model on Google's own API, 19/19, 83.18% to 100% | [tx `0x137f910d…`](https://testnet.monadvision.com/tx/0x137f910d3e2181a9b2930170d47126370ae282e8dab7f8f91287b6aaa1dd16f6) |
 | 🪪 Host agent 1962 key set · verifier agent 1981 registered | [`0xcfd45e43…`](https://testnet.monadvision.com/tx/0xcfd45e4304e7de3c0337eb83288d657e978efc2a0df614c74cfb1a9adcc7b8b4) · [`0x752c6fe5…`](https://testnet.monadvision.com/tx/0x752c6fe566c60f390a79c449c812afc1fcd8b6802b1877da7bdc6231da52d178) |
 
-Both grades read `warn` until a host has 30 samples. The reference host runs at https://34-45-1-81.sslip.io and anchors each batch within seconds. Every address and tx is in [`docs/deployments.md`](docs/deployments.md).
+Both grades read `warn` until a host has 30 samples. The reference hosts run at https://34-45-1-81.sslip.io (testnet) and https://34-45-1-81.sslip.io/mainnet (mainnet), and anchor each batch within seconds. Every address and tx is in [`docs/deployments.md`](docs/deployments.md).
 
 ## Integrations
 
