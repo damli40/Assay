@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/host/:path*", "destination": "https://34-45-1-81.sslip.io/:path*" }]
+  "rewrites": [
+    { "source": "/host-mainnet/:path*", "destination": "https://34-45-1-81.sslip.io/mainnet/:path*" },
+    { "source": "/host/:path*", "destination": "https://34-45-1-81.sslip.io/:path*" }
+  ]
 }

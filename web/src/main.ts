@@ -1,5 +1,5 @@
 import { emptyState, h, section, setPageTab } from "./dom.js";
-import { DOCS_URL } from "./lib/config.js";
+import { CHAIN_ID, CHAINS, DOCS_URL, chainConfig, setSelectedChainId } from "./lib/config.js";
 import { match, parseHash, tabOf, type Route } from "./router.js";
 import { mountAsk } from "./views/ask.js";
 import { mountGrades } from "./views/grades.js";
@@ -51,5 +51,22 @@ function render(route: Route, focus: boolean) {
   if (focus) main.focus();
 }
 
+/// Top-bar network switch. With one chain it's a plain chip; with more, a labelled select that reloads on change.
+function networkSwitch() {
+  const slot = document.getElementById("network-switch");
+  const foot = document.getElementById("network-foot");
+  const current = chainConfig(CHAIN_ID);
+  if (foot) foot.textContent = `${current.name}, chain ${CHAIN_ID}.`;
+  const ids = Object.keys(CHAINS).map(Number);
+  if (!slot || ids.length < 2) return;
+  const select = h("select", { id: "network", class: "network-select" }, ...ids.map((id) => h("option", { value: String(id), selected: id === CHAIN_ID }, CHAINS[id].name)));
+  select.addEventListener("change", () => {
+    setSelectedChainId(Number(select.value));
+    location.reload();
+  });
+  slot.replaceChildren(h("label", { for: "network", class: "sr-only" }, "Network"), select);
+}
+
+networkSwitch();
 addEventListener("hashchange", () => render(parseHash(location.hash), true));
 render(parseHash(location.hash), false);

@@ -49,9 +49,33 @@ function chainDeps(chainId: number): ChainDeps {
   };
 }
 
-function defaultDeps(host: string): ReceiptDeps {
-  return { status: (hash) => fetchReceiptStatus(host, hash), jwks: () => fetchJwks(host), chain: chainDeps };
+/// Asks each host in turn; a 404 means "not mine", so the next one gets a try. Keys come from the one that knew it.
+function defaultDeps(hosts: string[]): ReceiptDeps {
+  let found = hosts[0];
+  return {
+    async status(hash) {
+      for (const [i, host] of hosts.entries()) {
+        try {
+          const st = await fetchReceiptStatus(host, hash);
+          found = host;
+          return st;
+        } catch (e) {
+          if (httpStatus(e) !== 404 || i === hosts.length - 1) throw e;
+        }
+      }
+      throw new Error("no host to ask");
+    },
+    jwks: () => fetchJwks(found),
+    chain: chainDeps,
+  };
 }
+
+/// ?host= pins one host. Otherwise the selected network's host first, then the others.
+const hostsFor = (route: Route) => {
+  const pinned = route.params.get("host");
+  if (pinned) return [pinned];
+  return [DEFAULT_HOST, ...Object.values(CHAINS).map((c) => c.host).filter((h) => h !== DEFAULT_HOST)];
+};
 
 const link = (label: string, href: string, cls = "") => h("a", { href, class: cls, ...(href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {}) }, label);
 const card = (title: string, aside: Node | string | null, ...body: (Node | null)[]) =>
@@ -224,7 +248,7 @@ function receiptSkeleton(): HTMLElement {
   );
 }
 
-export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps = defaultDeps(route.params.get("host") ?? DEFAULT_HOST)) {
+export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps = defaultDeps(hostsFor(route))) {
   const hash = route.path[1] as Hex;
   const page = h("section", { class: "page receipt", "aria-labelledby": "page-title" });
   root.append(page);

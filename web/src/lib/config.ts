@@ -2,6 +2,10 @@ import type { Address } from "viem";
 
 export interface ChainConfig {
   name: string;
+  /// Short label for the network switch.
+  short: string;
+  /// The Assay host serving this chain, same-origin (Vercel rewrites it; Vite proxies it in dev).
+  host: string;
   rpc: string;
   explorer: string;
   receiptAnchor: Address;
@@ -14,6 +18,8 @@ export interface ChainConfig {
 export const CHAINS: Record<number, ChainConfig> = {
   10143: {
     name: "Monad testnet",
+    short: "Testnet",
+    host: import.meta.env.VITE_HOST_URL ?? "/host",
     rpc: "https://testnet-rpc.monad.xyz",
     explorer: "https://testnet.monadvision.com",
     receiptAnchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24",
@@ -23,8 +29,30 @@ export const CHAINS: Record<number, ChainConfig> = {
   },
 };
 
-/// The chain the app defaults to (forms, landing addresses, host profiles without ?chain=).
-export const CHAIN_ID = 10143;
+const NETWORK_KEY = "assay.chain";
+const FALLBACK_CHAIN = 10143;
+
+/// The network the reader picked in the top bar, remembered in this browser. Public setting, not a secret.
+export function selectedChainId(): number {
+  try {
+    const id = Number(localStorage.getItem(NETWORK_KEY));
+    if (CHAINS[id]) return id;
+  } catch {
+    // No storage (tests, private mode): use the default.
+  }
+  return FALLBACK_CHAIN;
+}
+
+export function setSelectedChainId(id: number) {
+  try {
+    localStorage.setItem(NETWORK_KEY, String(id));
+  } catch {
+    // Not remembered; the page still switches for this load.
+  }
+}
+
+/// The chain the app defaults to: forms, Ask, host profiles without ?chain=. Receipts use their own chain.
+export const CHAIN_ID = selectedChainId();
 
 export function chainConfig(chainId: number = CHAIN_ID): ChainConfig {
   const c = CHAINS[chainId];
@@ -46,11 +74,10 @@ export const VERIFIER_REGISTRY = primary.verifierRegistry;
 export const CRE_ATTESTOR = primary.creAttestor;
 export const IDENTITY_REGISTRY = primary.identityRegistry;
 export const EXPLORER = primary.explorer;
+export const DEFAULT_HOST = primary.host;
 
 export const DOCS_URL = "https://assay.gitbook.io/assay-docs";
 export const GITHUB_URL = "https://github.com/trudransh/Assay";
-// In dev and preview, vite proxies /host to the local host (see vite.config.ts).
-export const DEFAULT_HOST: string = import.meta.env.VITE_HOST_URL ?? "/host";
 // Envio Cloud GraphQL, one endpoint for every chain (ids are chain-prefixed). Public and read-only,
 // so it is safe in the bundle; never put a token in a VITE_ variable.
 export const INDEXER_URL: string = import.meta.env.VITE_INDEXER_URL ?? "https://indexer.dev.hyperindex.xyz/7c1753d/v1/graphql";
