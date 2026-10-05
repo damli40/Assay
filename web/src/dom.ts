@@ -103,24 +103,30 @@ export function announce(text: string) {
   requestAnimationFrame(() => (el.textContent = text));
 }
 
-export function copyButton(text: string, label = "Copy"): HTMLButtonElement {
+/// `iconOnly` for a button right beside what it copies: the copy icon says it, the label goes to
+/// screen readers and the tooltip, and a check replaces the icon for 2 s after copying.
+export function copyButton(text: string, label = "Copy", opts: { iconOnly?: boolean } = {}): HTMLButtonElement {
   const name = h("span", {}, label);
-  const b = h("button", { type: "button", class: "copy", "aria-label": `${label} to clipboard` }, icon("copy"), name);
+  const glyph = h("span", { class: "copy-glyph" }, icon("copy"));
+  const b = h("button", { type: "button", class: opts.iconOnly ? "copy copy-icon" : "copy", "aria-label": `${label} to clipboard`, ...(opts.iconOnly ? { title: label } : {}) }, glyph, opts.iconOnly ? "" : name);
   let timer: ReturnType<typeof setTimeout> | undefined;
   b.addEventListener("click", async () => {
     // Fix the width on first use so "Copied" doesn't shift the row.
-    if (!b.style.minWidth && b.offsetWidth) b.style.minWidth = `${b.offsetWidth}px`;
+    if (!opts.iconOnly && !b.style.minWidth && b.offsetWidth) b.style.minWidth = `${b.offsetWidth}px`;
     try {
       await navigator.clipboard.writeText(text);
       name.textContent = "Copied";
+      glyph.replaceChildren(icon("check"));
       b.classList.add("copied");
       announce(`${label === "Copy" ? "Text" : label} copied`);
     } catch {
       name.textContent = "Copy failed";
+      announce("Copy failed");
     }
     clearTimeout(timer);
     timer = setTimeout(() => {
       name.textContent = label;
+      glyph.replaceChildren(icon("copy"));
       b.classList.remove("copied");
     }, 2000);
   });
@@ -180,7 +186,7 @@ export function emptyState(opts: { title: string; text: string; tone?: Tone; act
 export function kv(rows: [string, Node | string][]): HTMLElement {
   const dl = h("dl", { class: "kv" });
   for (const [k, v] of rows) {
-    const value = typeof v === "string" && /^0x[0-9a-fA-F]{40,}$/.test(v) ? h("span", { class: "kv-hash" }, shortHash(v), copyButton(v, `Copy ${k.toLowerCase()}`)) : v;
+    const value = typeof v === "string" && /^0x[0-9a-fA-F]{40,}$/.test(v) ? h("span", { class: "kv-hash" }, shortHash(v), copyButton(v, `Copy ${k.toLowerCase()}`, { iconOnly: true })) : v;
     dl.append(h("dt", {}, k), h("dd", {}, value));
   }
   return dl;

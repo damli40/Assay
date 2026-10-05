@@ -155,6 +155,8 @@ button.secondary:hover:not(:disabled), .btn-secondary:hover, .btn-ghost:hover, b
 button.copy { gap: 6px; vertical-align: middle; white-space: nowrap; flex: none; }
 button.copy .icon { width: 15px; height: 15px; }
 button.copy.copied { color: var(--lime); border-color: var(--lime); }
+.copy-glyph { display: inline-flex; }
+button.copy.copy-icon { width: var(--tap); padding: 0; justify-content: center; }
 
 /* ---------- chips, badges ---------- */
 

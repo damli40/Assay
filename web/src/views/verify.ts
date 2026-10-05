@@ -61,7 +61,7 @@ export function renderResult(result: VerifyResult, opts: { rpc: string; notes?: 
     "div",
     { class: "result" },
     h("p", { class: `verdict ${ok ? "ok" : "bad"}` }, verdict),
-    h("p", {}, "Receipt hash ", mono(result.receiptHash), " ", copyButton(result.receiptHash), " ", h("a", { href: `#r/${result.receiptHash}` }, "Open its receipt page")),
+    h("p", {}, "Receipt hash ", mono(result.receiptHash), " ", copyButton(result.receiptHash, "Copy receipt hash", { iconOnly: true }), " ", h("a", { href: `#r/${result.receiptHash}` }, "Open its receipt page")),
   );
   for (const note of opts.notes ?? []) out.append(h("p", { class: "hint" }, note));
   const list = h("ul", { class: "checks" });

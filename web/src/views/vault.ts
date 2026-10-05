@@ -164,7 +164,7 @@ function revealCard() {
       out.append(
         h("dl", { class: "kv" },
           h("dt", {}, "Receipt hash"), h("dd", {}, mono(e.receiptHash)),
-          h("dt", {}, "Salt"), h("dd", {}, mono(e.salt), " ", copyButton(e.salt)),
+          h("dt", {}, "Salt"), h("dd", {}, mono(e.salt), " ", copyButton(e.salt, "Copy salt", { iconOnly: true })),
           h("dt", {}, "Output"), h("dd", {}, e.output ?? ""),
         ),
         copyButton(receipt, "Copy receipt for Verify"),
@@ -209,8 +209,8 @@ function requesterCard() {
       sigOut.append(
         h("dl", { class: "kv" },
           h("dt", {}, "Signer"), h("dd", {}, mono(address)),
-          h("dt", {}, "X-Assay-Cosigner"), h("dd", {}, mono(cosignerForAddress(address)), " ", copyButton(cosignerForAddress(address))),
-          h("dt", {}, "Signature"), h("dd", {}, mono(signature), " ", copyButton(signature)),
+          h("dt", {}, "X-Assay-Cosigner"), h("dd", {}, mono(cosignerForAddress(address)), " ", copyButton(cosignerForAddress(address), "Copy cosigner", { iconOnly: true })),
+          h("dt", {}, "Signature"), h("dd", {}, mono(signature), " ", copyButton(signature, "Copy signature", { iconOnly: true })),
           h("dt", {}, "ecrecover"), h("dd", {}, recovered === address ? "recovers to the signer" : "MISMATCH"),
         ),
       );

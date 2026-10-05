@@ -198,7 +198,7 @@ function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | unde
   const title = body ? `Served by agent ${agent}, claiming ${body.model}` : "Receipt";
   const hashEl = shortHash(hash);
   decode(hashEl);
-  const lede = h("p", { class: "lede" }, "Receipt ", hashEl, " ", copyButton(hash, "Copy hash"), " ", anchored === undefined ? "" : anchored ? "Anchored in a batch on Monad." : "Signed, not anchored yet.", cosigned ? " Co-signed by the requester." : "");
+  const lede = h("p", { class: "lede" }, "Receipt ", hashEl, " ", copyButton(hash, "Copy hash", { iconOnly: true }), " ", anchored === undefined ? "" : anchored ? "Anchored in a batch on Monad." : "Signed, not anchored yet.", cosigned ? " Co-signed by the requester." : "");
   const stamps = body
     ? h(
         "div",

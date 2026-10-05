@@ -32,7 +32,7 @@ export function renderGrade(found: { grade: Grade; by: Address } | null, status:
       h("dt", {}, "Samples (n)"), h("dd", {}, String(g.total)),
       h("dt", {}, "Graded at"), h("dd", {}, new Date(Number(g.t) * 1000).toISOString()),
       h("dt", {}, "Verifier"), h("dd", {}, h("a", { href: `${EXPLORER}/address/${by}`, target: "_blank", rel: "noopener" }, by)),
-      h("dt", {}, "Evidence sha256"), h("dd", {}, mono(g.evidence), " ", copyButton(g.evidence), " ", evidence),
+      h("dt", {}, "Evidence sha256"), h("dd", {}, mono(g.evidence), " ", copyButton(g.evidence, "Copy evidence hash", { iconOnly: true }), " ", evidence),
       h("dt", {}, "Reference model"), h("dd", {}, mono(g.refModel)),
       h("dt", {}, "Check suite"), h("dd", {}, mono(g.checks)),
     ),
