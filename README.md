@@ -158,7 +158,7 @@ Both grades read `warn` until a host has 30 samples. The reference hosts run at 
 
 Indexes every Assay contract plus ERC-8004 identity and reputation. Drift events, per-model leaderboards and key rotations are computed in handlers. The receipt page reads the batch, **the key that signed that batch** and the co-signs in one GraphQL query. The contract only stores a host's current key, so the indexer is the only place the old signing key lives.
 
-Proof: [`indexer/`](indexer/) · [endpoint](https://indexer.dev.hyperindex.xyz/7c1753d/v1/graphql) · 22 handler tests
+Proof: [`indexer/`](indexer/) · [endpoint](https://indexer.dev.hyperindex.xyz/f89368d/v1/graphql) · 22 handler tests
 
 </td>
 <td width="50%" valign="top">

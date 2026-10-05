@@ -51,14 +51,14 @@ The reference hosts run on a Google Cloud VM behind Caddy, one per network: test
 
 ## Indexer
 
-Envio HyperIndex 3.12.1 on the Envio Cloud development plan, built from `indexer/` on the `envio` branch. First deployment from commit `dfdb45d`, synced through block 67601813 in about a minute over HyperSync.
+Envio HyperIndex 3.12.1 on the Envio Cloud development plan, built from `indexer/` on the `envio` branch. Since 5 Oct (commit `38ed2ec`) one deployment indexes both Monad mainnet (143) and testnet (10143) over HyperSync. Ids are chain-prefixed, for example `143-10278` and `10143-1962`. The first deployment (`dfdb45d`, testnet only) synced in about a minute.
 
-GraphQL endpoint (public, read-only): `https://indexer.dev.hyperindex.xyz/7c1753d/v1/graphql`
+GraphQL endpoint (public, read-only): `https://indexer.dev.hyperindex.xyz/f89368d/v1/graphql`
 
-It indexes all five contracts above plus the ERC-8004 registries. Example query:
+It indexes ReceiptAnchor, VerifierRegistry and CreAttestor plus the ERC-8004 identity and reputation registries, on both networks. Example query:
 
 ```bash
-curl -s https://indexer.dev.hyperindex.xyz/7c1753d/v1/graphql -H 'content-type: application/json' \
+curl -s https://indexer.dev.hyperindex.xyz/f89368d/v1/graphql -H 'content-type: application/json' \
   -d '{"query":"{ Agent(where:{agentId:{_eq:\"1962\"}}) { name anchorCount receiptCount currentKey { keyHash } } }"}'
 ```
 
