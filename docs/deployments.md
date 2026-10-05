@@ -17,6 +17,7 @@ Deployed 5 Oct 2026 with Foundry 1.7.1, solc 0.8.30 and `evm_version = "osaka"`,
 | `setHostKey(10278, …)`, key hash `0x6c73fb3e…a68e` (the same ES256 key as testnet host 1962) | [`0x332de53b…`](https://monadvision.com/tx/0x332de53b00e295d0a39619921728a0c9586679f7a89bf125ae4c4987e67fee69) | 110683264 |
 | `registerVerifier(10279)` | [`0x16132ea7…`](https://monadvision.com/tx/0x16132ea7ff35e4b5bce957385670f03b3f991c2f3008e7f2c13c5e10497e8f15) | 110683320 |
 | **First mainnet receipt anchored:** receipt `0x1b443b45…c5f2` from Gemma 4 31B through the host, root `0x406615dd…60cb`. `verifyReceipt` returns true | [`0x48bcf6ab…`](https://monadvision.com/tx/0x48bcf6abe5914a1a8aee3678a6f84eeb2773c4131bd670e995e44e34dd49a9a4) | 110684366 |
+| **First mainnet grade:** verifier 10279 grades host 10278 (Gemma 4 31B), 38/38 tool cases, against Google's own API (39/39). This is a plumbing check: the host relays Google's API and is graded against it, so it shows the grading loop works on mainnet, not host quality | [`0x1e0b1d63…`](https://monadvision.com/tx/0x1e0b1d63984ff0140e675c116003fd36968816ffbc30d6040fb2c2defb980d50) · reference [`0x2b4d727e…`](https://monadvision.com/tx/0x2b4d727e481678e8fa3847a644ca2505ae4299015e882e90e0f0eda898d43d82) | 5 Oct |
 
 The mainnet host runs at https://34-45-1-81.sslip.io/mainnet (the web app reaches it at `/host-mainnet`). Testnet stays live below as the place to experiment for free.
 

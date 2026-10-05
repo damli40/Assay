@@ -124,7 +124,7 @@ result.reproduce.anchored;  // { kind: "contract-call", address, function, args 
 | **VerifierRegistry** | [`0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1`](https://monadvision.com/address/0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1) | [tx](https://monadvision.com/tx/0x8649c6abab999a902feb4d8ba79b14b3b553dfd5374313ca8c6a88f8f6372dfe) |
 | **CreAttestor** | [`0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a`](https://monadvision.com/address/0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a) | [tx](https://monadvision.com/tx/0x7949a60e38f42352079e082e8b85fa2337023dde5d181b3096856268be68219e) |
 
-Verified on Sourcify (exact match). Host agent **10278** and verifier agent **10279** are registered on the mainnet ERC-8004 registry. ⛓️ The [first mainnet receipt](https://monadvision.com/tx/0x48bcf6abe5914a1a8aee3678a6f84eeb2773c4131bd670e995e44e34dd49a9a4) is anchored, and `verifyReceipt` returns true onchain.
+Verified on Sourcify (exact match). Host agent **10278** and verifier agent **10279** are registered on the mainnet ERC-8004 registry. ⛓️ The [first mainnet receipt](https://monadvision.com/tx/0x48bcf6abe5914a1a8aee3678a6f84eeb2773c4131bd670e995e44e34dd49a9a4) is anchored, and `verifyReceipt` returns true onchain. The [first mainnet grade](https://monadvision.com/tx/0x1e0b1d63984ff0140e675c116003fd36968816ffbc30d6040fb2c2defb980d50) is posted too: host 10278 scored 38/38 against Google's own API. It's a plumbing check, because the host relays that same API, so it shows the loop works on mainnet rather than measuring host quality.
 
 ## Also on Monad testnet (chain 10143)
 
