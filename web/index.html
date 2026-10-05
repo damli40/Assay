@@ -72,8 +72,8 @@
           <h1 class="l-h1" id="hero-title">Proof of<br /> <span class="l-hl">who served</span><br /> every<br /> AI response.</h1>
           <p class="l-lede">Assay gives every AI response a signed receipt. The host signs it and anchors it in a batch on Monad, and you can co-sign it with your passkey.</p>
           <div class="l-row">
-            <a class="btn btn-primary" href="/app/#verify">Verify a receipt</a>
-            <a class="btn btn-line" href="/app/#ask">Ask and co-sign</a>
+            <a class="btn btn-primary" href="/app/#r/0x1b443b455e55360cec874215c9d1ae3113794f6d3a6c2a0c480387b12e35c5f2">See a live receipt</a>
+            <a class="btn btn-line" href="/app/#ask">Ask and get one</a>
           </div>
           <p class="l-small">Prompts and outputs never go onchain. Only salted hashes do, and you keep the salt.</p>
         </div>
@@ -143,6 +143,36 @@
           </div>
         </div>
       </div>
+
+      <section class="l-wrap l-sec l-live" id="live" aria-labelledby="live-title">
+        <div class="l-sec-head">
+          <span class="chip chip-lime"><span class="dot" aria-hidden="true"></span>Live now</span>
+          <h2 class="l-h2" id="live-title">Don't take our word for it. Open the real thing.</h2>
+          <p class="l-sub">Everything below is live data: onchain on Monad, read through our Envio indexer, or produced by our grader. Nothing is a mockup.</p>
+        </div>
+        <ul class="l-live-grid">
+          <li><a class="l-live-card k-violet" href="/app/#r/0x1b443b455e55360cec874215c9d1ae3113794f6d3a6c2a0c480387b12e35c5f2">
+            <span class="l-live-tag">Receipt · Monad mainnet</span>
+            <b>The first mainnet receipt</b>
+            <p>Gemma 4 31B answered through our host. The batch is on Monad and <code>verifyReceipt</code> returns true. Every check runs in your browser.</p>
+            <span class="l-live-go">Open the receipt →</span></a></li>
+          <li><a class="l-live-card k-gold" href="/app/#hosts/10278">
+            <span class="l-live-tag">Host · ERC-8004 agent 10278</span>
+            <b>Every batch it anchored</b>
+            <p>Batches, receipts and the key that signed each one, built from one query to our Envio indexer.</p>
+            <span class="l-live-go">Open the host →</span></a></li>
+          <li><a class="l-live-card k-lime" href="/app/#grades?model=z-ai/glm-5.3&amp;host=openrouter:inference-net&amp;ref=openrouter:z-ai/fp8&amp;chain=10143&amp;v=0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7">
+            <span class="l-live-tag">Grades · 39 hosts</span>
+            <b>GLM-5.3, every OpenRouter host</b>
+            <p>Graded against Z.ai's own endpoint on 5 Oct. On these four tool-call checks every host matched the reference. Measuring is how you find that out.</p>
+            <span class="l-live-go">Look up a grade →</span></a></li>
+          <li><a class="l-live-card k-pink" href="https://github.com/trudransh/Assay/tree/main/docs/interop">
+            <span class="l-live-tag">Interop · MonadGuard</span>
+            <b>Same receipt format, both ways</b>
+            <p>MonadGuard checks the tool, Assay checks the model host that answered. Each verifies the other's receipts, 10 of 10 checks.</p>
+            <span class="l-live-go">See the results →</span></a></li>
+        </ul>
+      </section>
 
       <section class="l-wrap l-sec" id="problem" aria-labelledby="problem-title">
         <div class="l-sec-head">
@@ -234,8 +264,8 @@
           </div>
         </div>
         <ol class="l-ladder">
-          <li class="k-lime"><span class="l-lv">Level 0 · Live on Monad</span><b>Signed and anchored</b><p>The host signed what it served and the batch is on Monad.</p></li>
-          <li class="k-lime"><span class="l-lv">Level 1 · Live on Monad</span><b>Host graded</b><p>Open verifiers test the host against the lab's own endpoint.</p></li>
+          <li class="k-lime"><span class="l-lv">Level 0 · Live on mainnet</span><b>Signed and anchored</b><p>The host signed what it served and the batch is on Monad.</p></li>
+          <li class="k-lime"><span class="l-lv">Level 1 · Live on testnet</span><b>Host graded</b><p>Open verifiers test the host against the lab's own endpoint.</p></li>
           <li class="l-road"><span class="l-lv">Level 2 · Roadmap</span><b>Re-executable</b><p>A deterministic runtime lets anyone re-run a revealed request.</p></li>
           <li class="l-road"><span class="l-lv">Level 3 · Roadmap</span><b>TEE attested</b><p>The host signs from an enclave whose attestation names the model.</p></li>
         </ol>
