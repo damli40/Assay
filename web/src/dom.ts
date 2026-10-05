@@ -225,19 +225,20 @@ export function stamp(kind: keyof typeof STAMP_TONE, sub: string, lit: boolean, 
 }
 
 const LEVELS = [
-  ["Signed and anchored", "The host signed what it served and the batch is on Monad. A lie can't be denied later."],
-  ["Host graded", "A verifier you trust tested this host against the lab's endpoint. It grades the host, not this response."],
-  ["Re-executable", "A deterministic runtime lets a verifier re-run a revealed request and compare output hashes."],
-  ["TEE attested", "The host signs from an enclave whose attestation includes a model hash."],
+  ["Signed and anchored", "The host signed what it served and the batch is on Monad. A lie can't be denied later.", "How to reach it: nothing to do. The host anchors its next batch on its own."],
+  ["Host graded", "A verifier you trust tested this host against the lab's endpoint. It grades the host, not this response.", "How to reach it: choose verifiers on Grades, or use Assay's. Grades older than 7 days stop counting."],
+  ["Re-executable", "A deterministic runtime lets a verifier re-run a revealed request and compare output hashes.", ""],
+  ["TEE attested", "The host signs from an enclave whose attestation includes a model hash.", ""],
 ] as const;
 
 /// Levels 0 to 3. `reached` covers levels 0 and 1; 2 and 3 are always Roadmap.
 export function levelLadder(reached: [boolean, boolean]): HTMLElement {
   const ol = h("ol", { class: "ladder" });
-  LEVELS.forEach(([name, text], i) => {
+  LEVELS.forEach(([name, text, how], i) => {
     const state = i > 1 ? "roadmap" : reached[i as 0 | 1] ? "reached" : "notreached";
+    const next = state === "notreached" ? h("p", { class: "hint level-how" }, how, i === 1 ? h("a", { href: "#grades" }, " Open Grades") : "") : "";
     const tag = state === "roadmap" ? chip("Roadmap", "muted", { dashed: true }) : state === "reached" ? chip("Reached", i ? "lime" : "gold", { dot: true }) : chip("Not reached", "muted");
-    ol.append(h("li", { class: `level ${state} ${["k-gold", "k-lime", "", ""][i]}`, "data-level": String(i) }, tag, h("h3", {}, `Level ${i} · ${name}`), h("p", {}, text)));
+    ol.append(h("li", { class: `level ${state} ${["k-gold", "k-lime", "", ""][i]}`, "data-level": String(i) }, tag, h("h3", {}, `Level ${i} · ${name}`), h("p", {}, text), next));
   });
   return ol;
 }
