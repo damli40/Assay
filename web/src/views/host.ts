@@ -148,7 +148,6 @@ export function renderHost(p: HostProfile, chainId: number = CHAIN_ID): HTMLElem
         "div",
         { class: "col" },
         card("Activity, last 14 days", h("div", { class: "row legend" }, chip("Batches", "violet"), chip("Receipts", "gold"), chip("Co-signs", "pink")), activityChart(p.activity), h("p", { class: "hint" }, "One group per UTC day, from HostActivity in the Envio indexer.")),
-        card("Batches", "Newest first", batches, h("p", { class: "hint" }, "Open a root to see its receipts. The chain only holds each batch's root and count. Each row keeps the key that signed it.")),
         card("Grades by model", link("Open in Grades", `#grades?host=erc8004:${chainId}:${id}`), grades),
       ),
       h(
@@ -158,6 +157,12 @@ export function renderHost(p: HostProfile, chainId: number = CHAIN_ID): HTMLElem
         card("Key history", "From HostKey and KeyRotation", history, h("p", { class: "hint" }, "A new key never voids older batches.")),
         card("Endpoints", "From the agent card", services),
       ),
+    ),
+    // Full width and capped in height: a busy host has hundreds of batches.
+    h(
+      "div",
+      { class: "host-batches" },
+      card("Batches", "Newest first", batches, h("p", { class: "hint" }, "Open a root to see its receipts. The chain only holds each batch's root and count. Each row keeps the key that signed it.")),
     ),
     h("p", { class: "hint source" }, "Everything on this page comes from one query to the Envio indexer."),
   );

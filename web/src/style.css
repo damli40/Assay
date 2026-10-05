@@ -314,6 +314,14 @@ pre {
 .receipt-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .receipt-grid .col { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); min-width: 0; }
 .receipt-grid .card, .receipt-grid .empty { margin: 0; }
+/* Host page: batches sit full width below the two columns and scroll inside a capped box. */
+.host-batches { margin-top: var(--space-4); }
+.host-batches .table-wrap { max-height: 420px; overflow: auto; overscroll-behavior: contain; }
+.host-batches th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+td details { margin: 0; border: 0; padding: 0; }
+td details summary { color: var(--text); font-weight: 400; font-size: 14px; }
+td details[open] summary { margin-bottom: var(--space-2); }
+.batch-receipts .entries { margin: 0; padding-left: var(--space-5); }
 .kv-mono dt { font-family: var(--font-mono); font-stretch: var(--stretch-mono); font-size: var(--fs-small); }
 .checks.compact { margin: 0; gap: var(--space-2); }
 .checks.compact .check { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--stone-2); }
