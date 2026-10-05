@@ -212,6 +212,18 @@ function actions(hash: Hex, held: { body: ReceiptBody; jws: string }, extra: Rec
 const limits = () =>
   h("p", { class: "limits" }, "This receipt proves who served these bytes and what they claimed. It doesn't prove which weights ran.");
 
+const box = (height: number) => h("div", { class: "skeleton-row", style: `height:${height}px` });
+
+/// Same shape as the loaded page (ladder, then two columns), so nothing jumps when data arrives.
+function receiptSkeleton(): HTMLElement {
+  return h(
+    "div",
+    { class: "skeleton skeleton-page", "aria-hidden": "true" },
+    h("div", { class: "ladder" }, box(132), box(132), box(132), box(132)),
+    h("div", { class: "receipt-grid" }, h("div", { class: "col" }, box(440), box(110), box(320)), h("div", { class: "col" }, box(470), box(270), box(160))),
+  );
+}
+
 export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps = defaultDeps(route.params.get("host") ?? DEFAULT_HOST)) {
   const hash = route.path[1] as Hex;
   const page = h("section", { class: "page receipt", "aria-labelledby": "page-title" });
@@ -224,13 +236,13 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
   };
 
   async function load() {
-    page.replaceChildren(head(hash, undefined, undefined, false, null), skeleton(1, 120), skeleton(8, 44));
+    page.replaceChildren(head(hash, undefined, undefined, false, null), receiptSkeleton());
     let st: ReceiptStatus;
     try {
       st = await deps.status(hash);
     } catch (e) {
       const code = httpStatus(e);
-      page.replaceChildren(head(hash, undefined, false, false, null));
+      page.replaceChildren(head(hash, undefined, undefined, false, null));
       if (code === 404 || code === 400) {
         page.append(emptyState({ title: "This host doesn't know that receipt", text: "It may come from another host, or the host's store was reset. Paste the receipt on Verify to check it against any host.", tone: "coral", action: link("Open Verify", "#verify", "btn btn-secondary") }));
       } else {
@@ -260,39 +272,58 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
       return;
     }
     const chain = deps.chain(chainId);
-    const jwks = await deps.jwks().catch(() => ({ keys: [] }));
-    const result = await verifyReceipt({ body, jws, jwks, proof, root: batchRoot, onchain: { client: chain.client, anchor: chainConfig(chainId).receiptAnchor } });
-    const isAnchored = result.checks.anchored === "pass";
-    const ladder = h("div", {}, levelLadder([isAnchored, false]));
-    const anchorSlot = h("div", {}, skeleton(1, 220));
+    const acts = actions(hash, { body, jws }, { root: batchRoot, proof, anchorTx });
+
+    // Show everything the host returned right away; each check fills in when its own read finishes.
+    const headSlot = h("div", {}, head(hash, body, undefined, false, acts));
+    const levels: [boolean, boolean] = [false, false];
+    const ladder = h("div", {}, levelLadder(levels));
+    const checksSlot = h("div", {}, card("Checks", "Run in your browser", skeleton(8, 44)));
+    const anchorSlot = h("div", {}, skeleton(1, 260));
     const cosignSlot = h("div", {}, skeleton(1, 120));
-    const gradeSlot = h("div", {}, skeleton(1, 140));
+    const gradeSlot = h("div", {}, skeleton(1, 160));
     page.replaceChildren(
-      head(hash, body, isAnchored, result.checks.cosigned === "pass", actions(hash, { body, jws }, { root: batchRoot, proof, anchorTx })),
+      headSlot,
       h("div", { class: "ladder-head" }, h("h2", {}, "How far this receipt was checked"), h("span", { class: "hint" }, "Levels 2 and 3 are on the roadmap, not built")),
       ladder,
-      h(
-        "div",
-        { class: "receipt-grid" },
-        h("div", { class: "col" }, bodyCard(body), cosignSlot, rawCard(body)),
-        h("div", { class: "col" }, card("Checks", "Run in your browser", renderChecks(result)), anchorSlot, gradeSlot, limits()),
-      ),
+      h("div", { class: "receipt-grid" }, h("div", { class: "col" }, bodyCard(body), cosignSlot, rawCard(body)), h("div", { class: "col" }, checksSlot, anchorSlot, gradeSlot, limits())),
     );
 
-    const info = await chain.anchor({ agentId, root: batchRoot, receiptHash: hash, anchorTx }).catch(() => null);
-    anchorSlot.replaceChildren(info ? renderAnchorCard(info, batchRoot, st.reproduce?.cast, chainId) : banner("coral", "Couldn't read the batch from the indexer or the chain.", again()));
-    cosignSlot.replaceChildren(cosignCard(body, info));
+    const checks = deps
+      .jwks()
+      .catch(() => ({ keys: [] }))
+      .then((jwks) => verifyReceipt({ body, jws, jwks, proof, root: batchRoot, onchain: { client: chain.client, anchor: chainConfig(chainId).receiptAnchor } }))
+      .then((result) => {
+        levels[0] = result.checks.anchored === "pass";
+        ladder.replaceChildren(levelLadder(levels));
+        headSlot.replaceChildren(head(hash, body, levels[0], result.checks.cosigned === "pass", acts));
+        checksSlot.replaceChildren(card("Checks", "Run in your browser", renderChecks(result)));
+      })
+      .catch((e) => checksSlot.replaceChildren(banner("coral", `Couldn't run the checks (${errorText(e)}).`, again())));
 
-    const trusted = loadTrusted();
-    if (!trusted.length) return gradeSlot.replaceChildren(gradeCard(body, undefined, "unknown"));
-    try {
-      const found = await chain.grade(modelKey(body.model), hostKeyForAgent(chainId, agentId), trusted);
-      const status = gradeStatus(found?.grade, { now: BigInt(Math.floor(Date.now() / 1000)) });
-      gradeSlot.replaceChildren(gradeCard(body, found, status));
-      ladder.replaceChildren(levelLadder([isAnchored, !!found && status !== "unknown"]));
-    } catch (e) {
-      gradeSlot.replaceChildren(gradeCard(body, null, "unknown", errorText(e)));
-    }
+    const batch = chain
+      .anchor({ agentId, root: batchRoot, receiptHash: hash, anchorTx })
+      .catch(() => null)
+      .then((info) => {
+        anchorSlot.replaceChildren(info ? renderAnchorCard(info, batchRoot, st.reproduce?.cast, chainId) : banner("coral", "Couldn't read the batch from the indexer or the chain.", again()));
+        cosignSlot.replaceChildren(cosignCard(body, info));
+      });
+
+    const grade = (async () => {
+      const trusted = loadTrusted();
+      if (!trusted.length) return gradeSlot.replaceChildren(gradeCard(body, undefined, "unknown"));
+      try {
+        const found = await chain.grade(modelKey(body.model), hostKeyForAgent(chainId, agentId), trusted);
+        const status = gradeStatus(found?.grade, { now: BigInt(Math.floor(Date.now() / 1000)) });
+        gradeSlot.replaceChildren(gradeCard(body, found, status));
+        levels[1] = !!found && status !== "unknown";
+        ladder.replaceChildren(levelLadder(levels));
+      } catch (e) {
+        gradeSlot.replaceChildren(gradeCard(body, null, "unknown", errorText(e)));
+      }
+    })();
+
+    await Promise.all([checks, batch, grade]);
   }
 
   void load();

@@ -1,5 +1,5 @@
 import { hostKeyForAgent } from "@assay/receipts";
-import { badge, chip, emptyState, errorText, h, kv, shortHash, skeleton } from "../dom.js";
+import { badge, chip, emptyState, errorText, h, kv, shortHash } from "../dom.js";
 import { CHAIN_ID, CHAINS, chainConfig } from "../lib/config.js";
 import { hostProfile, type HostProfile } from "../lib/indexer.js";
 import type { Route } from "../router.js";
@@ -148,10 +148,23 @@ export function mountHost(root: HTMLElement, route: Route, load: typeof hostProf
     root.append(emptyState({ title: `This app doesn't know chain ${chainId}`, text: "Open the host profile without ?chain=, or with a chain Assay is deployed on.", tone: "muted", action: link("Hosts", "#hosts") }));
     return;
   }
-  const slot = h("div", {}, skeleton(4, 120));
+  const box = (height: number) => h("div", { class: "skeleton-row", style: `height:${height}px` });
+  // Same shape as the profile: title, four tiles, then two columns.
+  const slot = h(
+    "div",
+    { "aria-busy": "true" },
+    h(
+      "div",
+      { class: "skeleton skeleton-page", "aria-hidden": "true" },
+      box(150),
+      h("div", { class: "tiles" }, box(110), box(110), box(110), box(110)),
+      h("div", { class: "receipt-grid" }, h("div", { class: "col" }, box(260), box(220), box(200)), h("div", { class: "col" }, box(220), box(200), box(160))),
+    ),
+  );
   root.append(slot);
   load(agentId, hostKeyForAgent(chainId, agentId), undefined, undefined, chainId)
     .then((p) => {
+      slot.removeAttribute("aria-busy");
       slot.replaceChildren(
         p ? renderHost(p, chainId) : emptyState({ title: `No agent ${agentId} on ${chainConfig(chainId).name}`, text: "The indexer has no ERC-8004 agent with that id. Check the number, or open the hosts list.", tone: "muted", action: link("Hosts", "#hosts") }),
       );

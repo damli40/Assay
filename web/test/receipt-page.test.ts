@@ -77,6 +77,7 @@ describe("receipt page", () => {
     const el = mount(deps({ status: async () => { throw Object.assign(new Error("HTTP 404"), { status: 404 }); } }));
     await vi.waitFor(() => expect(el.textContent).toContain("This host doesn't know that receipt"));
     expect(el.textContent).not.toContain("HTTP 404");
+    expect(el.textContent).not.toContain("not anchored yet");
   });
 
   it("shows a pending receipt at level 0 not reached, with no body when this browser has no copy", async () => {
