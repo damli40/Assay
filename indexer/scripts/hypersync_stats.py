@@ -5,6 +5,7 @@ Pulls every Anchored event from ReceiptAnchor with its transaction's gas, then r
 batches, receipts, MON spent and MON per receipt. Monad bills the gas limit, so `gas_used` is what was paid.
 
   ENVIO_API_TOKEN=... python3 indexer/scripts/hypersync_stats.py            # Monad testnet
+  ENVIO_API_TOKEN=... python3 indexer/scripts/hypersync_stats.py --chain 143 # Monad mainnet
   python3 indexer/scripts/hypersync_stats.py --json > stats.json
 """
 import argparse, json, os, sys, urllib.request
@@ -13,6 +14,7 @@ from collections import defaultdict
 ANCHORED = "0x04bbcdc7e16eb0f626d6a53f7ef4fa57fd6e4207ba7d679d53b8f728a53a3408"  # Anchored(uint256,bytes32,uint32,bytes32)
 NETWORKS = {
     10143: ("https://monad-testnet.hypersync.xyz", "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24", 67461080),
+    143: ("https://monad.hypersync.xyz", "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13", 110678733),
 }
 
 

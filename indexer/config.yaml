@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: assay-indexer
-description: Assay receipts, anchors, co-signatures and verifier grades on Monad testnet
+description: Assay receipts, anchors, co-signatures and verifier grades on Monad mainnet and testnet
 disable_default_cross_chain: true
 # Lowercase addresses keep ids and GraphQL filters case-stable.
 address_format: lowercase
@@ -45,3 +45,21 @@ chains:
       - name: ReputationRegistry
         address: "0x8004B663056A597Dffe9eCcC1965A193B7388713"
         start_block: 67461080
+  - id: 143
+    start_block: 110678733
+    contracts:
+      - name: ReceiptAnchor
+        address: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13"
+        start_block: 110678733
+      - name: VerifierRegistry
+        address: "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1"
+        start_block: 110678737
+      - name: CreAttestor
+        address: "0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a"
+        start_block: 110678745
+      - name: IdentityRegistry
+        address: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+        start_block: 110678733
+      - name: ReputationRegistry
+        address: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
+        start_block: 110678733
