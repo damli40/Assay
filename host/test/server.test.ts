@@ -347,4 +347,13 @@ describe("well-known and health", () => {
     await chat(app);
     expect(await (await app.request("/health")).json()).toEqual({ ok: true, model: MODEL, kid: signer.kid, pending: 1 });
   });
+
+  it("adds the batch clock to health while the batcher runs", async () => {
+    const { app, batcher } = await setup();
+    batcher.start();
+    const body = (await (await app.request("/health")).json()) as { batchSeconds: number; nextBatchInMs: number };
+    batcher.stop();
+    expect(body.batchSeconds).toBe(300);
+    expect(body.nextBatchInMs).toBeGreaterThan(299_000);
+  });
 });

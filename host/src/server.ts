@@ -70,7 +70,8 @@ export interface AppDeps {
   agentId: bigint;
   anchor: Address;
   publicUrl: string;
-  batcher?: Pick<Batcher, "notify">;
+  /// `schedule` adds batchSeconds and nextBatchInMs to /health, so the web app can count down to the batch.
+  batcher?: Pick<Batcher, "notify"> & Partial<Pick<Batcher, "schedule">>;
   relayCosign: (args: readonly unknown[]) => Promise<Hex>;
   /// Enables GET /v1/grade, read straight from VerifierRegistry.
   grades?: GradeDeps;
@@ -233,7 +234,7 @@ export function createApp(d: AppDeps): Hono {
     }
   });
 
-  app.get("/health", (c) => c.json({ ok: true, model: d.model, kid: d.signer.kid, pending: d.store.pending().length }));
+  app.get("/health", (c) => c.json({ ok: true, model: d.model, kid: d.signer.kid, pending: d.store.pending().length, ...d.batcher?.schedule?.() }));
   if (d.grades) mountGrades(app, d.grades);
 
   return app;
