@@ -1,5 +1,5 @@
 ---
-description: The Assay web app, page by page: what each one shows, where its data comes from, and what each button does.
+description: "The Assay web app, page by page: what each one shows, where its data comes from, and what each button does."
 icon: window-maximize
 ---
 
