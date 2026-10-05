@@ -7,6 +7,8 @@ import type { Store } from "./store.js";
 export const LOW_BALANCE = parseEther("1");
 
 export interface BatcherDeps {
+  /// Signed into every anchor message; must be the chain the anchor contract lives on. Default: testnet.
+  chainId?: number;
   store: Store;
   signer: HostSigner;
   clients: ChainClient[];
@@ -38,7 +40,7 @@ export function createBatcher(d: BatcherDeps): Batcher {
     if (hashes.length === 0) return null;
 
     const { root, proofs } = buildBatch(hashes);
-    const { r, s } = await d.signer.signAnchor({ chainId: BigInt(CHAIN_ID), anchor: d.anchor, agentId: d.agentId, root, count: hashes.length });
+    const { r, s } = await d.signer.signAnchor({ chainId: BigInt(d.chainId ?? CHAIN_ID), anchor: d.anchor, agentId: d.agentId, root, count: hashes.length });
     const anchorTx = await sendTx(
       d.clients,
       { address: d.anchor, abi: anchorWriteAbi, functionName: "anchor", args: [d.agentId, root, hashes.length, r, s] },

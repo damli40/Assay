@@ -1,13 +1,16 @@
 import { createWalletClient, defineChain, http, parseAbi, publicActions, type Abi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { CHAIN_ID } from "./config.js";
+import { NETWORKS, type Network } from "./config.js";
 
-export const monadTestnet = defineChain({
-  id: CHAIN_ID,
-  name: "Monad Testnet",
-  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-  rpcUrls: { default: { http: ["https://testnet-rpc.monad.xyz"] } },
-});
+export const monadChain = (network: Network) =>
+  defineChain({
+    id: NETWORKS[network].chainId,
+    name: NETWORKS[network].name,
+    nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+    rpcUrls: { default: { http: [NETWORKS[network].publicRpc] } },
+  });
+
+export const monadTestnet = monadChain("testnet");
 
 export const anchorWriteAbi = parseAbi([
   "function anchor(uint256 agentId, bytes32 root, uint32 count, bytes32 r, bytes32 s)",
@@ -37,10 +40,11 @@ export class TxRevertedError extends Error {
 }
 
 /// One client per RPC URL, in order: primary first, then the fallback.
-export function makeClients(rpcUrls: string[], relayerPrivateKey: Hex): { clients: ChainClient[]; relayer: Address } {
+export function makeClients(rpcUrls: string[], relayerPrivateKey: Hex, network: Network = "testnet"): { clients: ChainClient[]; relayer: Address } {
   const account = privateKeyToAccount(relayerPrivateKey);
+  const chain = monadChain(network);
   const clients = rpcUrls.map(
-    (url) => createWalletClient({ account, chain: monadTestnet, transport: http(url) }).extend(publicActions) as unknown as ChainClient,
+    (url) => createWalletClient({ account, chain, transport: http(url) }).extend(publicActions) as unknown as ChainClient,
   );
   return { clients, relayer: account.address };
 }

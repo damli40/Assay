@@ -5,11 +5,34 @@ import { calculateJwkThumbprint, type JWK } from "jose";
 import { isAddress, type Address, type Hex } from "viem";
 import { OPENROUTER_URL } from "./upstream.js";
 
+/// Testnet's chain id, kept as the default for tests and older callers.
 export const CHAIN_ID = 10143;
-export const DEFAULT_VERIFIER_REGISTRY = "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91";
+
+/// Per-network constants. ASSAY_NETWORK picks one; each host process serves exactly one chain.
+export const NETWORKS = {
+  testnet: {
+    chainId: 10143,
+    name: "Monad Testnet",
+    publicRpc: "https://testnet-rpc.monad.xyz",
+    identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    verifierRegistry: "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91",
+  },
+  mainnet: {
+    chainId: 143,
+    name: "Monad",
+    publicRpc: "https://rpc.monad.xyz",
+    identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    verifierRegistry: undefined,
+  },
+} as const satisfies Record<string, { chainId: number; name: string; publicRpc: string; identityRegistry: string; verifierRegistry: string | undefined }>;
+export type Network = keyof typeof NETWORKS;
+export const DEFAULT_VERIFIER_REGISTRY = NETWORKS.testnet.verifierRegistry;
 const HOST_DIR = fileURLToPath(new URL("..", import.meta.url));
 
 export interface Config {
+  network: Network;
+  chainId: number;
+  identityRegistry: Address;
   openrouterApiKey: string;
   /// Full chat-completions URL. OpenRouter unless set, e.g. a lab's own OpenAI-compatible API.
   upstreamUrl: string;
@@ -32,7 +55,13 @@ export interface Config {
 /// Reads every variable and reports all problems at once. Values are never echoed, since some are secrets.
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
   const errors: string[] = [];
-  const get = (name: string) => env[name]?.trim() || undefined;
+  const networkRaw = env.ASSAY_NETWORK?.trim() || "testnet";
+  if (!(networkRaw in NETWORKS)) errors.push("ASSAY_NETWORK must be testnet or mainnet");
+  const network = (networkRaw in NETWORKS ? networkRaw : "testnet") as Network;
+  const net = NETWORKS[network];
+  // NAME_MAINNET / NAME_TESTNET wins over NAME, so one .env can hold both networks.
+  const suffix = `_${network.toUpperCase()}`;
+  const get = (name: string) => env[`${name}${suffix}`]?.trim() || env[name]?.trim() || undefined;
   const required = (name: string) => {
     const v = get(name);
     if (!v) errors.push(`${name} is required`);
@@ -53,7 +82,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (upstreamUrl && get("UPSTREAM_PROVIDER")) errors.push("UPSTREAM_PROVIDER only applies to OpenRouter; leave it empty with UPSTREAM_URL");
   const upstreamModel = required("UPSTREAM_MODEL");
   const rpc1 = required("MONAD_RPC_URL");
-  const rpc2 = get("MONAD_RPC_URL_2");
+  // The public RPC is the fallback when no second RPC is set.
+  const rpc2 = get("MONAD_RPC_URL_2") ?? (rpc1 === net.publicRpc ? undefined : net.publicRpc);
   for (const [name, url] of [["MONAD_RPC_URL", rpc1], ["MONAD_RPC_URL_2", rpc2]] as const) {
     if (url && !/^https?:\/\//.test(url)) errors.push(`${name} must be an http(s) URL`);
   }
@@ -61,8 +91,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const anchorAddress = required("ANCHOR_ADDRESS");
   if (anchorAddress && !isAddress(anchorAddress)) errors.push("ANCHOR_ADDRESS must be a 0x address");
 
-  const verifierRegistry = get("VERIFIER_REGISTRY") ?? DEFAULT_VERIFIER_REGISTRY;
-  if (!isAddress(verifierRegistry)) errors.push("VERIFIER_REGISTRY must be a 0x address");
+  const verifierRegistry = get("VERIFIER_REGISTRY") ?? net.verifierRegistry ?? "";
+  if (!isAddress(verifierRegistry)) errors.push(`VERIFIER_REGISTRY${suffix} must be a 0x address`);
 
   const agentRaw = required("HOST_AGENT_ID");
   if (agentRaw && !/^[1-9]\d*$/.test(agentRaw)) errors.push("HOST_AGENT_ID must be a positive integer (the ERC-8004 agentId)");
@@ -72,6 +102,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 
   const port = int("PORT", 8787, 1);
   const cfg: Config = {
+    network,
+    chainId: net.chainId,
+    identityRegistry: net.identityRegistry as Address,
     openrouterApiKey,
     upstreamUrl: upstreamUrl ?? OPENROUTER_URL,
     upstreamModel,

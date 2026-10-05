@@ -17,7 +17,7 @@ import type { JWK } from "jose";
 import { isHex, type Address, type Hex } from "viem";
 import { createBatcher, type Batcher } from "./batcher.js";
 import { anchorWriteAbi, makeClients, sendTx } from "./chain.js";
-import { CHAIN_ID, loadConfig, readJwk } from "./config.js";
+import { CHAIN_ID, loadConfig, NETWORKS, readJwk } from "./config.js";
 import { mountGrades, type GradeDeps } from "./grades.js";
 import { Store } from "./store.js";
 import { openRouter, providerMatches, providerPin, type Upstream } from "./upstream.js";
@@ -29,6 +29,11 @@ const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 export interface AppDeps {
   signer: HostSigner;
+  /// The chain this host anchors on (named in every receipt). Default: testnet.
+  chainId?: number;
+  identityRegistry?: Address;
+  /// RPC printed in the reproduce line. Default: testnet's public RPC.
+  publicRpc?: string;
   /// Old public keys kept so receipts they signed still verify (D22).
   retiredJwks?: JWK[];
   store: Store;
@@ -56,7 +61,8 @@ export const DEFAULT_MAX_TOKENS = 1024;
 export function createApp(d: AppDeps): Hono {
   const app = new Hono();
   const now = d.now ?? Date.now;
-  const agentIdStr = `erc8004:${CHAIN_ID}:${d.agentId}`;
+  const chainId = d.chainId ?? CHAIN_ID;
+  const agentIdStr = `erc8004:${chainId}:${d.agentId}`;
   const cosignHits = new Map<string, number[]>();
 
   app.post("/v1/chat/completions", async (c) => {
@@ -125,7 +131,7 @@ export function createApp(d: AppDeps): Hono {
         { name: "jwks", endpoint: `${d.publicUrl}/.well-known/jwks.json` },
         { name: "receipts", endpoint: `${d.publicUrl}/v1/receipts/{receiptHash}` },
       ],
-      registrations: [{ agentId: Number(d.agentId), agentRegistry: `eip155:${CHAIN_ID}:${IDENTITY_REGISTRY}` }],
+      registrations: [{ agentId: Number(d.agentId), agentRegistry: `eip155:${chainId}:${d.identityRegistry ?? IDENTITY_REGISTRY}` }],
       supportedTrust: [],
     }),
   );
@@ -147,11 +153,11 @@ export function createApp(d: AppDeps): Hono {
       proof,
       anchorTx: batch.anchorTx,
       reproduce: {
-        chainId: CHAIN_ID,
+        chainId,
         contract: d.anchor,
         function: sig,
         args: [d.agentId.toString(), hash, proof, batch.root],
-        cast: `cast call ${d.anchor} "${sig}(bool)" ${d.agentId} ${hash} "[${proof.join(",")}]" ${batch.root} --rpc-url https://testnet-rpc.monad.xyz`,
+        cast: `cast call ${d.anchor} "${sig}(bool)" ${d.agentId} ${hash} "[${proof.join(",")}]" ${batch.root} --rpc-url ${d.publicRpc ?? NETWORKS.testnet.publicRpc}`,
       },
     });
   });
@@ -212,8 +218,9 @@ async function main() {
   const signer = await createHostSigner(jwk, jwk.kid);
   const retiredJwks = await Promise.all(cfg.retiredJwkPaths.map(readJwk));
   const store = new Store(cfg.dataDir);
-  const { clients, relayer } = makeClients(cfg.rpcUrls, cfg.relayerPrivateKey);
+  const { clients, relayer } = makeClients(cfg.rpcUrls, cfg.relayerPrivateKey, cfg.network);
   const batcher = createBatcher({
+    chainId: cfg.chainId,
     store,
     signer,
     clients,
@@ -224,6 +231,9 @@ async function main() {
     batchMax: cfg.batchMax,
   });
   const app = createApp({
+    chainId: cfg.chainId,
+    identityRegistry: cfg.identityRegistry,
+    publicRpc: NETWORKS[cfg.network].publicRpc,
     signer,
     retiredJwks,
     store,

@@ -16,4 +16,5 @@ fs_permissions = [{ access = "read", path = "./test/fixtures" }]
 runs = 1000
 
 [rpc_endpoints]
+monad = "https://rpc.monad.xyz"
 monad_testnet = "https://testnet-rpc.monad.xyz"

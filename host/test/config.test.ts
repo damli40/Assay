@@ -17,10 +17,27 @@ describe("loadConfig", () => {
     expect(c.batchMax).toBe(64);
     expect(c.port).toBe(8787);
     expect(c.hostAgentId).toBe(1962n);
-    expect(c.rpcUrls).toEqual(["https://rpc.one"]);
+    // The network's public RPC is the automatic fallback.
+    expect(c.rpcUrls).toEqual(["https://rpc.one", "https://testnet-rpc.monad.xyz"]);
+    expect(c.network).toBe("testnet");
+    expect(c.chainId).toBe(10143);
     expect(c.hostJwkPath).toMatch(/host\/\.keys\/host\.jwk\.json$/);
     expect(c.retiredJwkPaths).toEqual([]);
     expect(c.upstreamProvider).toBeUndefined();
+  });
+
+  it("switches networks with ASSAY_NETWORK, preferring NAME_<NETWORK> over NAME", () => {
+    const both = { ...base, MONAD_RPC_URL_MAINNET: "https://main.rpc", ANCHOR_ADDRESS_MAINNET: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13", HOST_AGENT_ID_MAINNET: "7", VERIFIER_REGISTRY_MAINNET: "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1" };
+    const t = loadConfig(both);
+    expect([t.chainId, t.hostAgentId, t.rpcUrls[0]]).toEqual([10143, 1962n, "https://rpc.one"]);
+    const m = loadConfig({ ...both, ASSAY_NETWORK: "mainnet" });
+    expect([m.chainId, m.hostAgentId, m.anchorAddress, m.rpcUrls]).toEqual([143, 7n, "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13", ["https://main.rpc", "https://rpc.monad.xyz"]]);
+    expect(m.identityRegistry).toBe("0x8004A169FB4a3325136EB29fA0ceB6D2e539a432");
+  });
+
+  it("requires a mainnet VerifierRegistry and a known network", () => {
+    expect(() => loadConfig({ ...base, ASSAY_NETWORK: "mainnet" })).toThrow(/VERIFIER_REGISTRY_MAINNET/);
+    expect(() => loadConfig({ ...base, ASSAY_NETWORK: "goerli" })).toThrow(/ASSAY_NETWORK/);
   });
 
   it("uses OpenRouter by default and a direct upstream with its own key", () => {
