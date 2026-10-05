@@ -59,9 +59,13 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (!(networkRaw in NETWORKS)) errors.push("ASSAY_NETWORK must be testnet or mainnet");
   const network = (networkRaw in NETWORKS ? networkRaw : "testnet") as Network;
   const net = NETWORKS[network];
-  // NAME_MAINNET / NAME_TESTNET wins over NAME, so one .env can hold both networks.
+  // NAME_MAINNET / NAME_TESTNET wins over NAME. For the per-network settings, plain NAME is the older
+  // testnet-only form, so mainnet never reads it: a leftover testnet RPC or address can't leak into a
+  // mainnet host. Shared settings (keys, port, batching) are read plain on both networks.
   const suffix = `_${network.toUpperCase()}`;
-  const get = (name: string) => env[`${name}${suffix}`]?.trim() || env[name]?.trim() || undefined;
+  const PER_NETWORK = new Set(["MONAD_RPC_URL", "MONAD_RPC_URL_2", "ANCHOR_ADDRESS", "HOST_AGENT_ID", "VERIFIER_REGISTRY"]);
+  const get = (name: string) =>
+    env[`${name}${suffix}`]?.trim() || (!PER_NETWORK.has(name) || network === "testnet" ? env[name]?.trim() : undefined) || undefined;
   const required = (name: string) => {
     const v = get(name);
     if (!v) errors.push(`${name} is required`);

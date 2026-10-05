@@ -35,6 +35,11 @@ describe("loadConfig", () => {
     expect(m.identityRegistry).toBe("0x8004A169FB4a3325136EB29fA0ceB6D2e539a432");
   });
 
+  it("never lets plain (testnet) names leak into a mainnet config", () => {
+    // base has plain MONAD_RPC_URL, ANCHOR_ADDRESS and HOST_AGENT_ID: all testnet.
+    expect(() => loadConfig({ ...base, ASSAY_NETWORK: "mainnet", VERIFIER_REGISTRY_MAINNET: "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1" })).toThrow(/MONAD_RPC_URL.*required|ANCHOR_ADDRESS|HOST_AGENT_ID/);
+  });
+
   it("requires a mainnet VerifierRegistry and a known network", () => {
     expect(() => loadConfig({ ...base, ASSAY_NETWORK: "mainnet" })).toThrow(/VERIFIER_REGISTRY_MAINNET/);
     expect(() => loadConfig({ ...base, ASSAY_NETWORK: "goerli" })).toThrow(/ASSAY_NETWORK/);

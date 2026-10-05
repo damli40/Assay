@@ -14,7 +14,7 @@ import {
 import { Hono, type Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JWK } from "jose";
-import { isHex, type Address, type Hex } from "viem";
+import { createPublicClient, http, isHex, type Address, type Hex } from "viem";
 import { createBatcher, type Batcher } from "./batcher.js";
 import { anchorWriteAbi, makeClients, sendTx } from "./chain.js";
 import { CHAIN_ID, loadConfig, NETWORKS, readJwk } from "./config.js";
@@ -249,6 +249,11 @@ async function main() {
     grades: { reader: clients[0] as unknown as ContractReader, registry: cfg.verifierRegistry },
   });
 
+  // Refuse to start on the wrong chain: a mainnet host pointed at a testnet RPC would sign anchors nobody can verify.
+  for (const url of cfg.rpcUrls) {
+    const got = await createPublicClient({ transport: http(url) }).getChainId();
+    if (got !== cfg.chainId) throw new Error(`RPC ${new URL(url).host} is chain ${got}, but ASSAY_NETWORK=${cfg.network} needs ${cfg.chainId}`);
+  }
   await batcher.checkBalance();
   batcher.start();
   serve({ fetch: app.fetch, port: cfg.port }, () =>
