@@ -21,6 +21,7 @@ export interface StoredBatch {
 export class Store {
   private receipts = new Map<Hex, StoredReceipt>();
   private batchOf = new Map<Hex, StoredBatch>();
+  private byRoot = new Map<Hex, StoredBatch>();
   private queue: Hex[] = [];
   private readonly receiptsFile: string;
   private readonly batchesFile: string;
@@ -54,12 +55,17 @@ export class Store {
     return this.batchOf.get(hash.toLowerCase() as Hex);
   }
 
+  batchByRoot(root: Hex): StoredBatch | undefined {
+    return this.byRoot.get(root.toLowerCase() as Hex);
+  }
+
   /// Receipt hashes not yet in an anchored batch, oldest first.
   pending(): Hex[] {
     return [...this.queue];
   }
 
   private indexBatch(b: StoredBatch): void {
+    this.byRoot.set(b.root.toLowerCase() as Hex, b);
     for (const h of Object.keys(b.proofs) as Hex[]) this.batchOf.set(h, b);
   }
 }

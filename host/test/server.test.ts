@@ -269,6 +269,18 @@ describe("GET /v1/receipts/:hash", () => {
     expect(r.reproduce.cast).toContain(`cast call ${ANCHOR}`);
   });
 
+  it("lists a batch's receipt hashes by root, and only hashes", async () => {
+    const { app, batcher } = await setup();
+    const hash = (await chat(app)).headers.get("x-assay-receipt-hash") as Hex;
+    await batcher.tick();
+    const { root } = (await (await app.request(`/v1/receipts/${hash}`)).json()) as any;
+    const b = (await (await app.request(`/v1/batches/${root.toUpperCase().replace("0X", "0x")}`)).json()) as any;
+    expect(b).toMatchObject({ root, count: 1, receipts: [hash] });
+    expect(b).not.toHaveProperty("proofs");
+    expect((await app.request(`/v1/batches/0x${"00".repeat(32)}`)).status).toBe(404);
+    expect((await app.request("/v1/batches/0x12")).status).toBe(400);
+  });
+
   it("404s an unknown hash and 400s a malformed one", async () => {
     const { app } = await setup();
     expect((await app.request(`/v1/receipts/0x${"00".repeat(32)}`)).status).toBe(404);

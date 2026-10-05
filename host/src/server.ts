@@ -195,6 +195,15 @@ export function createApp(d: AppDeps): Hono {
     });
   });
 
+  /// Which receipts a batch holds. Hashes only: they're public once anchored, the bodies stay behind /v1/receipts/:hash.
+  app.get("/v1/batches/:root", (c) => {
+    const root = c.req.param("root").toLowerCase() as Hex;
+    if (!BYTES32.test(root)) return fail(c, 400, "batch root must be 0x + 64 hex");
+    const b = d.store.batchByRoot(root);
+    if (!b) return fail(c, 404, "unknown batch");
+    return c.json({ root: b.root, count: b.count, anchorTx: b.anchorTx, anchoredAt: b.anchoredAt, receipts: Object.keys(b.proofs) });
+  });
+
   app.post("/v1/cosign", async (c) => {
     if (overLimit(cosignHits, clientIp(c), COSIGN_LIMIT, now())) return fail(c, 429, `co-sign relay is limited to ${COSIGN_LIMIT} per hour per IP`);
 
