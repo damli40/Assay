@@ -192,7 +192,7 @@ function gradeCard(body: ReceiptBody, found: Found | undefined, status: GradeSta
   return card("Host grade", badge(status, status), h("p", {}, scope), h("p", {}, `Passed ${g.passed} of ${g.total}, 95% interval ${pct(g.ciLowBps)} to ${pct(g.ciHighBps)}.`), open);
 }
 
-function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | undefined, cosigned: boolean, actions: HTMLElement | null): HTMLElement {
+function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | undefined, cosigned: boolean, actions: HTMLElement | null, settled = false): HTMLElement {
   const agent = body ? parseAgentId(body.host.agentId).toString() : undefined;
   const title = body ? `Served by agent ${agent}, claiming ${body.model}` : "Receipt";
   const hashEl = shortHash(hash);
@@ -201,7 +201,8 @@ function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | unde
   const stamps = body
     ? h(
         "div",
-        { class: "stamps" },
+        // A head rebuilt with new results shows its stamps settled: the punch-in plays once per page.
+        { class: settled ? "stamps settled" : "stamps" },
         h("a", { href: `#hosts/${agent}?chain=${chainOfAgentId(body.host.agentId) ?? CHAIN_ID}`, class: "stamp-link", "aria-label": `Host agent ${agent}: open its profile` }, stamp("host", agent!, true, `Host mark: agent ${agent}`)),
         stamp("model", "claimed", true, `Model mark: claims ${body.model}`),
         stamp("anchor", anchored ? "monad" : "waiting", !!anchored, anchored ? "Anchor mark: anchored on Monad" : "Anchor mark: waiting for the batch"),
@@ -328,7 +329,7 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
       .then((result) => {
         levels[0] = result.checks.anchored === "pass";
         ladder.replaceChildren(levelLadder(levels));
-        headSlot.replaceChildren(head(hash, body, levels[0], result.checks.cosigned === "pass", acts));
+        headSlot.replaceChildren(head(hash, body, levels[0], result.checks.cosigned === "pass", acts, true));
         checksSlot.replaceChildren(card("Checks", "Run in your browser", renderChecks(result)));
       })
       .catch((e) => checksSlot.replaceChildren(banner("coral", `Couldn't run the checks (${errorText(e)}).`, again())));
