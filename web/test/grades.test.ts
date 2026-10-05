@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import { hostKeyFromInput, modelKey, parseAddresses } from "../src/lib/grades.js";
 
 describe("hostKeyFromInput", () => {
-  it("a bare number is an agent id on Monad testnet", () => {
-    expect(hostKeyFromInput("1962")).toEqual({ kind: "agent", hostKey: hostKeyForAgent(10143, 1962), preimage: "erc8004:10143:1962" });
+  it("a bare number is an agent id on the selected network", () => {
+    expect(hostKeyFromInput("1962", 10143)).toEqual({ kind: "agent", hostKey: hostKeyForAgent(10143, 1962), preimage: "erc8004:10143:1962" });
   });
 
   it("a full erc8004 id keeps its own chain", () => {

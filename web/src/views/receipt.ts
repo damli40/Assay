@@ -175,7 +175,7 @@ export function renderAnchorCard(info: AnchorInfo, root: Hex, cast?: string, cha
 
 function gradeCard(body: ReceiptBody, found: Found | undefined, status: GradeStatus, error?: string): HTMLElement {
   const agent = parseAgentId(body.host.agentId);
-  const open = link("Open in Grades", `#grades?model=${encodeURIComponent(body.model)}&host=${agent}`);
+  const open = link("Open in Grades", `#grades?model=${encodeURIComponent(body.model)}&host=${encodeURIComponent(body.host.agentId)}`);
   if (found === undefined && !error) {
     return emptyState({ title: "No trusted verifiers saved", text: "Choose whose grades count on the Grades tab. This page then shows their grade for this host.", tone: "lime", action: link("Open Grades", "#grades", "btn btn-secondary") });
   }

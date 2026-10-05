@@ -43,7 +43,7 @@ function deps(over: Partial<ReceiptDeps>): ReceiptDeps {
     jwks: async () => ({ keys: [] }),
     chain: () => ({
       client,
-      anchor: (o) => anchorInfo({ ...o, client, anchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24", indexer: (a, r, h) => indexedAnchor(a, r, h, "https://idx.example", gql(indexed)) }),
+      anchor: (o) => anchorInfo({ ...o, client, anchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24", indexer: (a, r, h) => indexedAnchor(a, r, h, "https://idx.example", gql(indexed), 10143) }),
       grade: async () => null,
     }),
     ...over,
@@ -59,7 +59,7 @@ const mount = (d: ReceiptDeps) => {
 describe("indexer", () => {
   it("reads the batch and its signing key in one GraphQL call", async () => {
     const f = gql(indexed);
-    const info = await indexedAnchor(1962n, root, hash, "https://idx.example", f);
+    const info = await indexedAnchor(1962n, root, hash, "https://idx.example", f, 10143);
     expect(info).toMatchObject({ count: 1, block: 67577033, txHash: tx, keyHash, source: "indexer", cosigns: [] });
     const sent = JSON.parse((f as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1].body as string);
     expect(sent.variables).toEqual({ id: `10143-1962-${root}`, hash });

@@ -60,7 +60,7 @@ export function renderHost(p: HostProfile, chainId: number = CHAIN_ID): HTMLElem
       { class: "host-title" },
       h("span", { class: "host-badge", "aria-hidden": "true" }, id),
       h("div", {}, h("div", { class: "row" }, chip("Assay host", "gold"), card8004), h("h1", { id: "page-title" }, name), a.description ? h("p", { class: "lede" }, a.description) : null),
-      h("div", { class: "row" }, h("a", { class: "btn btn-primary", href: `#grades?host=${id}` }, "See grades"), a.agentURI ? h("a", { class: "btn btn-secondary", href: a.agentURI, target: "_blank", rel: "noopener" }, "Agent card") : null),
+      h("div", { class: "row" }, h("a", { class: "btn btn-primary", href: `#grades?host=erc8004:${chainId}:${id}` }, "See grades"), a.agentURI ? h("a", { class: "btn btn-secondary", href: a.agentURI, target: "_blank", rel: "noopener" }, "Agent card") : null),
     ),
   );
 
@@ -127,7 +127,7 @@ export function renderHost(p: HostProfile, chainId: number = CHAIN_ID): HTMLElem
         { class: "col" },
         card("Activity, last 14 days", h("div", { class: "row legend" }, chip("Batches", "violet"), chip("Receipts", "gold"), chip("Co-signs", "pink")), activityChart(p.activity), h("p", { class: "hint" }, "One group per UTC day, from HostActivity in the Envio indexer.")),
         card("Batches", "Newest first", batches, h("p", { class: "hint" }, "The chain only holds each batch's root and count. Each row keeps the key that signed it.")),
-        card("Grades by model", link("Open in Grades", `#grades?host=${id}`), grades),
+        card("Grades by model", link("Open in Grades", `#grades?host=erc8004:${chainId}:${id}`), grades),
       ),
       h(
         "div",
@@ -162,11 +162,20 @@ export function mountHost(root: HTMLElement, route: Route, load: typeof hostProf
     ),
   );
   root.append(slot);
-  load(agentId, hostKeyForAgent(chainId, agentId), undefined, undefined, chainId)
-    .then((p) => {
+  // An agent id belongs to one chain. Without ?chain=, try the selected network first, then the others.
+  const order = route.params.get("chain") ? [chainId] : [chainId, ...Object.keys(CHAINS).map(Number).filter((c) => c !== chainId)];
+  const find = async () => {
+    for (const c of order) {
+      const p = await load(agentId, hostKeyForAgent(c, agentId), undefined, undefined, c);
+      if (p) return { p, c };
+    }
+    return { p: null, c: chainId };
+  };
+  find()
+    .then(({ p, c }) => {
       slot.removeAttribute("aria-busy");
       slot.replaceChildren(
-        p ? renderHost(p, chainId) : emptyState({ title: `No agent ${agentId} on ${chainConfig(chainId).name}`, text: "The indexer has no ERC-8004 agent with that id. Check the number, or open the hosts list.", tone: "muted", action: link("Hosts", "#hosts") }),
+        p ? renderHost(p, c) : emptyState({ title: `No agent ${agentId} on ${chainConfig(chainId).name}`, text: "The indexer has no ERC-8004 agent with that id. Check the number, or open the hosts list.", tone: "muted", action: link("Hosts", "#hosts") }),
       );
     })
     .catch((e) => {

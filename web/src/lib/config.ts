@@ -27,10 +27,21 @@ export const CHAINS: Record<number, ChainConfig> = {
     creAttestor: "0xB4A1CB9e40aDa44570Ae790430C23876d460deDC",
     identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
   },
+  143: {
+    name: "Monad mainnet",
+    short: "Mainnet",
+    host: import.meta.env.VITE_HOST_URL_MAINNET ?? "/host-mainnet",
+    rpc: "https://rpc.monad.xyz",
+    explorer: "https://monadvision.com",
+    receiptAnchor: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13",
+    verifierRegistry: "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1",
+    creAttestor: "0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a",
+    identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  },
 };
 
 const NETWORK_KEY = "assay.chain";
-const FALLBACK_CHAIN = 10143;
+const FALLBACK_CHAIN = 143;
 
 /// The network the reader picked in the top bar, remembered in this browser. Public setting, not a secret.
 export function selectedChainId(): number {
