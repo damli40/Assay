@@ -24,7 +24,31 @@ import { openRouter, providerMatches, providerPin, type Upstream } from "./upstr
 
 export const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
 export const COSIGN_LIMIT = 10;
+/// Chat requests per client per hour, and for the whole host per hour. Every receipt eventually costs an anchor.
+export const CHAT_LIMIT = 120;
+export const CHAT_LIMIT_GLOBAL = 1200;
 const HOUR = 3_600_000;
+
+/// The client behind the proxies. Caddy (same machine) and Vercel forward it; directly connected callers are taken as-is.
+/// Forwarded headers can be forged by anyone calling the VM directly, so the global limit is the hard bound.
+function clientIp(c: Context): string {
+  let remote = "unknown";
+  try {
+    remote = getConnInfo(c).remote.address ?? "unknown";
+  } catch {
+    // No socket (in-process requests, tests): fall back to the forwarded headers below.
+  }
+  if (remote !== "unknown" && !/^(127\.|::1$|::ffff:127\.)/.test(remote)) return remote;
+  return c.req.header("x-real-ip") ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? remote;
+}
+
+/// Sliding one-hour window. In memory, per process: resets on restart, enough for one host instance.
+function overLimit(hits: Map<string, number[]>, key: string, limit: number, t: number): boolean {
+  const recent = (hits.get(key) ?? []).filter((h) => t - h < HOUR);
+  if (recent.length >= limit) return true;
+  hits.set(key, [...recent, t]);
+  return false;
+}
 const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 export interface AppDeps {
@@ -32,6 +56,9 @@ export interface AppDeps {
   /// The chain this host anchors on (named in every receipt). Default: testnet.
   chainId?: number;
   identityRegistry?: Address;
+  /// Chat requests per client and per host per hour. Defaults: CHAT_LIMIT and CHAT_LIMIT_GLOBAL.
+  chatLimit?: number;
+  chatLimitGlobal?: number;
   /// RPC printed in the reproduce line. Default: testnet's public RPC.
   publicRpc?: string;
   /// Old public keys kept so receipts they signed still verify (D22).
@@ -65,7 +92,12 @@ export function createApp(d: AppDeps): Hono {
   const agentIdStr = `erc8004:${chainId}:${d.agentId}`;
   const cosignHits = new Map<string, number[]>();
 
+  const chatHits = new Map<string, number[]>();
   app.post("/v1/chat/completions", async (c) => {
+    const t0 = now();
+    // Per client first, so a request it rejects doesn't use up the host-wide budget.
+    if (overLimit(chatHits, clientIp(c), d.chatLimit ?? CHAT_LIMIT, t0)) return fail(c, 429, `requests are limited to ${d.chatLimit ?? CHAT_LIMIT} per hour per client`);
+    if (overLimit(chatHits, "*", d.chatLimitGlobal ?? CHAT_LIMIT_GLOBAL, t0)) return fail(c, 429, "this host is at its hourly request limit; try again later");
     const saltHex = c.req.header("x-assay-salt")?.replace(/^0x/, "") ?? "";
     if (!/^[0-9a-fA-F]{64}$/.test(saltHex)) return fail(c, 400, "X-Assay-Salt header is required: 32 random bytes as 64 hex chars");
     const salt = `0x${saltHex.toLowerCase()}` as Hex;
@@ -163,12 +195,7 @@ export function createApp(d: AppDeps): Hono {
   });
 
   app.post("/v1/cosign", async (c) => {
-    // In-memory and per process: resets on restart. Enough for one host instance.
-    const ip = getConnInfo(c).remote.address ?? "unknown";
-    const t = now();
-    const hits = (cosignHits.get(ip) ?? []).filter((h) => t - h < HOUR);
-    if (hits.length >= COSIGN_LIMIT) return fail(c, 429, `co-sign relay is limited to ${COSIGN_LIMIT} per hour per IP`);
-    cosignHits.set(ip, [...hits, t]);
+    if (overLimit(cosignHits, clientIp(c), COSIGN_LIMIT, now())) return fail(c, 429, `co-sign relay is limited to ${COSIGN_LIMIT} per hour per IP`);
 
     const b: unknown = await c.req.json().catch(() => undefined);
     const a = isObj(b) && isObj(b.auth) ? b.auth : undefined;

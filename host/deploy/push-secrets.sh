@@ -20,7 +20,10 @@ chmod 600 "$ENV_FILE"
   echo "UPSTREAM_API_KEY=$(val GEMINI_API_KEY)"
   echo "UPSTREAM_MODEL=gemma-4-31b-it"
   for k in MONAD_RPC_URL ANCHOR_ADDRESS HOST_AGENT_ID VERIFIER_REGISTRY; do v=$(net $k); [ -n "$v" ] && echo "${k}_${NET^^}=$v"; done
-  for k in RELAYER_PRIVATE_KEY BATCH_SECONDS BATCH_MAX; do echo "$k=$(val $k)"; done
+  # Shared settings may also be overridden per network (e.g. BATCH_SECONDS_MAINNET).
+  for k in RELAYER_PRIVATE_KEY BATCH_SECONDS BATCH_MAX; do v=$(val "$k$SUFFIX"); [ -z "$v" ] && v=$(val $k); echo "$k=$v"; done | \
+    # Every mainnet anchor costs real MON, so batch less often there unless told otherwise.
+    { if [ "$NET" = mainnet ] && [ -z "$(val BATCH_SECONDS_MAINNET)" ]; then sed 's/^BATCH_SECONDS=.*/BATCH_SECONDS=120/'; else cat; fi; }
   echo "PORT=$PORT"
   echo "DATA_DIR=$DATA"
   echo "PUBLIC_URL=$URL"

@@ -42,7 +42,7 @@ function fakeUpstream(over: Record<string, unknown> = {}, status = 200) {
   return { up, calls };
 }
 
-async function setup(opts: { dir?: string; signer?: HostSigner; upstream?: Upstream; provider?: string; retiredJwks?: JWK[] } = {}) {
+async function setup(opts: { dir?: string; signer?: HostSigner; upstream?: Upstream; provider?: string; retiredJwks?: JWK[]; chatLimit?: number; chatLimitGlobal?: number } = {}) {
   const dir = opts.dir ?? tempDir();
   const store = new Store(dir);
   const signer = opts.signer ?? (await newSigner());
@@ -67,6 +67,8 @@ async function setup(opts: { dir?: string; signer?: HostSigner; upstream?: Upstr
     upstream,
     model: MODEL,
     provider: opts.provider,
+    chatLimit: opts.chatLimit,
+    chatLimitGlobal: opts.chatLimitGlobal,
     agentId: 1962n,
     anchor: ANCHOR,
     publicUrl: "https://host.example",
@@ -116,6 +118,24 @@ describe("POST /v1/chat/completions", () => {
     const { body } = receiptOf(res);
     expect(body.res.commit).toBe(commitResponse(`0x${SALT}`, assistantOutput({ tool_calls: toolCalls })!));
     expect(body.res.finish).toBe("tool_calls");
+  });
+
+  it("limits chat requests per client and per host, reading the client through the local proxy", async () => {
+    const { up } = fakeUpstream();
+    const { app } = await setup({ upstream: up, chatLimit: 2, chatLimitGlobal: 3 });
+    const send = (realIp: string) =>
+      app.request(
+        "/v1/chat/completions",
+        { method: "POST", headers: { "content-type": "application/json", "x-assay-salt": SALT, "x-real-ip": realIp }, body: JSON.stringify({ messages, max_tokens: 16 }) },
+        { incoming: { socket: { remoteAddress: "127.0.0.1" } } },
+      );
+    expect((await send("1.1.1.1")).status).toBe(200);
+    expect((await send("1.1.1.1")).status).toBe(200);
+    const third = await send("1.1.1.1");
+    expect(third.status).toBe(429);
+    expect(((await third.json()) as any).error.message).toMatch(/per hour per client/);
+    expect((await send("2.2.2.2")).status).toBe(200); // another client still gets through
+    expect((await send("3.3.3.3")).status).toBe(429); // the host-wide cap is the hard bound
   });
 
   it("fills max_tokens when the request has no budget, and signs what it forwarded", async () => {
