@@ -31,6 +31,13 @@ export const httpStatus = (e: unknown): number | undefined => (e as { status?: n
 
 export const fetchReceiptStatus = (base: string, hash: Hex) => getJson<ReceiptStatus>(hostUrl(base, `/v1/receipts/${hash}`));
 
+export interface BatchReceipts {
+  root: Hex;
+  count: number;
+  receipts: Hex[];
+}
+export const fetchBatch = (base: string, root: Hex) => getJson<BatchReceipts>(hostUrl(base, `/v1/batches/${root}`));
+
 /// POST /v1/cosign. Indexes are bigints in the SDK; JSON carries them as decimal strings.
 export function relayCosign(base: string, receiptHash: Hex, qx: Hex, qy: Hex, auth: WebAuthnAuth) {
   const body = { receiptHash, qx, qy, auth: { ...auth, challengeIndex: auth.challengeIndex.toString(), typeIndex: auth.typeIndex.toString() } };

@@ -53,3 +53,18 @@ describe("host profile", () => {
     expect(el.querySelector("img")).toBeNull();
   });
 });
+
+describe("batch receipts", () => {
+  it("asks the host only when opened, then links each receipt", async () => {
+    const { batchReceipts } = await import("../src/views/host.js");
+    const root = `0x${"bb".repeat(32)}` as const;
+    const r = `0x${"cc".repeat(32)}` as const;
+    const load = vi.fn(async () => ({ root, count: 1, receipts: [r] }));
+    const d = batchReceipts(root, 143, load) as HTMLDetailsElement;
+    expect(load).not.toHaveBeenCalled();
+    d.open = true;
+    d.dispatchEvent(new Event("toggle"));
+    await vi.waitFor(() => expect(d.querySelector(`a[href="#r/${r}"]`)).not.toBeNull());
+    expect(load).toHaveBeenCalledOnce();
+  });
+});

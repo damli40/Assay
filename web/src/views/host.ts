@@ -1,7 +1,9 @@
 import { hostKeyForAgent } from "@assay/receipts";
 import { badge, chip, emptyState, errorText, h, kv, shortHash } from "../dom.js";
 import { CHAIN_ID, CHAINS, chainConfig } from "../lib/config.js";
+import { fetchBatch } from "../lib/host.js";
 import { hostProfile, type HostProfile } from "../lib/indexer.js";
+import type { Hex } from "viem";
 import type { Route } from "../router.js";
 import { showPageChain } from "../ui/network-switch.js";
 
@@ -13,6 +15,25 @@ const card = (title: string, aside: string | Node | null, ...body: (Node | null)
 
 function tile(label: string, value: number, tone: string, sub?: string) {
   return h("div", { class: `tile ${tone}` }, h("p", { class: "tile-label" }, label), h("p", { class: "tile-value" }, String(value)), sub ? h("p", { class: "hint" }, sub) : null);
+}
+
+/// A batch root that opens into its receipts, asked from the network's host only when opened.
+export function batchReceipts(root: Hex, chainId: number, load = fetchBatch): HTMLElement {
+  const list = h("div", { class: "batch-receipts" }, h("p", { class: "hint" }, "Loading…"));
+  const d = h("details", {}, h("summary", { "aria-label": `Batch ${root}: show its receipts` }, shortHash(root)), list);
+  let asked = false;
+  d.addEventListener("toggle", async () => {
+    if (!d.open || asked) return;
+    asked = true;
+    try {
+      const b = await load(chainConfig(chainId).host, root);
+      list.replaceChildren(h("ul", { class: "entries" }, ...b.receipts.map((r) => h("li", {}, h("a", { href: `#r/${r}` }, shortHash(r))))));
+    } catch (e) {
+      asked = false;
+      list.replaceChildren(h("p", { class: "hint" }, `The host couldn't list this batch (${errorText(e)}). The chain only holds its root.`));
+    }
+  });
+  return d;
 }
 
 /// The last 14 UTC days, oldest first. Days with no activity are zero, never missing.
@@ -77,7 +98,7 @@ export function renderHost(p: HostProfile, chainId: number = CHAIN_ID): HTMLElem
   const batches = p.anchors.length
     ? table(
         ["Root", "Receipts", "Co-signs", "Signed by key", "Block"],
-        p.anchors.map((x) => [shortHash(x.root), String(x.count), String(x.cosignCount), shortHash(x.hostKey.keyHash), link(String(x.block), `${EXPLORER}/tx/${x.txHash}`)]),
+        p.anchors.map((x) => [batchReceipts(x.root as Hex, chainId), String(x.count), String(x.cosignCount), shortHash(x.hostKey.keyHash), link(String(x.block), `${EXPLORER}/tx/${x.txHash}`)]),
       )
     : h("p", { class: "hint" }, "No batches anchored yet.");
 
@@ -127,7 +148,7 @@ export function renderHost(p: HostProfile, chainId: number = CHAIN_ID): HTMLElem
         "div",
         { class: "col" },
         card("Activity, last 14 days", h("div", { class: "row legend" }, chip("Batches", "violet"), chip("Receipts", "gold"), chip("Co-signs", "pink")), activityChart(p.activity), h("p", { class: "hint" }, "One group per UTC day, from HostActivity in the Envio indexer.")),
-        card("Batches", "Newest first", batches, h("p", { class: "hint" }, "The chain only holds each batch's root and count. Each row keeps the key that signed it.")),
+        card("Batches", "Newest first", batches, h("p", { class: "hint" }, "Open a root to see its receipts. The chain only holds each batch's root and count. Each row keeps the key that signed it.")),
         card("Grades by model", link("Open in Grades", `#grades?host=erc8004:${chainId}:${id}`), grades),
       ),
       h(
