@@ -1,0 +1,8 @@
+# CRE log-trigger simulation on a real GLM-5.3 grade (5 Oct 2026)
+# GradePosted tx 0xd45e396cd40d97ed5ba38404c483fafe4ea4ed5dbde2404574769b54a37e3d7e (Monad testnet), evidence 0x67cd9248…92e5 (39-host run, 24 KB)
+$ cre workflow simulate grade-recheck -T staging-settings --non-interactive --trigger-index 0 --evm-tx-hash 0xd45e396cd40d97ed5ba38404c483fafe4ea4ed5dbde2404574769b54a37e3d7e --evm-event-index 0
+2026-10-05T14:20:47Z [USER LOG] grade verifier=0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7 hostKey=0xdc2a70c1b3a2a80d0717b04a4bf858c5c701641d7f2d2bcee6dbe5467851c220 40/40 ci=[9123,10000] evidence=0x67cd9248dbca34dfec19b18f94deec9f19f54a6cb3cd72626242c86c6b6392e5
+2026-10-05T14:20:56Z [USER LOG] recheck hashOk=true tag=inference-net 40/40 ci=[9123,10000] agree=true
+2026-10-05T14:20:56Z [USER LOG] attested agree=true tx=0x0000000000000000000000000000000000000000000000000000000000000000
+✓ Workflow Simulation Result:
+"{\"agree\":true,\"tx\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}"
