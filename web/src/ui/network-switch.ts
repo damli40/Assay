@@ -29,16 +29,17 @@ function setChecked(id: number) {
   }
 }
 
-/// Picking a network remembers it, drops any ?chain= the current link carries, and reloads once
-/// the thumb has moved, because every view reads its chain when it loads.
+/// Picking a network remembers it, drops the link's query (its ?chain= or a host id like
+/// erc8004:143:… would pin the old chain again), and reloads once the thumb has moved,
+/// because every view reads its chain when it loads.
 function choose(id: number) {
-  const linkChain = /[?&]chain=\d+/.test(location.hash);
-  if (id === CHAIN_ID && !linkChain) return setChecked(id);
+  const linkChain = location.hash.includes("?");
+  if (id === CHAIN_ID && !group?.classList.contains("net-override")) return setChecked(id);
   setChecked(id);
   group?.classList.remove("net-override");
   setSelectedChainId(id);
   const go = () => {
-    if (linkChain) location.hash = location.hash.replace(/([?&])chain=\d+&?/, "$1").replace(/[?&]$/, "");
+    if (linkChain) location.hash = location.hash.split("?")[0];
     location.reload();
   };
   if (reducedMotion()) go();
