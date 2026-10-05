@@ -1,5 +1,6 @@
+// @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { parseReceipt, parseSalt, toBase64url } from "../src/lib/receipt.js";
+import { addMyReceipt, myReceipts, parseBundle, parseReceipt, parseSalt, toBase64url } from "../src/lib/receipt.js";
 
 const held = {
   body: { v: "assay-receipt/0", model: "m", host: { agentId: "erc8004:10143:1962", keyId: "k", alg: "ES256" } },
@@ -42,5 +43,25 @@ describe("parseSalt", () => {
   it("rejects wrong length and non-hex", () => {
     expect(() => parseSalt("ab")).toThrow(/64 hex/);
     expect(() => parseSalt("zz".repeat(32))).toThrow(/64 hex/);
+  });
+});
+
+describe("bundles and your receipts", () => {
+  it("reads the opening from a bundle file", () => {
+    const salt = `0x${"ab".repeat(32)}`;
+    expect(parseBundle(JSON.stringify({ ...held, salt, output: "hi", messages: [] }))).toMatchObject({ salt, output: "hi", messages: [] });
+    expect(parseBundle(JSON.stringify(held)).salt).toBeUndefined();
+  });
+
+  it("keeps hashes only, newest first, without duplicates, and drops junk", () => {
+    const a = { hash: `0x${"aa".repeat(32)}`, chainId: 143, model: "m", t: 1 } as const;
+    const b = { ...a, hash: `0x${"bb".repeat(32)}` } as const;
+    addMyReceipt(a);
+    addMyReceipt(b);
+    addMyReceipt(a);
+    expect(myReceipts().map((r) => r.hash)).toEqual([a.hash, b.hash]);
+    expect(Object.keys(myReceipts()[0])).not.toContain("salt");
+    localStorage.setItem("assay.mine", "not json");
+    expect(myReceipts()).toEqual([]);
   });
 });

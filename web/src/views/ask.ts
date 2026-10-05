@@ -2,9 +2,10 @@ import { checkOrigin, cosignReceipt, registerPasskey, wrap, type Passkey, type R
 import type { Hex } from "viem";
 import { banner, button, chip, confirmDialog, copyButton, emptyState, errorText, field, h, kv, liveRegion, section, skeleton, textarea, input, toast } from "../dom.js";
 import { addToVault, meraMessage } from "../mera.js";
-import { CHAIN_ID, chainConfig, DEFAULT_HOST, EXPLORER } from "../lib/config.js";
+import { CHAIN_ID, chainConfig, chainOfAgentId, DEFAULT_HOST, EXPLORER } from "../lib/config.js";
 import { fetchHealth, fetchReceiptStatus, httpStatus, hostUrl, relayCosign, type ReceiptStatus } from "../lib/host.js";
-import { rememberReceipt, toBase64url } from "../lib/receipt.js";
+import { myReceiptsCard } from "./verify.js";
+import { addMyReceipt, rememberReceipt, toBase64url } from "../lib/receipt.js";
 import { reducedMotion, typewrite } from "../ui/motion.js";
 import { batchEta, createTracker, fmtClock } from "../ui/tracker.js";
 
@@ -380,7 +381,8 @@ export function mountAsk(root: HTMLElement) {
       signedAt = Date.now();
       output = (res.json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message?.content ?? "";
       const { shown, thought } = answerText(output);
-      rememberReceipt(hash, { body: res.receipt.body, jws: res.receipt.jws });
+      rememberReceipt(hash, { body: res.receipt.body, jws: res.receipt.jws, salt: res.salt, output, messages });
+      addMyReceipt({ hash, chainId: chainOfAgentId(res.receipt.body.host.agentId) ?? CHAIN_ID, model: res.receipt.body.model, t: signedAt });
       const agent = res.receipt.body.host.agentId.split(":").pop();
 
       const p = h("p", { class: "answer" });
@@ -518,6 +520,7 @@ export function mountAsk(root: HTMLElement) {
       "Ask and co-sign",
       `Ask a question through an Assay host. The answer comes back with a receipt the host signed, and ${chain.name} anchors a batch of receipts ${batchEvery(chain.batchSeconds)}. With a passkey, you can co-sign yours too, so the chain records that you were the one who asked.`,
       h("div", { class: "receipt-grid ask-grid ask-layout" }, form, answer, passkeyCard),
+      myReceiptsCard() ?? "",
     ),
   );
 }

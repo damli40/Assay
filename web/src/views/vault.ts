@@ -50,7 +50,7 @@ function vaultCard() {
     for (const e of entries) {
       const btn = h("button", { type: "button", class: "secondary" }, "Share this receipt");
       btn.addEventListener("click", () => disclose(e));
-      rememberReceipt(e.receiptHash, { body: e.body, jws: e.jws });
+      rememberReceipt(e.receiptHash, { body: e.body, jws: e.jws, salt: e.salt, output: e.output, messages: e.messages });
       const verifyCopy = toBase64url(JSON.stringify({ body: e.body, jws: e.jws }));
       ul.append(
         h("li", {}, mono(e.receiptHash), h("span", { class: "hint" }, ` ${e.body.model} · ${new Date(e.savedAt).toISOString()}`), h("div", { class: "row" }, copyButton(verifyCopy, "Copy receipt"), copyButton(e.salt, "Copy salt"), btn)),
