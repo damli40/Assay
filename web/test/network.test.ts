@@ -5,9 +5,9 @@ import { chainOfAgentId, selectedChainId, setSelectedChainId } from "../src/lib/
 describe("network switch", () => {
   it("falls back to the default for unknown or missing values, and remembers known ones", () => {
     localStorage.removeItem("assay.chain");
-    expect(selectedChainId()).toBe(10143);
+    expect(selectedChainId()).toBe(143);
     localStorage.setItem("assay.chain", "999");
-    expect(selectedChainId()).toBe(10143);
+    expect(selectedChainId()).toBe(143);
     setSelectedChainId(10143);
     expect(selectedChainId()).toBe(10143);
   });
