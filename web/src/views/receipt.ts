@@ -195,7 +195,7 @@ function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | unde
     ? h(
         "div",
         { class: "stamps" },
-        stamp("host", agent!, true, `Host mark: agent ${agent}`),
+        h("a", { href: `#hosts/${agent}?chain=${chainOfAgentId(body.host.agentId) ?? CHAIN_ID}`, class: "stamp-link", "aria-label": `Host agent ${agent}: open its profile` }, stamp("host", agent!, true, `Host mark: agent ${agent}`)),
         stamp("model", "claimed", true, `Model mark: claims ${body.model}`),
         stamp("anchor", anchored ? "monad" : "waiting", !!anchored, anchored ? "Anchor mark: anchored on Monad" : "Anchor mark: waiting for the batch"),
         stamp("you", "co-sign", cosigned, cosigned ? "Your mark: requester co-signed" : "Your mark: not co-signed"),
@@ -204,7 +204,7 @@ function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | unde
   return h(
     "header",
     { class: "receipt-head" },
-    h("div", { class: "receipt-head-text" }, h("div", { class: "row" }, chip("Receipt", "gold"), chip("New page", "sky", { dashed: true })), h("h1", { id: "page-title" }, title), lede, actions),
+    h("div", { class: "receipt-head-text" }, h("div", { class: "row" }, chip("Receipt", "gold")), h("h1", { id: "page-title" }, title), lede, actions),
     stamps,
   );
 }

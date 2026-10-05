@@ -1,6 +1,6 @@
 import { receiptHash, verifyReceipt, type Checks, type Reproduce, type VerifyInput, type VerifyResult } from "@assay/receipts";
 import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
-import { DEFAULT_HOST, DEFAULT_RPC, RECEIPT_ANCHOR } from "../lib/config.js";
+import { CHAIN_ID, DEFAULT_HOST, DEFAULT_RPC, RECEIPT_ANCHOR, chainConfig } from "../lib/config.js";
 import { chainClient } from "../lib/chain.js";
 import { fetchJwks, fetchReceiptStatus } from "../lib/host.js";
 import { parseReceipt, parseSalt, takeVerifyPrefill } from "../lib/receipt.js";
@@ -123,7 +123,15 @@ export function mountVerify(root: HTMLElement) {
     }
   });
 
+  // Nobody arrives holding a receipt, so offer a real one first.
+  const sample = chainConfig(CHAIN_ID);
+  const live = h(
+    "div",
+    { class: "banner banner-sky live-sample", role: "note" },
+    h("p", {}, `No receipt to hand? Open a real one, anchored on ${sample.name}, and see every check run in your browser.`),
+    h("a", { class: "btn btn-primary btn-sm", href: `#r/${sample.sampleReceipt}` }, "Open a live receipt"),
+  );
   root.append(
-    section("Verify a receipt", "Check a receipt yourself: the host's signature, the onchain anchor, and, if you kept the salt, that the output and prompt match.", form, results),
+    section("Verify a receipt", "Check a receipt yourself: the host's signature, the onchain anchor, and, if you kept the salt, that the output and prompt match.", live, form, results),
   );
 }

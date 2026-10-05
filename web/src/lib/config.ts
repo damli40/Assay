@@ -6,6 +6,9 @@ export interface ChainConfig {
   short: string;
   /// The Assay host serving this chain, same-origin (Vercel rewrites it; Vite proxies it in dev).
   host: string;
+  /// The reference host's ERC-8004 agent id on this chain, and one real anchored receipt, for "see it live" links.
+  referenceHost: number;
+  sampleReceipt: string;
   rpc: string;
   explorer: string;
   receiptAnchor: Address;
@@ -20,6 +23,8 @@ export const CHAINS: Record<number, ChainConfig> = {
     name: "Monad testnet",
     short: "Testnet",
     host: import.meta.env.VITE_HOST_URL ?? "/host",
+    referenceHost: 1962,
+    sampleReceipt: "0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5",
     rpc: "https://testnet-rpc.monad.xyz",
     explorer: "https://testnet.monadvision.com",
     receiptAnchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24",
@@ -31,6 +36,8 @@ export const CHAINS: Record<number, ChainConfig> = {
     name: "Monad mainnet",
     short: "Mainnet",
     host: import.meta.env.VITE_HOST_URL_MAINNET ?? "/host-mainnet",
+    referenceHost: 10278,
+    sampleReceipt: "0x1b443b455e55360cec874215c9d1ae3113794f6d3a6c2a0c480387b12e35c5f2",
     rpc: "https://rpc.monad.xyz",
     explorer: "https://monadvision.com",
     receiptAnchor: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13",
@@ -88,6 +95,7 @@ export const EXPLORER = primary.explorer;
 export const DEFAULT_HOST = primary.host;
 
 export const DOCS_URL = "https://assay.gitbook.io/assay-docs";
+export const QUICKSTART_URL = `${DOCS_URL}/getting-started/quickstart`;
 export const GITHUB_URL = "https://github.com/trudransh/Assay";
 // Envio Cloud GraphQL, one endpoint for every chain (ids are chain-prefixed). Public and read-only,
 // so it is safe in the bundle; never put a token in a VITE_ variable.

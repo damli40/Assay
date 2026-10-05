@@ -1,6 +1,6 @@
 import { gradeOf, gradeStatus, type Grade, type GradeStatus } from "@assay/receipts";
 import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
-import { DEFAULT_RPC, EXPLORER, VERIFIER_REGISTRY } from "../lib/config.js";
+import { CHAIN_ID, CHAINS, EXPLORER, chainConfig, chainOfAgentId } from "../lib/config.js";
 import { chainClient } from "../lib/chain.js";
 import { hostKeyFromInput, loadTrusted, modelKey, parseAddresses, saveTrusted } from "../lib/grades.js";
 import type { Address } from "viem";
@@ -19,7 +19,8 @@ export function renderGrade(found: { grade: Grade; by: Address } | null, status:
     return h("div", { class: "card empty" }, h("p", {}, "No grade yet."), h("p", { class: "hint" }, "None of the verifiers you trust has graded this model on this host. Add another verifier or check the host input."));
   }
   const { grade: g, by } = found;
-  const evidence = evidenceBase.trim() ? h("a", { href: `${evidenceBase.trim().replace(/\/+$/, "")}/${g.evidence}`, target: "_blank", rel: "noopener" }, "Open evidence") : null;
+  // Bundles are published as <sha256 without 0x>.tar.gz.
+  const evidence = evidenceBase.trim() ? h("a", { href: `${evidenceBase.trim().replace(/\/+$/, "")}/${g.evidence.slice(2)}.tar.gz`, target: "_blank", rel: "noopener" }, "Open evidence") : null;
   return h(
     "div",
     { class: "card" },
@@ -37,15 +38,41 @@ export function renderGrade(found: { grade: Grade; by: Address } | null, status:
   );
 }
 
+/// Assay runs the only verifier so far; the same address is registered on testnet and mainnet.
+export const ASSAY_VERIFIER = "0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7";
+const EVIDENCE_BASE = "https://raw.githubusercontent.com/trudransh/Assay/main/cre/grade-recheck/fixtures/evidence";
+
+/// ?chain= wins, then the chain named in an erc8004 host, then the network picked in the top bar.
+export function gradesChain(params: URLSearchParams): number {
+  const asked = Number(params.get("chain"));
+  if (CHAINS[asked]) return asked;
+  const fromHost = chainOfAgentId(params.get("host") ?? "");
+  return fromHost && CHAINS[fromHost] ? fromHost : CHAIN_ID;
+}
+
 export function mountGrades(root: HTMLElement, params: URLSearchParams = new URLSearchParams()) {
-  const model = field("Model", input(params.get("model") ?? "z-ai/glm-5.3"), "Hashed as keccak256(model).");
-  const host = field("Host", input(params.get("host") ?? "1962"), "An ERC-8004 agent id for an Assay host, or an OpenRouter provider tag such as deepinfra/fp8.");
+  const chainId = gradesChain(params);
+  const net = chainConfig(chainId);
+  const model = field("Model", input(params.get("model") ?? "gemma-4-31b-it"), "Hashed as keccak256(model). Use the id the host claims in its receipts.");
+  const host = field("Host", input(params.get("host") ?? `erc8004:${chainId}:${net.referenceHost}`), `An Assay host as erc8004:<chain>:<id> or a bare agent id on ${net.name}, an OpenRouter provider tag such as deepinfra/fp8, or direct:<api host>.`);
   const trusted = field("Trusted verifiers", textarea({ rows: "2", placeholder: "0x… one per line" }), "Grades count only from these addresses. Ties go to the one listed first. Remembered in this browser.");
   trusted.input.value = params.get("v")?.split(",").join("\n") ?? loadTrusted().join("\n");
-  const reference = field("Reference endpoint (optional)", input(params.get("ref") ?? ""), "OpenRouter tag of the lab's own endpoint. With it, a host clearly below the reference shows as fail.");
-  const evidence = field("Evidence base URL (optional)", input(""), "Where the verifier publishes its log bundles, named by sha256.");
-  const rpc = field("RPC URL", input(DEFAULT_RPC));
-  const registry = field("VerifierRegistry", input(VERIFIER_REGISTRY));
+  const useAssay = h("button", { type: "button", class: "btn btn-secondary btn-sm" }, "Use Assay's verifier");
+  useAssay.addEventListener("click", () => {
+    const list = trusted.input.value.split(/\s+/).filter(Boolean);
+    if (!list.some((a) => a.toLowerCase() === ASSAY_VERIFIER.toLowerCase())) trusted.input.value = [...list, ASSAY_VERIFIER].join("\n");
+    trusted.input.focus();
+  });
+  const disclosure = h(
+    "div",
+    { class: "row verifier-note" },
+    h("p", { class: "hint" }, `So far the only verifier posting grades is run by Assay itself (${ASSAY_VERIFIER.slice(0, 6)}…${ASSAY_VERIFIER.slice(-4)}). Trusting it is your choice.`),
+    useAssay,
+  );
+  const reference = field("Reference endpoint (optional)", input(params.get("ref") ?? ""), "The lab's own endpoint, e.g. direct:generativelanguage.googleapis.com or an OpenRouter tag. With it, a host clearly below the reference shows as fail.");
+  const evidence = field("Evidence base URL (optional)", input(EVIDENCE_BASE), "Where the verifier publishes its log bundles, named by sha256.");
+  const rpc = field("RPC URL", input(net.rpc));
+  const registry = field("VerifierRegistry", input(net.verifierRegistry), `On ${net.name}.`);
   const status = liveRegion();
   const keyInfo = h("div");
   const results = h("div");
@@ -55,6 +82,7 @@ export function mountGrades(root: HTMLElement, params: URLSearchParams = new URL
     model.row,
     host.row,
     trusted.row,
+    disclosure,
     reference.row,
     h("details", {}, h("summary", {}, "More settings"), evidence.row, rpc.row, registry.row),
     h("button", { type: "submit" }, "Look up grade"),
@@ -67,7 +95,7 @@ export function mountGrades(root: HTMLElement, params: URLSearchParams = new URL
     keyInfo.replaceChildren();
     try {
       const m = modelKey(model.input.value);
-      const hk = hostKeyFromInput(host.input.value);
+      const hk = hostKeyFromInput(host.input.value, chainId);
       const list = parseAddresses(trusted.input.value);
       if (list.length === 0) throw new Error("Add at least one verifier address you trust.");
       saveTrusted(list);
@@ -76,7 +104,7 @@ export function mountGrades(root: HTMLElement, params: URLSearchParams = new URL
       const client = chainClient(rpc.input.value);
       const reg = registry.input.value.trim() as Address;
       const found = await gradeOf(client, reg, m, hk.hostKey, list);
-      const ref = reference.input.value.trim() ? await gradeOf(client, reg, m, hostKeyFromInput(reference.input.value).hostKey, list) : null;
+      const ref = reference.input.value.trim() ? await gradeOf(client, reg, m, hostKeyFromInput(reference.input.value, chainId).hostKey, list) : null;
       const st = gradeStatus(found?.grade, { now: BigInt(Math.floor(Date.now() / 1000)), reference: ref?.grade });
       results.append(renderGrade(found, st, evidence.input.value));
       status.say(found ? `Status: ${st}.` : "No grade found.", "ok");
@@ -87,5 +115,5 @@ export function mountGrades(root: HTMLElement, params: URLSearchParams = new URL
 
   // A deep link with everything filled in runs the lookup straight away.
   if (params.get("model") && params.get("host") && trusted.input.value.trim()) queueMicrotask(() => form.requestSubmit());
-  root.append(section("Grades", "Open verifiers compare a host's answers with the lab's own endpoint and post grades onchain. You choose whose grades count.", form, keyInfo, results));
+  root.append(section("Grades", `Open verifiers compare a host's answers with the lab's own endpoint and post grades onchain. You choose whose grades count. Reading from ${net.name}.`, form, keyInfo, results));
 }

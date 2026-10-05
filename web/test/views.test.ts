@@ -85,6 +85,6 @@ describe("grades view", () => {
     expect(el.textContent).toContain("47 of 50");
     expect(el.textContent).toContain("83.80% to 97.90%");
     expect(el.querySelector(".badge")!.textContent).toBe("pass");
-    expect(el.querySelector(`a[href="https://example.org/ev/${root}"]`)).not.toBeNull();
+    expect(el.querySelector(`a[href="https://example.org/ev/${root.slice(2)}.tar.gz"]`)).not.toBeNull();
   });
 });

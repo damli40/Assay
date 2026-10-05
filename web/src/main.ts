@@ -1,5 +1,5 @@
 import { emptyState, h, section, setPageTab } from "./dom.js";
-import { CHAIN_ID, CHAINS, DOCS_URL, chainConfig, setSelectedChainId } from "./lib/config.js";
+import { CHAIN_ID, CHAINS, DOCS_URL, QUICKSTART_URL, chainConfig, setSelectedChainId } from "./lib/config.js";
 import { match, parseHash, tabOf, type Route } from "./router.js";
 import { mountAsk } from "./views/ask.js";
 import { mountGrades } from "./views/grades.js";
@@ -32,7 +32,18 @@ function planned(root: HTMLElement, title: string, step: number) {
   root.append(section(title, "", emptyState({ title: `${title} is on its way`, text, tone: "sky", action: link("Verify a receipt", "#verify", "secondary") })));
 }
 
+/// Pages not built as their own view send people to the closest real one instead of a "coming soon" card.
+function redirect(route: Route): boolean {
+  const [top, sub] = route.path;
+  if (top === "hosts" && sub === undefined) location.replace(`#hosts/${chainConfig(CHAIN_ID).referenceHost}`);
+  else if (top === "grades" && sub === "verifiers") location.replace("#grades");
+  else if (top === "developers" && sub === undefined) location.href = QUICKSTART_URL;
+  else return false;
+  return true;
+}
+
 function render(route: Route, focus: boolean) {
+  if (redirect(route)) return;
   const m = match(route);
   const tab = m.view === "notFound" ? "" : tabOf(route);
   setPageTab(TAB_NAMES[tab] ?? "");
