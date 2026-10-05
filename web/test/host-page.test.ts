@@ -47,6 +47,19 @@ describe("host profile", () => {
     await vi.waitFor(() => expect(unknown.textContent).toContain("No agent 99999"));
   });
 
+  it("moves the network switch to the chain the agent was found on", async () => {
+    const { mountNetworkSwitch } = await import("../src/ui/network-switch.js");
+    const bar = document.createElement("div");
+    mountNetworkSwitch(bar);
+    const profile = { agent: live.Agent[0], keys: live.HostKey, rotations: live.KeyRotation, anchors: live.Anchor, activity: live.HostActivity, grades: [] } as unknown as HostProfile;
+    const el = document.createElement("main");
+    // Picked network is mainnet (143); this agent only exists on testnet.
+    mountHost(el, parseHash("#hosts/1962"), async (_id, _key, _a, _b, c) => (c === 10143 ? profile : null));
+    await vi.waitFor(() => expect(el.textContent).toContain("Assay reference host"));
+    expect(bar.querySelector(".net")!.getAttribute("data-chain")).toBe("10143");
+    expect(bar.querySelector(".net")!.classList.contains("net-override")).toBe(true);
+  });
+
   it("renders indexer text as text", () => {
     const p = { ...live, agent: { ...live.Agent[0], name: "<img src=x onerror=alert(1)>" } } as unknown as HostProfile;
     const el = renderHost({ ...p, keys: live.HostKey, rotations: live.KeyRotation, anchors: live.Anchor, activity: live.HostActivity, grades: [] } as HostProfile);

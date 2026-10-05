@@ -39,7 +39,9 @@ function choose(id: number) {
   group?.classList.remove("net-override");
   setSelectedChainId(id);
   const go = () => {
-    if (linkChain) location.hash = location.hash.split("?")[0];
+    // An agent id lives on one chain, so a host profile becomes the picked network's own host.
+    if (location.hash.startsWith("#hosts/")) location.hash = "#hosts";
+    else if (linkChain) location.hash = location.hash.split("?")[0];
     location.reload();
   };
   if (reducedMotion()) go();

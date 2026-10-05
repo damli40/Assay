@@ -197,6 +197,8 @@ export function mountHost(root: HTMLElement, route: Route, load: typeof hostProf
   find()
     .then(({ p, c }) => {
       slot.removeAttribute("aria-busy");
+      // Found on another chain than the one picked: the switch says so, never the picked one.
+      showPageChain(c);
       slot.replaceChildren(
         p ? renderHost(p, c) : emptyState({ title: `No agent ${agentId} on ${chainConfig(chainId).name}`, text: "The indexer has no ERC-8004 agent with that id. Check the number, or open the hosts list.", tone: "muted", action: link("Hosts", "#hosts") }),
       );
