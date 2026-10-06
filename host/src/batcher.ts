@@ -28,12 +28,15 @@ export interface Batcher {
   checkBalance(): Promise<void>;
   start(): void;
   stop(): void;
+  /// When the timer fires next, for /health. Relative, so a reader's clock skew doesn't matter. Undefined until start().
+  schedule(): { batchSeconds: number; nextBatchInMs: number } | undefined;
 }
 
 export function createBatcher(d: BatcherDeps): Batcher {
   const log = d.log ?? console;
   let running: Promise<Hex | null> | undefined;
   let timer: NodeJS.Timeout | undefined;
+  let nextAt: number | undefined;
 
   async function anchorOnce(): Promise<Hex | null> {
     const hashes = d.store.pending().slice(0, d.batchMax);
@@ -80,11 +83,18 @@ export function createBatcher(d: BatcherDeps): Batcher {
       if (d.store.pending().length >= d.batchMax) void safeTick();
     },
     start: () => {
-      timer ??= setInterval(safeTick, d.batchSeconds * 1000);
+      if (timer) return;
+      nextAt = Date.now() + d.batchSeconds * 1000;
+      timer = setInterval(() => {
+        nextAt = Date.now() + d.batchSeconds * 1000;
+        void safeTick();
+      }, d.batchSeconds * 1000);
     },
     stop: () => {
       clearInterval(timer);
       timer = undefined;
+      nextAt = undefined;
     },
+    schedule: () => (nextAt === undefined ? undefined : { batchSeconds: d.batchSeconds, nextBatchInMs: Math.max(0, nextAt - Date.now()) }),
   };
 }

@@ -50,7 +50,7 @@ function vaultCard() {
     for (const e of entries) {
       const btn = h("button", { type: "button", class: "secondary" }, "Share this receipt");
       btn.addEventListener("click", () => disclose(e));
-      rememberReceipt(e.receiptHash, { body: e.body, jws: e.jws });
+      rememberReceipt(e.receiptHash, { body: e.body, jws: e.jws, salt: e.salt, output: e.output, messages: e.messages });
       const verifyCopy = toBase64url(JSON.stringify({ body: e.body, jws: e.jws }));
       ul.append(
         h("li", {}, mono(e.receiptHash), h("span", { class: "hint" }, ` ${e.body.model} · ${new Date(e.savedAt).toISOString()}`), h("div", { class: "row" }, copyButton(verifyCopy, "Copy receipt"), copyButton(e.salt, "Copy salt"), btn)),
@@ -164,7 +164,7 @@ function revealCard() {
       out.append(
         h("dl", { class: "kv" },
           h("dt", {}, "Receipt hash"), h("dd", {}, mono(e.receiptHash)),
-          h("dt", {}, "Salt"), h("dd", {}, mono(e.salt), " ", copyButton(e.salt)),
+          h("dt", {}, "Salt"), h("dd", {}, mono(e.salt), " ", copyButton(e.salt, "Copy salt", { iconOnly: true })),
           h("dt", {}, "Output"), h("dd", {}, e.output ?? ""),
         ),
         copyButton(receipt, "Copy receipt for Verify"),
@@ -209,8 +209,8 @@ function requesterCard() {
       sigOut.append(
         h("dl", { class: "kv" },
           h("dt", {}, "Signer"), h("dd", {}, mono(address)),
-          h("dt", {}, "X-Assay-Cosigner"), h("dd", {}, mono(cosignerForAddress(address)), " ", copyButton(cosignerForAddress(address))),
-          h("dt", {}, "Signature"), h("dd", {}, mono(signature), " ", copyButton(signature)),
+          h("dt", {}, "X-Assay-Cosigner"), h("dd", {}, mono(cosignerForAddress(address)), " ", copyButton(cosignerForAddress(address), "Copy cosigner", { iconOnly: true })),
+          h("dt", {}, "Signature"), h("dd", {}, mono(signature), " ", copyButton(signature, "Copy signature", { iconOnly: true })),
           h("dt", {}, "ecrecover"), h("dd", {}, recovered === address ? "recovers to the signer" : "MISMATCH"),
         ),
       );

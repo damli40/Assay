@@ -1,0 +1,240 @@
+/* Touchstone Glass: the polish layer.
+   Load after tokens.css and style.css (and landing.css on the landing page).
+   Rules, in private/ui/POLISH.md:
+   1. Glass is for floating chrome only: top bar, bottom bar, landing nav, network switch, toasts,
+      dialogs, the phone menu sheet. Cards stay solid stone (tinted, never blurred) so data stays readable.
+   2. Glass needs something behind it. The ambient field gives the blur a colour to pick up.
+   3. Primary actions keep the hard violet offset shadow. Glass gets the soft shadow. Nothing else does.
+   4. Motion explains a change. 1 or 2 moving things per view. Everything stops under reduced motion. */
+
+:root {
+  --glass-bg: color-mix(in srgb, var(--stone-1) 62%, transparent);
+  --glass-bg-strong: color-mix(in srgb, var(--stone-1) 82%, transparent);
+  --glass-border: color-mix(in srgb, var(--bone) 11%, transparent);
+  --glass-highlight: inset 0 1px 0 color-mix(in srgb, var(--bone) 9%, transparent);
+  --glass-blur: 18px;
+  --glass-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  --card-tint: color-mix(in srgb, var(--stone-1) 90%, transparent);
+
+  /* Motion scale. Exits run at about 65% of the matching enter. */
+  --dur-1: 120ms;   /* colour, press */
+  --dur-2: 220ms;   /* popover, thumb colour, hover lift */
+  --dur-3: 340ms;   /* reveal, route change */
+  --dur-4: 560ms;   /* hero, stamps */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: linear(0, 0.24 8%, 0.68 20%, 0.98 33%, 1.07 45%, 1.04 58%, 1 72%, 1);
+  --stagger: 45ms;
+}
+
+/* ---------- ambient field ---------- */
+
+.ambient {
+  position: fixed; inset: -18vmax; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(36vmax 28vmax at 16% 10%, color-mix(in srgb, var(--violet) 15%, transparent), transparent 70%),
+    radial-gradient(32vmax 26vmax at 88% 16%, color-mix(in srgb, var(--gold) 11%, transparent), transparent 70%),
+    radial-gradient(38vmax 28vmax at 72% 94%, color-mix(in srgb, var(--pink) 8%, transparent), transparent 70%);
+  animation: ambient-drift 52s ease-in-out infinite alternate;
+}
+@keyframes ambient-drift { to { transform: translate3d(3vmax, -2vmax, 0) rotate(3deg); } }
+
+/* ---------- glass chrome ---------- */
+
+.top, .l-nav {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border-bottom-color: var(--glass-border);
+  box-shadow: var(--glass-highlight);
+}
+.bottom-bar {
+  background: var(--glass-bg-strong) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border-top-color: var(--glass-border) !important;
+}
+.toast {
+  background: var(--glass-bg-strong); color: var(--bone);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-highlight), var(--glass-shadow);
+  animation: rise-in var(--dur-2) var(--ease-out) both;
+}
+.toast .icon { color: var(--lime); }
+dialog, .l-sheet {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+dialog[open] { animation: pop-in var(--dur-2) var(--ease-out) both; }
+dialog::backdrop { background: rgba(12, 12, 11, 0.55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+
+/* No backdrop-filter: fall back to solid stone so text keeps its contrast. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .top, .l-nav, .toast, dialog, .l-sheet, .net { background: var(--stone-1); }
+  .bottom-bar { background: var(--stone-1) !important; }
+}
+
+/* ---------- tinted cards: a hint of the field, no blur ---------- */
+
+.card { background: var(--card-tint); }
+.card, .l-live-card, .l-mark, .l-tile.l-surface { transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
+
+@media (hover: hover) {
+  a.card:hover, .l-live-card:hover, .l-mark:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--c, var(--gold)) 70%, var(--line));
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35), 0 0 0 1px color-mix(in srgb, var(--c, var(--gold)) 22%, transparent);
+  }
+  .l-live-card:hover .l-live-go { letter-spacing: 0.01em; }
+  .stamp-link:hover .stamp { transform: translateY(-2px) rotate(-2deg); }
+  .tabs a:not([aria-current="page"]):hover { background: color-mix(in srgb, var(--bone) 6%, transparent); }
+}
+.l-live-go { transition: letter-spacing var(--dur-2) var(--ease-out); }
+.stamp { transition: transform var(--dur-2) var(--ease-out); }
+
+/* Buttons: primaries press into their own shadow. */
+.btn-primary:active, button:not(.secondary):not(.copy):not(.net-opt):not(.btn-ghost):active:not(:disabled) {
+  transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--violet);
+  transition-duration: var(--dur-1);
+}
+.btn-secondary:active, button.secondary:active, button.copy:active, .btn-ghost:active { transform: scale(0.97); }
+
+/* Active tab: the gold underline slides in. */
+.tabs a { position: relative; transition: color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out); }
+.tabs a[aria-current="page"] { box-shadow: none; }
+.tabs a::after {
+  content: ""; position: absolute; left: var(--space-3); right: var(--space-3); bottom: 6px; height: 3px; border-radius: 3px;
+  background: var(--gold); transform: scaleX(0); transition: transform var(--dur-2) var(--ease-out);
+}
+.tabs a[aria-current="page"]::after { transform: scaleX(1); }
+
+/* ---------- network switch ---------- */
+
+.net {
+  position: relative; isolation: isolate;
+  display: inline-grid; grid-template-columns: 1fr 1fr; height: 44px; padding: 4px;
+  border-radius: var(--radius-pill); border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: var(--glass-highlight);
+}
+.net-thumb {
+  --c: var(--violet);
+  position: absolute; z-index: -1; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--c) 18%, var(--stone-2));
+  border: 1.5px solid color-mix(in srgb, var(--c) 75%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--c) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--bone) 12%, transparent);
+  transition: transform var(--dur-3) var(--ease-spring), background var(--dur-2), border-color var(--dur-2), box-shadow var(--dur-2);
+}
+.net[data-chain="10143"] .net-thumb { --c: var(--sky); transform: translateX(100%); }
+.net.net-override .net-thumb { border-style: dashed; }
+.net-opt {
+  appearance: none; border: 0; background: transparent; box-shadow: none; min-height: 0; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px;
+  border-radius: var(--radius-pill); cursor: pointer;
+  color: var(--muted); font: 800 12px var(--font-sans); font-stretch: var(--stretch-label); letter-spacing: 0.08em; text-transform: uppercase;
+  transition: color var(--dur-1) var(--ease-out);
+}
+.net-opt:hover:not(:disabled) { color: var(--bone); transform: none; box-shadow: none; }
+.net-opt:active:not(:disabled) { transform: none; box-shadow: none; }
+.net-opt[aria-checked="true"] { color: var(--bone); }
+.net-opt:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.net-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.45; transition: background var(--dur-2), opacity var(--dur-2); }
+.net-opt.tone-violet[aria-checked="true"] .net-dot { --c: var(--violet); }
+.net-opt.tone-sky[aria-checked="true"] .net-dot { --c: var(--sky); }
+.net-opt[aria-checked="true"] .net-dot { background: var(--c); opacity: 1; animation: live-pulse 2.4s ease-in-out infinite; }
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 55%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 0%, transparent); }
+}
+@media (max-width: 640px) {
+  .net { height: 40px; padding: 3px; }
+  .net-thumb { top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); }
+  .net-opt { padding: 0 11px; gap: 6px; font-size: 11px; }
+  .net-opt { min-height: 34px; }
+}
+
+/* ---------- scroll reveal (hidden start state only when JS opted in) ---------- */
+
+[data-reveal] {
+  transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * var(--stagger));
+}
+.js-reveal [data-reveal]:not(.is-in) { opacity: 0; transform: translateY(14px); }
+
+/* ---------- route change ---------- */
+
+main.route-in > * { animation: rise-in var(--dur-3) var(--ease-out) both; }
+main.route-in > *:nth-child(2) { animation-delay: var(--stagger); }
+main.route-in > *:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+/* Focus moves to <main> on every route change; keep its top clear of the sticky glass bar. */
+main { scroll-margin-top: 84px; }
+
+/* ---------- loading ---------- */
+
+/* A skeleton only shows if the wait passes 180ms, so fast answers never flash. */
+.skeleton { animation: fade-in var(--dur-2) var(--ease-out) 180ms both; }
+.skeleton-row { position: relative; overflow: hidden; animation: none; background: var(--stone-2); }
+.skeleton-row::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bone) 7%, transparent), transparent);
+  animation: sheen 1.3s linear infinite;
+}
+[aria-busy="true"] { cursor: progress; }
+.btn[aria-busy="true"], button[aria-busy="true"] { position: relative; color: transparent !important; }
+.btn[aria-busy="true"]::after, button[aria-busy="true"]::after {
+  content: ""; position: absolute; inset: 0; margin: auto; width: 16px; height: 16px;
+  clip-path: var(--octagon); background: var(--stone-0); animation: spin 0.9s linear infinite;
+}
+
+/* ---------- writing ---------- */
+
+.is-typing::after {
+  content: ""; display: inline-block; width: 0.55ch; height: 1.1em; margin-left: 2px; vertical-align: -0.18em;
+  background: var(--gold-high); animation: caret 1s steps(1) infinite;
+}
+
+/* ---------- app pieces that looked unfinished ---------- */
+
+/* Ask examples read as plain bold text. Make them glass chips. */
+.examples .btn-ghost, .examples button.btn-ghost {
+  border: 1px solid var(--glass-border); background: color-mix(in srgb, var(--bone) 4%, transparent);
+  border-radius: var(--radius-pill); font-weight: 600; color: var(--bone);
+}
+.examples .btn-ghost:hover { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); }
+
+/* Disclosure rows get a chevron so "Host" or "More settings" reads as something you can open. */
+summary { list-style: none; gap: var(--space-2); }
+summary::-webkit-details-marker { display: none; }
+summary::before {
+  content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg); transition: transform var(--dur-2) var(--ease-out); flex: none; margin-right: 4px;
+}
+details[open] > summary::before { transform: rotate(45deg); }
+summary:hover { color: var(--bone); }
+
+/* ---------- landing extras ---------- */
+
+.l-num[data-count] { font-variant-numeric: tabular-nums; }
+.l-live-card { background: color-mix(in srgb, var(--c) 7%, var(--card-tint)); }
+
+/* ---------- keyframes ---------- */
+
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes sheen { to { transform: translateX(100%); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes caret { 50% { opacity: 0; } }
+
+/* ---------- reduced motion: final states, no movement ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient, .net-opt[aria-checked="true"] .net-dot, .skeleton-row::after { animation: none !important; }
+  .js-reveal [data-reveal]:not(.is-in) { opacity: 1; transform: none; }
+  [data-reveal], .net-thumb, .card, .l-live-card, .l-mark { transition: none !important; }
+  main.route-in > * { animation: none; }
+  .is-typing::after { animation: none; }
+}

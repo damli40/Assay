@@ -22,7 +22,10 @@ import { fetchJwks, fetchReceiptStatus, httpStatus, type ReceiptStatus } from ".
 import { anchorInfo, type AnchorInfo, type AnchorReader } from "../lib/indexer.js";
 import { heldReceipt, setVerifyPrefill } from "../lib/receipt.js";
 import type { Route } from "../router.js";
-import { CHECKS } from "./verify.js";
+import { CHECKS, NOT_YET_COSIGNED, notYetCosigned } from "./verify.js";
+import { ASSAY_VERIFIER } from "./grades.js";
+import { decode } from "../ui/motion.js";
+import { showPageChain } from "../ui/network-switch.js";
 
 type Found = { grade: Grade; by: Address } | null;
 
@@ -94,6 +97,7 @@ export function renderChecks(result: VerifyResult): HTMLElement {
     "ul",
     { class: "checks compact" },
     ...CHECKS.map((c) => {
+      if (c.key === "cosigned" && notYetCosigned(result)) return h("li", { class: "check skipped", "data-check": c.key, title: NOT_YET_COSIGNED }, h("strong", {}, c.name), badge("skipped", "Not yet"));
       const state = result.checks[c.key];
       return h("li", { class: `check ${state}`, "data-check": c.key }, h("strong", {}, c.name), badge(state, checkLabel(c.key, state)));
     }),
@@ -177,7 +181,9 @@ function gradeCard(body: ReceiptBody, found: Found | undefined, status: GradeSta
   const agent = parseAgentId(body.host.agentId);
   const open = link("Open in Grades", `#grades?model=${encodeURIComponent(body.model)}&host=${encodeURIComponent(body.host.agentId)}`);
   if (found === undefined && !error) {
-    return emptyState({ title: "No trusted verifiers saved", text: "Choose whose grades count on the Grades tab. This page then shows their grade for this host.", tone: "lime", action: link("Open Grades", "#grades", "btn btn-secondary") });
+    const chainId = chainOfAgentId(body.host.agentId) ?? CHAIN_ID;
+    const assay = `#grades?model=${encodeURIComponent(body.model)}&host=${encodeURIComponent(body.host.agentId)}&chain=${chainId}&v=${ASSAY_VERIFIER}`;
+    return emptyState({ title: "No trusted verifiers saved", text: "Choose whose grades count. Assay runs the only verifier posting so far; the link below uses it, and you can change it there.", tone: "lime", action: link("See Assay's grade for this host", assay, "btn btn-secondary") });
   }
   const scope = `For ${body.model} on ${body.host.agentId}, from verifiers you trust. It grades the host, not this one response.`;
   if (error) return card("Host grade", badge("notchecked", "Not checked"), h("p", { class: "hint" }, `Couldn't read the grade (${error}).`));
@@ -187,14 +193,17 @@ function gradeCard(body: ReceiptBody, found: Found | undefined, status: GradeSta
   return card("Host grade", badge(status, status), h("p", {}, scope), h("p", {}, `Passed ${g.passed} of ${g.total}, 95% interval ${pct(g.ciLowBps)} to ${pct(g.ciHighBps)}.`), open);
 }
 
-function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | undefined, cosigned: boolean, actions: HTMLElement | null): HTMLElement {
+function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | undefined, cosigned: boolean, actions: HTMLElement | null, settled = false): HTMLElement {
   const agent = body ? parseAgentId(body.host.agentId).toString() : undefined;
   const title = body ? `Served by agent ${agent}, claiming ${body.model}` : "Receipt";
-  const lede = h("p", { class: "lede" }, "Receipt ", shortHash(hash), " ", copyButton(hash, "Copy hash"), " ", anchored === undefined ? "" : anchored ? "Anchored in a batch on Monad." : "Signed, not anchored yet.", cosigned ? " Co-signed by the requester." : "");
+  const hashEl = shortHash(hash);
+  decode(hashEl);
+  const lede = h("p", { class: "lede" }, "Receipt ", hashEl, " ", copyButton(hash, "Copy hash", { iconOnly: true }), " ", anchored === undefined ? "" : anchored ? "Anchored in a batch on Monad." : "Signed, not anchored yet.", cosigned ? " Co-signed by the requester." : "");
   const stamps = body
     ? h(
         "div",
-        { class: "stamps" },
+        // A head rebuilt with new results shows its stamps settled: the punch-in plays once per page.
+        { class: settled ? "stamps settled" : "stamps" },
         h("a", { href: `#hosts/${agent}?chain=${chainOfAgentId(body.host.agentId) ?? CHAIN_ID}`, class: "stamp-link", "aria-label": `Host agent ${agent}: open its profile` }, stamp("host", agent!, true, `Host mark: agent ${agent}`)),
         stamp("model", "claimed", true, `Model mark: claims ${body.model}`),
         stamp("anchor", anchored ? "monad" : "waiting", !!anchored, anchored ? "Anchor mark: anchored on Monad" : "Anchor mark: waiting for the batch"),
@@ -210,9 +219,12 @@ function head(hash: Hex, body: ReceiptBody | undefined, anchored: boolean | unde
 }
 
 function actions(hash: Hex, held: { body: ReceiptBody; jws: string }, extra: Record<string, unknown>): HTMLElement {
-  const verify = button("Verify with your salt", { variant: "primary" });
+  // This browser asked (or unlocked it from the vault): it holds the salt, so the commits open in one click.
+  const opening = heldReceipt(hash);
+  const verify = button(opening?.salt ? "Check with your salt" : "Verify with your salt", { variant: "primary" });
   verify.addEventListener("click", () => {
-    setVerifyPrefill(JSON.stringify(held));
+    const { salt, output, messages } = opening ?? {};
+    setVerifyPrefill({ receipt: JSON.stringify({ body: held.body, jws: held.jws }), ...(salt ? { salt, output, messages } : {}) });
     location.hash = "#verify";
   });
   const copy = button("Copy link");
@@ -230,7 +242,10 @@ function actions(hash: Hex, held: { body: ReceiptBody; jws: string }, extra: Rec
     h("a", { href: url, download: `assay-receipt-${hash.slice(2, 10)}.json` }).click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   });
-  return h("div", { class: "row actions" }, verify, copy, download);
+  const where = opening?.salt
+    ? "You asked this in this browser, so its salt is still in memory. Checking with it proves this output answered your prompt."
+    : "The salt opens the prompt and output commits. Only the person who asked has it: in the bundle they downloaded or in their vault. Anyone else can still check the signature and the anchor.";
+  return h("div", {}, h("div", { class: "row actions" }, verify, copy, download), h("p", { class: "hint salt-where" }, where));
 }
 
 const limits = () =>
@@ -295,6 +310,7 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
       page.replaceChildren(head(hash, body, undefined, false, null), banner("coral", `This receipt was anchored on chain ${chainId}, which this app doesn't know yet, so it can't be checked here.`));
       return;
     }
+    showPageChain(chainId);
     const chain = deps.chain(chainId);
     const acts = actions(hash, { body, jws }, { root: batchRoot, proof, anchorTx });
 
@@ -320,7 +336,7 @@ export function mountReceipt(root: HTMLElement, route: Route, deps: ReceiptDeps 
       .then((result) => {
         levels[0] = result.checks.anchored === "pass";
         ladder.replaceChildren(levelLadder(levels));
-        headSlot.replaceChildren(head(hash, body, levels[0], result.checks.cosigned === "pass", acts));
+        headSlot.replaceChildren(head(hash, body, levels[0], result.checks.cosigned === "pass", acts, true));
         checksSlot.replaceChildren(card("Checks", "Run in your browser", renderChecks(result)));
       })
       .catch((e) => checksSlot.replaceChildren(banner("coral", `Couldn't run the checks (${errorText(e)}).`, again())));

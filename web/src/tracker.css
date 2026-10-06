@@ -1,0 +1,147 @@
+/* Receipt tracker: Ask's step-by-step view of where a receipt is. Loads after polish.css.
+   It is content, so it stays solid: no glass. Only transform and opacity move. */
+
+/* ---------- Ask layout: form | result, passkey under the form; on one column the result comes second ---------- */
+
+.receipt-grid.ask-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-areas: "form result" "passkey result";
+  grid-template-rows: auto 1fr;
+}
+.ask-layout > .ask-form { grid-area: form; margin: 0; }
+.ask-layout > .ask-passkey { grid-area: passkey; align-self: start; margin: 0; }
+.ask-layout > .ask-result { grid-area: result; min-width: 0; }
+.ask-result, .ask-flow { scroll-margin-top: 76px; }
+.ask-result > .card, .ask-result > .empty { margin: 0; }
+@media (max-width: 900px) {
+  .receipt-grid.ask-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "form" "result" "passkey"; grid-template-rows: none; }
+}
+
+.ask-flow .card-head h2[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+.ask-answer { min-height: 64px; margin: 0 0 var(--space-4); }
+.ask-answer .skeleton { display: grid; gap: 10px; }
+.ask-answer .skeleton-row { border-radius: 6px; }
+.ask-answer .skeleton-row:last-child { width: 62%; }
+.ask-answer .answer { margin: 0; }
+.ask-q {
+  margin: 0; padding: var(--space-3) var(--space-4); border-left: 3px solid var(--gold);
+  background: var(--stone-2); border-radius: 0 var(--radius-md) var(--radius-md) 0; font-size: 15px; color: var(--bone);
+}
+.ask-actions { border-top: 1px solid var(--line); padding-top: var(--space-4); margin: var(--space-4) 0 0; }
+.ask-actions[hidden] { display: none; }
+
+/* ---------- rail: a tablist of steps on one line, joined by a line that fills to the live step ---------- */
+
+.track { margin: 0; }
+.track-rail { --fill: 0; --mark: 44px; position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.track-rail::before, .track-rail::after {
+  content: ""; position: absolute; top: calc(var(--mark) / 2 - 1px); height: 2px; border-radius: 2px;
+  left: calc(50% / var(--n)); right: calc(50% / var(--n));
+}
+.track-rail::before { background: var(--line-strong); }
+.track-rail::after { background: var(--gold); transform-origin: left center; transform: scaleX(var(--fill)); transition: transform var(--dur-4) var(--ease-out); }
+
+.track-node {
+  --c: var(--bone);
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 0; padding: 0 2px 10px; border: 0; background: none; color: var(--muted);
+  font: inherit; text-align: center; cursor: pointer; border-radius: var(--radius-md);
+}
+.track-node[data-tone="gold"] { --c: var(--gold); }
+.track-node[data-tone="sky"] { --c: var(--sky); }
+.track-node[data-tone="violet"] { --c: var(--violet); }
+.track-node[data-tone="pink"] { --c: var(--pink); }
+
+.track-mark {
+  display: grid; place-items: center; width: var(--mark); height: var(--mark); clip-path: var(--octagon);
+  background: color-mix(in srgb, var(--bone) 10%, var(--stone-1)); color: var(--muted); font-weight: 800; font-size: 15px;
+}
+.track-label { font-weight: 800; font-size: 13px; letter-spacing: 0.02em; color: inherit; overflow-wrap: anywhere; }
+.track-meta { font-family: var(--font-mono); font-stretch: 87.5%; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.35em; }
+
+.track-node[data-state="done"], .track-node[data-state="now"], .track-node[data-state="error"] { color: var(--bone); }
+.track-node[data-state="done"] .track-mark { background: var(--c); color: var(--stone-0); }
+.track-node[data-state="now"] .track-mark { background: var(--sky); color: var(--stone-0); }
+.track-node[data-state="now"] .track-meta { color: var(--sky); }
+.track-node[data-state="error"] .track-mark { background: var(--coral); color: var(--stone-0); }
+.track-node[data-state="error"] .track-meta { color: var(--coral); }
+
+/* Tracker buttons are not primary buttons: undo the base button look (gold fill, hard shadow, lift on hover, press). */
+.track-node, .track-back { box-shadow: none !important; transform: none !important; justify-content: flex-start; transition: color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out); }
+.track-node { min-height: 0; background: none; border: 0; }
+
+/* The live step breathes: a halo behind the mark, scale and opacity only. */
+.track-node[data-state="now"]::before {
+  content: ""; position: absolute; z-index: -1; top: 0; left: 50%; width: var(--mark); height: var(--mark);
+  margin-left: calc(var(--mark) / -2); clip-path: var(--octagon); background: var(--sky);
+  animation: track-halo 1.8s var(--ease-out) infinite;
+}
+/* Done steps punch in like the receipt stamps. */
+.track-punch .track-mark { animation: punch var(--dur-stamp) var(--ease-punch) both; }
+
+/* Selected step: gold underline, same as the top tabs. */
+.track-node::after {
+  content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 2px; border-radius: 2px;
+  background: var(--gold); transform: scaleX(0); transition: transform var(--dur-2) var(--ease-out);
+}
+.track-node[aria-selected="true"]::after { transform: scaleX(1); }
+.track-node[aria-selected="true"] .track-label { color: var(--bone); }
+.track-node:hover .track-label { color: var(--bone); }
+.track-node:focus-visible { outline: 2px solid var(--gold-high); outline-offset: 2px; }
+
+/* ---------- panel: the selected step's proof ---------- */
+
+.track-follow { display: flex; justify-content: center; }
+.track-back {
+  margin: var(--space-3) auto 0; min-height: 36px; padding: 6px 14px; border-radius: var(--radius-pill);
+  border: 1px dashed var(--sky); background: color-mix(in srgb, var(--sky) 8%, transparent); color: var(--sky);
+  font: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.track-back:hover { background: color-mix(in srgb, var(--sky) 14%, transparent); }
+.track-back[hidden] { display: none; }
+
+.track-panel {
+  margin-top: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bone) 3%, var(--stone-1)); border: 1px solid var(--line);
+}
+.track-panel.track-in { animation: rise-in var(--dur-2) var(--ease-out) both; }
+.track-panel:focus-visible { outline: 2px solid var(--gold-high); outline-offset: 2px; }
+.track-body { display: grid; gap: var(--space-3); }
+.track-body > * { margin: 0; }
+.track-body .kv { margin: 0; }
+.track-body .row { margin: 0; }
+.track-lead { font-size: 15px; color: var(--bone); line-height: 1.5; }
+.track-num { font-family: var(--font-mono); font-stretch: 87.5%; font-variant-numeric: tabular-nums; font-weight: 700; }
+.track-ok, .track-bad { font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+.track-ok::before { content: "✓"; color: var(--lime); font-weight: 800; }
+.track-bad { color: var(--coral); }
+.track-bad::before { content: "✕"; font-weight: 800; }
+.track-quiet:empty, .track-body .status:empty { display: none; }
+.track-cast summary { font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; min-height: 32px; }
+.track-cast pre { margin: var(--space-2) 0; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+
+/* Countdown to the batch: the number is the hero of this step; the bar glides one second at a time. */
+.track-count { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px var(--space-3); }
+.track-num-lg { font-size: 40px; line-height: 1; letter-spacing: -0.02em; color: var(--bone); }
+.track-count-word { color: var(--muted); font-size: 14px; }
+.ask-flow[data-phase="due"] .track-num-lg { color: var(--sky); }
+.ask-flow[data-phase="late"] .track-num-lg { color: var(--warn); }
+.track-bar { height: 6px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--bone) 9%, transparent); overflow: hidden; }
+.track-bar span { display: block; height: 100%; background: var(--sky); transform-origin: left center; transform: scaleX(0); transition: transform 1s linear; }
+
+@keyframes track-halo { from { transform: scale(0.9); opacity: 0.5; } to { transform: scale(1.32); opacity: 0; } }
+
+@media (max-width: 640px) {
+  .track-rail { --mark: 36px; }
+  .track-mark { font-size: 13px; }
+  .track-label { font-size: 12px; letter-spacing: 0; }
+  .track-meta { font-size: 11px; }
+  .track-num-lg { font-size: 32px; }
+  .track-panel { padding: var(--space-3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-rail::after, .track-bar span, .track-node::after { transition: none; }
+  .track-node[data-state="now"]::before { animation: none; opacity: 0.25; transform: scale(1.18); }
+  .track-punch .track-mark, .track-panel.track-in { animation: none; }
+}

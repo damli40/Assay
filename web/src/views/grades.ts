@@ -1,5 +1,6 @@
 import { gradeOf, gradeStatus, type Grade, type GradeStatus } from "@assay/receipts";
-import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
+import { copyButton, emptyState, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
+import { showPageChain } from "../ui/network-switch.js";
 import { CHAIN_ID, CHAINS, EXPLORER, chainConfig, chainOfAgentId } from "../lib/config.js";
 import { chainClient } from "../lib/chain.js";
 import { hostKeyFromInput, loadTrusted, modelKey, parseAddresses, saveTrusted } from "../lib/grades.js";
@@ -14,7 +15,7 @@ const MEANING: Record<GradeStatus, string> = {
 
 const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
-export function renderGrade(found: { grade: Grade; by: Address } | null, status: GradeStatus, evidenceBase: string): HTMLElement {
+export function renderGrade(found: { grade: Grade; by: Address } | null, status: GradeStatus, evidenceBase: string, next: HTMLElement | null = null): HTMLElement {
   if (!found) {
     return h("div", { class: "card empty" }, h("p", {}, "No grade yet."), h("p", { class: "hint" }, "None of the verifiers you trust has graded this model on this host. Add another verifier or check the host input."));
   }
@@ -31,10 +32,11 @@ export function renderGrade(found: { grade: Grade; by: Address } | null, status:
       h("dt", {}, "Samples (n)"), h("dd", {}, String(g.total)),
       h("dt", {}, "Graded at"), h("dd", {}, new Date(Number(g.t) * 1000).toISOString()),
       h("dt", {}, "Verifier"), h("dd", {}, h("a", { href: `${EXPLORER}/address/${by}`, target: "_blank", rel: "noopener" }, by)),
-      h("dt", {}, "Evidence sha256"), h("dd", {}, mono(g.evidence), " ", copyButton(g.evidence), " ", evidence),
+      h("dt", {}, "Evidence sha256"), h("dd", {}, mono(g.evidence), " ", copyButton(g.evidence, "Copy evidence hash", { iconOnly: true }), " ", evidence),
       h("dt", {}, "Reference model"), h("dd", {}, mono(g.refModel)),
       h("dt", {}, "Check suite"), h("dd", {}, mono(g.checks)),
     ),
+    next,
   );
 }
 
@@ -53,6 +55,7 @@ export function gradesChain(params: URLSearchParams): number {
 export function mountGrades(root: HTMLElement, params: URLSearchParams = new URLSearchParams()) {
   const chainId = gradesChain(params);
   const net = chainConfig(chainId);
+  showPageChain(chainId);
   const model = field("Model", input(params.get("model") ?? "gemma-4-31b-it"), "Hashed as keccak256(model). Use the id the host claims in its receipts.");
   const host = field("Host", input(params.get("host") ?? `erc8004:${chainId}:${net.referenceHost}`), `An Assay host as erc8004:<chain>:<id> or a bare agent id on ${net.name}, an OpenRouter provider tag such as deepinfra/fp8, or direct:<api host>.`);
   const trusted = field("Trusted verifiers", textarea({ rows: "2", placeholder: "0x… one per line" }), "Grades count only from these addresses. Ties go to the one listed first. Remembered in this browser.");
@@ -106,7 +109,10 @@ export function mountGrades(root: HTMLElement, params: URLSearchParams = new URL
       const found = await gradeOf(client, reg, m, hk.hostKey, list);
       const ref = reference.input.value.trim() ? await gradeOf(client, reg, m, hostKeyFromInput(reference.input.value, chainId).hostKey, list) : null;
       const st = gradeStatus(found?.grade, { now: BigInt(Math.floor(Date.now() / 1000)), reference: ref?.grade });
-      results.append(renderGrade(found, st, evidence.input.value));
+      // Onward links: an Assay host opens its profile, where its batches and receipts are.
+      const agent = /^erc8004:(\d+):(\d+)$/.exec(hk.preimage);
+      const next = agent ? h("div", { class: "row" }, h("a", { class: "btn btn-secondary btn-sm", href: `#hosts/${agent[2]}?chain=${agent[1]}` }, "Open the host's profile")) : null;
+      results.replaceChildren(renderGrade(found, st, evidence.input.value, next));
       status.say(found ? `Status: ${st}.` : "No grade found.", "ok");
     } catch (e) {
       status.say(errorText(e), "error");
@@ -115,5 +121,20 @@ export function mountGrades(root: HTMLElement, params: URLSearchParams = new URL
 
   // A deep link with everything filled in runs the lookup straight away.
   if (params.get("model") && params.get("host") && trusted.input.value.trim()) queueMicrotask(() => form.requestSubmit());
-  root.append(section("Grades", `Open verifiers compare a host's answers with the lab's own endpoint and post grades onchain. You choose whose grades count. Reading from ${net.name}.`, form, keyInfo, results));
+  // Before a lookup, the result column offers real grades to start from, so the page is never a blank form.
+  const start = (label: string, href: string) => h("a", { class: "btn btn-secondary btn-sm", href }, label);
+  results.append(
+    emptyState({
+      title: "Pick a host, or start from a real grade",
+      text: "Each link fills the form and runs the lookup with Assay's verifier, the only one posting so far.",
+      tone: "lime",
+      action: h(
+        "div",
+        { class: "row" },
+        start(`Assay's host on ${net.name}`, `#grades?model=gemma-4-31b-it&host=erc8004:${chainId}:${net.referenceHost}&ref=direct:generativelanguage.googleapis.com&chain=${chainId}&v=${ASSAY_VERIFIER}`),
+        start("GLM-5.3, 39 OpenRouter hosts", `#grades?model=z-ai/glm-5.3&host=openrouter:inference-net&ref=openrouter:z-ai/fp8&chain=10143&v=${ASSAY_VERIFIER}`),
+      ),
+    }),
+  );
+  root.append(section("Grades", `Open verifiers compare a host's answers with the lab's own endpoint and post grades onchain. You choose whose grades count. Reading from ${net.name}.`, h("div", { class: "receipt-grid ask-grid" }, form, h("div", { class: "col" }, results, keyInfo))));
 }

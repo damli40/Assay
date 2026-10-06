@@ -28,6 +28,18 @@ async function setup(clients: MockClient[], n = 3, batchMax = 64) {
 }
 
 describe("batcher", () => {
+  it("reports when its next batch fires once started, and nothing when stopped", async () => {
+    const { b } = await setup([mockClient()], 0);
+    expect(b.schedule()).toBeUndefined();
+    b.start();
+    const s = b.schedule()!;
+    expect(s.batchSeconds).toBe(300);
+    expect(s.nextBatchInMs).toBeGreaterThan(299_000);
+    expect(s.nextBatchInMs).toBeLessThanOrEqual(300_000);
+    b.stop();
+    expect(b.schedule()).toBeUndefined();
+  });
+
   it("never anchors an empty queue", async () => {
     const c = mockClient();
     const { b } = await setup([c], 0);

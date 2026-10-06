@@ -29,6 +29,15 @@ describe("interop: MonadGuard receipts (Monad mainnet)", () => {
   const files = readdirSync(MG).filter((f) => f.endsWith(".jws"));
 
   it("has the three pinned receipts", () => expect(files).toHaveLength(3));
+
+  // A suite that only ever sees valid input proves nothing: one changed payload byte must fail.
+  it("rejects a copy with one payload byte changed", async () => {
+    const f = files[0];
+    const [h, p, sig] = readFileSync(new URL(f, MG), "utf8").trim().split(".");
+    const bytes = Buffer.from(p, "base64url");
+    bytes[bytes.length - 2] ^= 1;
+    await expect(checkForeign(`${h}.${bytes.toString("base64url")}.${sig}`, jwks, f.replace(".jws", ""))).rejects.toThrow();
+  });
   for (const f of files) {
     it(`verifies ${f.slice(0, 10)}…`, () => checkForeign(readFileSync(new URL(f, MG), "utf8").trim(), jwks, f.replace(".jws", "")));
   }

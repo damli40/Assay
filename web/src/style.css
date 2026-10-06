@@ -155,6 +155,8 @@ button.secondary:hover:not(:disabled), .btn-secondary:hover, .btn-ghost:hover, b
 button.copy { gap: 6px; vertical-align: middle; white-space: nowrap; flex: none; }
 button.copy .icon { width: 15px; height: 15px; }
 button.copy.copied { color: var(--lime); border-color: var(--lime); }
+.copy-glyph { display: inline-flex; }
+button.copy.copy-icon { width: var(--tap); padding: 0; justify-content: center; }
 
 /* ---------- chips, badges ---------- */
 
@@ -314,6 +316,22 @@ pre {
 .receipt-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .receipt-grid .col { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); min-width: 0; }
 .receipt-grid .card, .receipt-grid .empty { margin: 0; }
+/* Host page: the right column sets the height; Batches takes what the left column has left and scrolls,
+   so Grades ends level with Endpoints. Its table counts as 0 tall (plus a floor) when the row is sized. */
+.host .receipt-grid { align-items: stretch; }
+.host .receipt-grid .col { display: flex; flex-direction: column; }
+.host-batches { flex: 1 1 0; display: flex; min-width: 0; }
+.host-batches > .card { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.host-batches .table-wrap { flex: 1 1 0; height: 0; min-height: 112px; overflow: auto; overscroll-behavior: contain; }
+@media (max-width: 900px) {
+  .host-batches .table-wrap { flex: none; height: auto; max-height: 420px; min-height: 0; }
+}
+.host-batches th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+td details { margin: 0; border: 0; padding: 0; }
+.host-batches td { padding-block: 0; height: var(--tap); }
+td details summary { color: var(--text); font-weight: 400; font-size: 14px; }
+td details[open] summary { margin-bottom: var(--space-2); }
+.batch-receipts .entries { margin: 0; padding-left: var(--space-5); }
 .kv-mono dt { font-family: var(--font-mono); font-stretch: var(--stretch-mono); font-size: var(--fs-small); }
 .checks.compact { margin: 0; gap: var(--space-2); }
 .checks.compact .check { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--stone-2); }
@@ -419,3 +437,4 @@ tr:last-child td { border-bottom: 0; }
 .stamp-link:hover .stamp { transform: translateY(-2px); }
 .verifier-note { align-items: center; justify-content: space-between; margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
 .verifier-note .hint { margin: 0; flex: 1 1 260px; }
+.stamps.settled .stamp { animation: none; }

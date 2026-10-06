@@ -9,6 +9,8 @@ export interface ChainConfig {
   /// The reference host's ERC-8004 agent id on this chain, and one real anchored receipt, for "see it live" links.
   referenceHost: number;
   sampleReceipt: string;
+  /// The host's anchor interval (BATCH_SECONDS). The host's /health overrides it when it reports one.
+  batchSeconds: number;
   rpc: string;
   explorer: string;
   receiptAnchor: Address;
@@ -25,6 +27,8 @@ export const CHAINS: Record<number, ChainConfig> = {
     host: import.meta.env.VITE_HOST_URL ?? "/host",
     referenceHost: 1962,
     sampleReceipt: "0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5",
+    // The testnet host's BATCH_SECONDS (read from the VM on 5 Oct). /health reports it once the host patch is deployed.
+    batchSeconds: 30,
     rpc: "https://testnet-rpc.monad.xyz",
     explorer: "https://testnet.monadvision.com",
     receiptAnchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24",
@@ -38,6 +42,8 @@ export const CHAINS: Record<number, ChainConfig> = {
     host: import.meta.env.VITE_HOST_URL_MAINNET ?? "/host-mainnet",
     referenceHost: 10278,
     sampleReceipt: "0x1b443b455e55360cec874215c9d1ae3113794f6d3a6c2a0c480387b12e35c5f2",
+    // host/deploy/push-secrets.sh sets BATCH_SECONDS=120 for mainnet.
+    batchSeconds: 120,
     rpc: "https://rpc.monad.xyz",
     explorer: "https://monadvision.com",
     receiptAnchor: "0x049A73755cA3508ef3Daa4752A3406f6e00CfB13",

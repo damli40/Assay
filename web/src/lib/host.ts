@@ -10,8 +10,15 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   return json;
 }
 
-/// `pending` is how many receipts wait for the host's next batch.
-export const fetchHealth = (base: string) => getJson<{ ok: boolean; pending: number }>(hostUrl(base, "/health"));
+/// `pending` is how many receipts wait for the host's next batch. Hosts with the batch clock also report
+/// `batchSeconds` and `nextBatchInMs` (relative, so the reader's clock skew doesn't matter).
+export interface Health {
+  ok: boolean;
+  pending: number;
+  batchSeconds?: number;
+  nextBatchInMs?: number | null;
+}
+export const fetchHealth = (base: string) => getJson<Health>(hostUrl(base, "/health"));
 
 export const fetchJwks = (base: string) => getJson<VerifyInput["jwks"]>(hostUrl(base, "/.well-known/jwks.json"));
 
@@ -23,6 +30,13 @@ export type ReceiptStatus =
 export const httpStatus = (e: unknown): number | undefined => (e as { status?: number } | null)?.status;
 
 export const fetchReceiptStatus = (base: string, hash: Hex) => getJson<ReceiptStatus>(hostUrl(base, `/v1/receipts/${hash}`));
+
+export interface BatchReceipts {
+  root: Hex;
+  count: number;
+  receipts: Hex[];
+}
+export const fetchBatch = (base: string, root: Hex) => getJson<BatchReceipts>(hostUrl(base, `/v1/batches/${root}`));
 
 /// POST /v1/cosign. Indexes are bigints in the SDK; JSON carries them as decimal strings.
 export function relayCosign(base: string, receiptHash: Hex, qx: Hex, qy: Hex, auth: WebAuthnAuth) {

@@ -23,5 +23,5 @@ MonadGuard checks the tool. Assay checks the model host that answered.
 
 ## Files
 
-- `assay-receipts/<receiptHash>.json`: Assay receipts for other verifiers to pin. Each file has the `jws`, the `jwks` it verifies against, and the anchor (contract, agent id, Merkle root, proof, tx) on Monad.
+- `assay-receipts/<receiptHash>.json`: Assay receipts for other verifiers to pin. Each file has the `jws`, the `jwks` it verifies against, and the anchor (contract, agent id, Merkle root, proof, tx) on Monad. Three are from host 1962 on Monad testnet and three from host 10278 on Monad mainnet (`0x1b443b45…c5f2`, `0x0d08124a…d603`, `0xb264badb…b1ad`). Each mainnet one returns `true` from `verifyReceipt` on ReceiptAnchor `0x049A…CfB13`, and `0x0d08124a…` is also co-signed by its requester.
 - `sdk/test/fixtures/monadguard/`: MonadGuard receipts and JWKS that Assay's CI verifies on every push.

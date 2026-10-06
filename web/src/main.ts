@@ -1,6 +1,8 @@
 import { emptyState, h, section, setPageTab } from "./dom.js";
-import { CHAIN_ID, CHAINS, DOCS_URL, QUICKSTART_URL, chainConfig, setSelectedChainId } from "./lib/config.js";
+import { CHAIN_ID, CHAINS, DOCS_URL, QUICKSTART_URL, chainConfig } from "./lib/config.js";
 import { match, parseHash, tabOf, type Route } from "./router.js";
+import { initReveal } from "./ui/motion.js";
+import { mountNetworkSwitch } from "./ui/network-switch.js";
 import { mountAsk } from "./views/ask.js";
 import { mountGrades } from "./views/grades.js";
 import { mountHost } from "./views/host.js";
@@ -44,6 +46,10 @@ function redirect(route: Route): boolean {
 
 function render(route: Route, focus: boolean) {
   if (redirect(route)) return;
+  draw(route, focus);
+}
+
+function draw(route: Route, focus: boolean) {
   const m = match(route);
   const tab = m.view === "notFound" ? "" : tabOf(route);
   setPageTab(TAB_NAMES[tab] ?? "");
@@ -58,24 +64,21 @@ function render(route: Route, focus: boolean) {
     if (a.dataset.tab === tab) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   }
+  // Polish layer: the new page rises in once; cards and sections below the fold reveal on scroll.
+  main.classList.remove("route-in");
+  void main.offsetWidth;
+  main.classList.add("route-in");
+  initReveal(main);
   // Move focus to the new page so keyboard and screen reader users land on it.
   if (focus) main.focus();
 }
 
-/// Top-bar network switch. With one chain it's a plain chip; with more, a labelled select that reloads on change.
+/// Top-bar network switch: a Mainnet | Testnet segmented control (src/ui/network-switch.ts).
 function networkSwitch() {
-  const slot = document.getElementById("network-switch");
   const foot = document.getElementById("network-foot");
-  const current = chainConfig(CHAIN_ID);
-  if (foot) foot.textContent = `${current.name}, chain ${CHAIN_ID}.`;
-  const ids = Object.keys(CHAINS).map(Number);
-  if (!slot || ids.length < 2) return;
-  const select = h("select", { id: "network", class: "network-select" }, ...ids.map((id) => h("option", { value: String(id), selected: id === CHAIN_ID }, CHAINS[id].name)));
-  select.addEventListener("change", () => {
-    setSelectedChainId(Number(select.value));
-    location.reload();
-  });
-  slot.replaceChildren(h("label", { for: "network", class: "sr-only" }, "Network"), select);
+  if (foot) foot.textContent = `${chainConfig(CHAIN_ID).name}, chain ${CHAIN_ID}.`;
+  const slot = document.getElementById("network-switch");
+  if (slot && Object.keys(CHAINS).length > 1) mountNetworkSwitch(slot);
 }
 
 networkSwitch();

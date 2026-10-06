@@ -55,6 +55,12 @@ describe("verify view", () => {
     expect(row("outputCommit").textContent).toContain("<img src=x");
   });
 
+  it("reads a named co-signer who hasn't co-signed as not yet, and doesn't fail the receipt for it", () => {
+    const waiting = renderResult({ ...result, checks: { ...result.checks, anchored: "pass", cosigned: "fail" } }, { rpc });
+    expect(waiting.querySelector('[data-check="cosigned"] .badge')!.textContent).toBe("Not yet");
+    expect(waiting.querySelector(".verdict")!.textContent).toBe("No check failed.");
+  });
+
   it("formats the jws line", () => {
     expect(formatReproduce(result.reproduce.jws!, rpc)).toContain('JWKS key "key-1"');
   });

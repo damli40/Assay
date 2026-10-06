@@ -13,7 +13,8 @@ import type { JWK } from "jose";
 import type { Address, Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { createBatcher } from "../src/batcher.js";
-import { createApp, DEFAULT_MAX_TOKENS, type AppDeps } from "../src/server.js";
+import { publicError } from "../src/errors.js";
+import { createApp, DEFAULT_MAX_TOKENS, MAX_BODY_BYTES, MAX_TOKENS_CAP, type AppDeps } from "../src/server.js";
 import { Store } from "../src/store.js";
 import type { Upstream } from "../src/upstream.js";
 import { mockClient, newSigner, quietLog, tempDir } from "./helpers.js";
@@ -269,6 +270,18 @@ describe("GET /v1/receipts/:hash", () => {
     expect(r.reproduce.cast).toContain(`cast call ${ANCHOR}`);
   });
 
+  it("lists a batch's receipt hashes by root, and only hashes", async () => {
+    const { app, batcher } = await setup();
+    const hash = (await chat(app)).headers.get("x-assay-receipt-hash") as Hex;
+    await batcher.tick();
+    const { root } = (await (await app.request(`/v1/receipts/${hash}`)).json()) as any;
+    const b = (await (await app.request(`/v1/batches/${root.toUpperCase().replace("0X", "0x")}`)).json()) as any;
+    expect(b).toMatchObject({ root, count: 1, receipts: [hash] });
+    expect(b).not.toHaveProperty("proofs");
+    expect((await app.request(`/v1/batches/0x${"00".repeat(32)}`)).status).toBe(404);
+    expect((await app.request("/v1/batches/0x12")).status).toBe(400);
+  });
+
   it("404s an unknown hash and 400s a malformed one", async () => {
     const { app } = await setup();
     expect((await app.request(`/v1/receipts/0x${"00".repeat(32)}`)).status).toBe(404);
@@ -346,5 +359,55 @@ describe("well-known and health", () => {
     const { app, signer } = await setup();
     await chat(app);
     expect(await (await app.request("/health")).json()).toEqual({ ok: true, model: MODEL, kid: signer.kid, pending: 1 });
+  });
+
+  it("adds the batch clock to health while the batcher runs", async () => {
+    const { app, batcher } = await setup();
+    batcher.start();
+    const body = (await (await app.request("/health")).json()) as { batchSeconds: number; nextBatchInMs: number };
+    batcher.stop();
+    expect(body.batchSeconds).toBe(300);
+    expect(body.nextBatchInMs).toBeGreaterThan(299_000);
+  });
+});
+
+describe("request limits", () => {
+  it("refuses fields that could change the model or the cost, before calling upstream", async () => {
+    const { app } = await setup();
+    for (const extra of [{ models: ["other/model"] }, { plugins: [{ id: "web" }] }, { n: 5 }, { route: "fallback" }]) {
+      const res = await chat(app, extra);
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as any).error.message).toMatch(/isn't supported/);
+    }
+  });
+
+  it("caps max_tokens and needs real messages", async () => {
+    const { app } = await setup();
+    expect((await chat(app, { max_tokens: MAX_TOKENS_CAP + 1 })).status).toBe(400);
+    expect((await chat(app, { max_completion_tokens: 0 })).status).toBe(400);
+    expect((await chat(app, { messages: [] })).status).toBe(400);
+    expect((await chat(app, { messages: ["hi"] })).status).toBe(400);
+    expect((await chat(app, { max_tokens: MAX_TOKENS_CAP })).status).toBe(200);
+  });
+
+  it("refuses a body over the size limit with 413", async () => {
+    const { app } = await setup();
+    const res = await chat(app, { messages: [{ role: "user", content: "x".repeat(MAX_BODY_BYTES) }] });
+    expect(res.status).toBe(413);
+  });
+
+  it("sends security headers", async () => {
+    const { app } = await setup();
+    const res = await app.request("/health");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+});
+
+describe("publicError", () => {
+  it("strips URLs (our RPC URLs carry a token) and keeps one short line", () => {
+    const e = Object.assign(new Error("HTTP request failed.\n\nURL: https://rpc.example/key-abc123\nDetails: 401"), { shortMessage: "HTTP request failed. URL: https://rpc.example/key-abc123" });
+    const text = publicError(e, { error: () => {} });
+    expect(text).not.toContain("key-abc123");
+    expect(text).toBe("HTTP request failed. URL: <url>");
   });
 });

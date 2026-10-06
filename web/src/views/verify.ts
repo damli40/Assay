@@ -1,9 +1,9 @@
 import { receiptHash, verifyReceipt, type Checks, type Reproduce, type VerifyInput, type VerifyResult } from "@assay/receipts";
-import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
+import { copyButton, errorText, field, h, input, liveRegion, mono, section, shortHash, textarea } from "../dom.js";
 import { CHAIN_ID, DEFAULT_HOST, DEFAULT_RPC, RECEIPT_ANCHOR, chainConfig } from "../lib/config.js";
 import { chainClient } from "../lib/chain.js";
 import { fetchJwks, fetchReceiptStatus } from "../lib/host.js";
-import { parseReceipt, parseSalt, takeVerifyPrefill } from "../lib/receipt.js";
+import { myReceipts, parseBundle, parseReceipt, parseSalt, takeVerifyPrefill, type VerifyPrefill } from "../lib/receipt.js";
 import type { Address } from "viem";
 
 /// Order shown on the page, with what a pass means and what a skip is waiting for.
@@ -31,24 +31,50 @@ export function formatReproduce(r: Reproduce, rpc: string): string {
 
 const LABEL = { pass: "Pass", fail: "Fail", skipped: "Skipped" } as const;
 
+/// A named co-signer who hasn't co-signed yet is the requester's step still to take, not a fault in the receipt.
+export const notYetCosigned = (r: VerifyResult) => r.checks.cosigned === "fail";
+export const NOT_YET_COSIGNED = "The receipt names a co-signer, but that key hasn't co-signed onchain yet. Co-signing is the requester's step, after the batch is anchored.";
+/// The verdict: every check except a co-signature still to come.
+export const noFault = (r: VerifyResult) => (Object.keys(r.checks) as (keyof Checks)[]).every((k) => r.checks[k] !== "fail" || k === "cosigned");
+
+/// Receipts asked for in this browser, so a receipt is never lost after leaving Ask.
+export function myReceiptsCard(): HTMLElement | null {
+  const mine = myReceipts();
+  if (!mine.length) return null;
+  return h(
+    "section",
+    { class: "card my-receipts", "aria-labelledby": "mine-title" },
+    h("div", { class: "card-head" }, h("h2", { id: "mine-title" }, "Your receipts"), h("span", { class: "hint" }, "Asked in this browser")),
+    h(
+      "ul",
+      { class: "entries" },
+      ...mine.map((r) => h("li", {}, h("a", { href: `#r/${r.hash}` }, shortHash(r.hash)), h("span", { class: "hint" }, ` ${r.model} · ${chainConfig(r.chainId).name} · ${new Date(r.t).toLocaleString()}`))),
+    ),
+    h("p", { class: "hint" }, "Only the hashes are kept here. The salts stay in your vault or in the bundles you downloaded."),
+  );
+}
+
 export function renderResult(result: VerifyResult, opts: { rpc: string; notes?: string[] }): HTMLElement {
-  const verdict = result.ok ? "No check failed." : "At least one check failed. Do not rely on this receipt.";
+  const ok = noFault(result);
+  const verdict = ok ? "No check failed." : "At least one check failed. Do not rely on this receipt.";
   const out = h(
     "div",
     { class: "result" },
-    h("p", { class: `verdict ${result.ok ? "ok" : "bad"}` }, verdict),
-    h("p", {}, "Receipt hash ", mono(result.receiptHash), " ", copyButton(result.receiptHash)),
+    h("p", { class: `verdict ${ok ? "ok" : "bad"}` }, verdict),
+    h("p", {}, "Receipt hash ", mono(result.receiptHash), " ", copyButton(result.receiptHash, "Copy receipt hash", { iconOnly: true }), " ", h("a", { href: `#r/${result.receiptHash}` }, "Open its receipt page")),
   );
   for (const note of opts.notes ?? []) out.append(h("p", { class: "hint" }, note));
   const list = h("ul", { class: "checks" });
   for (const c of CHECKS) {
-    const state = result.checks[c.key];
+    const raw = result.checks[c.key];
+    const waiting = c.key === "cosigned" && notYetCosigned(result);
+    const state = waiting ? "skipped" : raw;
     const repro = result.reproduce[c.key];
     const li = h(
       "li",
       { class: `check ${state}`, "data-check": c.key },
-      h("div", { class: "check-head" }, h("span", { class: `badge ${state}` }, LABEL[state]), h("strong", {}, c.name)),
-      h("p", {}, state === "skipped" ? c.skipped : c.means),
+      h("div", { class: "check-head" }, h("span", { class: `badge ${state}` }, waiting ? "Not yet" : LABEL[state]), h("strong", {}, c.name)),
+      h("p", {}, waiting ? NOT_YET_COSIGNED : state === "skipped" ? c.skipped : c.means),
     );
     if (repro) {
       const line = formatReproduce(repro, opts.rpc);
@@ -62,8 +88,7 @@ export function renderResult(result: VerifyResult, opts: { rpc: string; notes?: 
 
 export function mountVerify(root: HTMLElement) {
   const receipt = field("Receipt", textarea({ rows: "5", placeholder: "X-Assay-Receipt header value, or JSON {body, jws}" }), "Base64url header or JSON. Nothing you paste leaves this page except the receipt hash, sent to the host to fetch the proof.");
-  receipt.input.value = takeVerifyPrefill() ?? "";
-  const salt = field("Salt (optional)", input("", { placeholder: "64 hex characters" }), "The X-Assay-Salt sent with the request. Needed to open the commits.");
+  const salt = field("Salt (optional)", input("", { placeholder: "64 hex characters" }), "Only the person who asked has it: Ask shows it once, and it's in the bundle you downloaded and in your vault. Needed to open the commits.");
   const output = field("Output text (optional)", textarea({ rows: "3" }), "The assistant message exactly as received, whitespace included.");
   const messages = field("Messages JSON (optional)", textarea({ rows: "3", placeholder: '[{"role":"user","content":"..."}]' }));
   const host = field("Host base URL", input(DEFAULT_HOST), "Used for /.well-known/jwks.json and /v1/receipts/:hash.");
@@ -71,9 +96,28 @@ export function mountVerify(root: HTMLElement) {
   const anchor = field("ReceiptAnchor", input(RECEIPT_ANCHOR));
   const status = liveRegion();
   const results = h("div");
+  const fill = (p: VerifyPrefill) => {
+    receipt.input.value = p.receipt;
+    if (p.salt) salt.input.value = p.salt;
+    if (p.output !== undefined) output.input.value = p.output;
+    if (p.messages !== undefined) messages.input.value = JSON.stringify(p.messages);
+  };
+  const bundle = field("Bundle file (optional)", h("input", { type: "file", accept: "application/json,.json" }) as HTMLInputElement, "The bundle from Ask or a receipt page fills every field. It's read here and never uploaded.");
+  bundle.input.addEventListener("change", async () => {
+    const file = bundle.input.files?.[0];
+    if (!file) return;
+    try {
+      const b = parseBundle(await file.text());
+      fill({ receipt: JSON.stringify({ body: b.body, jws: b.jws }), ...b });
+      status.say(b.salt ? "Bundle loaded with its salt. Press Verify." : "Bundle loaded. It has no salt, so the prompt and output checks will be skipped.", "ok");
+    } catch (e) {
+      status.say(`That file isn't a receipt bundle (${errorText(e)}).`, "error");
+    }
+  });
   const form = h(
     "form",
     { class: "card" },
+    bundle.row,
     receipt.row,
     salt.row,
     output.row,
@@ -117,7 +161,7 @@ export function mountVerify(root: HTMLElement) {
       status.say("Checking…");
       const result = await verifyReceipt(input);
       results.append(renderResult(result, { rpc: rpc.input.value.trim(), notes }));
-      status.say(result.ok ? "Done. No check failed." : "Done. At least one check failed.", result.ok ? "ok" : "error");
+      status.say(noFault(result) ? "Done. No check failed." : "Done. At least one check failed.", noFault(result) ? "ok" : "error");
     } catch (e) {
       status.say(errorText(e), "error");
     }
@@ -132,6 +176,12 @@ export function mountVerify(root: HTMLElement) {
     h("a", { class: "btn btn-primary btn-sm", href: `#r/${sample.sampleReceipt}` }, "Open a live receipt"),
   );
   root.append(
-    section("Verify a receipt", "Check a receipt yourself: the host's signature, the onchain anchor, and, if you kept the salt, that the output and prompt match.", live, form, results),
+    section("Verify a receipt", "Check a receipt yourself: the host's signature, the onchain anchor, and, if you kept the salt, that the output and prompt match.", live, myReceiptsCard() ?? "", form, results),
   );
+  // Arriving from a receipt page with the opening in memory: run every check at once.
+  const pre = takeVerifyPrefill();
+  if (pre) {
+    fill(pre);
+    if (pre.salt) form.requestSubmit();
+  }
 }

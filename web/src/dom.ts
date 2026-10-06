@@ -103,24 +103,30 @@ export function announce(text: string) {
   requestAnimationFrame(() => (el.textContent = text));
 }
 
-export function copyButton(text: string, label = "Copy"): HTMLButtonElement {
+/// `iconOnly` for a button right beside what it copies: the copy icon says it, the label goes to
+/// screen readers and the tooltip, and a check replaces the icon for 2 s after copying.
+export function copyButton(text: string, label = "Copy", opts: { iconOnly?: boolean } = {}): HTMLButtonElement {
   const name = h("span", {}, label);
-  const b = h("button", { type: "button", class: "copy", "aria-label": `${label} to clipboard` }, icon("copy"), name);
+  const glyph = h("span", { class: "copy-glyph" }, icon("copy"));
+  const b = h("button", { type: "button", class: opts.iconOnly ? "copy copy-icon" : "copy", "aria-label": `${label} to clipboard`, ...(opts.iconOnly ? { title: label } : {}) }, glyph, opts.iconOnly ? "" : name);
   let timer: ReturnType<typeof setTimeout> | undefined;
   b.addEventListener("click", async () => {
     // Fix the width on first use so "Copied" doesn't shift the row.
-    if (!b.style.minWidth && b.offsetWidth) b.style.minWidth = `${b.offsetWidth}px`;
+    if (!opts.iconOnly && !b.style.minWidth && b.offsetWidth) b.style.minWidth = `${b.offsetWidth}px`;
     try {
       await navigator.clipboard.writeText(text);
       name.textContent = "Copied";
+      glyph.replaceChildren(icon("check"));
       b.classList.add("copied");
       announce(`${label === "Copy" ? "Text" : label} copied`);
     } catch {
       name.textContent = "Copy failed";
+      announce("Copy failed");
     }
     clearTimeout(timer);
     timer = setTimeout(() => {
       name.textContent = label;
+      glyph.replaceChildren(icon("copy"));
       b.classList.remove("copied");
     }, 2000);
   });
@@ -180,7 +186,7 @@ export function emptyState(opts: { title: string; text: string; tone?: Tone; act
 export function kv(rows: [string, Node | string][]): HTMLElement {
   const dl = h("dl", { class: "kv" });
   for (const [k, v] of rows) {
-    const value = typeof v === "string" && /^0x[0-9a-fA-F]{40,}$/.test(v) ? h("span", { class: "kv-hash" }, shortHash(v), copyButton(v, `Copy ${k.toLowerCase()}`)) : v;
+    const value = typeof v === "string" && /^0x[0-9a-fA-F]{40,}$/.test(v) ? h("span", { class: "kv-hash" }, shortHash(v), copyButton(v, `Copy ${k.toLowerCase()}`, { iconOnly: true })) : v;
     dl.append(h("dt", {}, k), h("dd", {}, value));
   }
   return dl;
@@ -225,19 +231,20 @@ export function stamp(kind: keyof typeof STAMP_TONE, sub: string, lit: boolean, 
 }
 
 const LEVELS = [
-  ["Signed and anchored", "The host signed what it served and the batch is on Monad. A lie can't be denied later."],
-  ["Host graded", "A verifier you trust tested this host against the lab's endpoint. It grades the host, not this response."],
-  ["Re-executable", "A deterministic runtime lets a verifier re-run a revealed request and compare output hashes."],
-  ["TEE attested", "The host signs from an enclave whose attestation includes a model hash."],
+  ["Signed and anchored", "The host signed what it served and the batch is on Monad. A lie can't be denied later.", "How to reach it: nothing to do. The host anchors its next batch on its own."],
+  ["Host graded", "A verifier you trust tested this host against the lab's endpoint. It grades the host, not this response.", "How to reach it: choose verifiers on Grades, or use Assay's. Grades older than 7 days stop counting."],
+  ["Re-executable", "A deterministic runtime lets a verifier re-run a revealed request and compare output hashes.", ""],
+  ["TEE attested", "The host signs from an enclave whose attestation includes a model hash.", ""],
 ] as const;
 
 /// Levels 0 to 3. `reached` covers levels 0 and 1; 2 and 3 are always Roadmap.
 export function levelLadder(reached: [boolean, boolean]): HTMLElement {
   const ol = h("ol", { class: "ladder" });
-  LEVELS.forEach(([name, text], i) => {
+  LEVELS.forEach(([name, text, how], i) => {
     const state = i > 1 ? "roadmap" : reached[i as 0 | 1] ? "reached" : "notreached";
+    const next = state === "notreached" ? h("p", { class: "hint level-how" }, how, i === 1 ? h("a", { href: "#grades" }, " Open Grades") : "") : "";
     const tag = state === "roadmap" ? chip("Roadmap", "muted", { dashed: true }) : state === "reached" ? chip("Reached", i ? "lime" : "gold", { dot: true }) : chip("Not reached", "muted");
-    ol.append(h("li", { class: `level ${state} ${["k-gold", "k-lime", "", ""][i]}`, "data-level": String(i) }, tag, h("h3", {}, `Level ${i} · ${name}`), h("p", {}, text)));
+    ol.append(h("li", { class: `level ${state} ${["k-gold", "k-lime", "", ""][i]}`, "data-level": String(i) }, tag, h("h3", {}, `Level ${i} · ${name}`), h("p", {}, text), next));
   });
   return ol;
 }
