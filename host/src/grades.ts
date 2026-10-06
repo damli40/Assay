@@ -1,5 +1,6 @@
 import { gradeOf, gradeStatus, type ContractReader } from "@assay/receipts";
 import type { Hono } from "hono";
+import { publicError } from "./errors.js";
 import { isAddress, keccak256, stringToBytes, type Address, type Hex } from "viem";
 
 export interface GradeDeps {
@@ -61,7 +62,7 @@ export function mountGrades(app: Hono, d: GradeDeps): void {
         },
       });
     } catch (e) {
-      return c.json({ error: { message: `grade lookup failed: ${(e as Error).message}` } }, 502);
+      return c.json({ error: { message: `grade lookup failed: ${publicError(e)}` } }, 502);
     }
   });
 }

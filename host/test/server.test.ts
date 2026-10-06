@@ -13,7 +13,8 @@ import type { JWK } from "jose";
 import type { Address, Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { createBatcher } from "../src/batcher.js";
-import { createApp, DEFAULT_MAX_TOKENS, type AppDeps } from "../src/server.js";
+import { publicError } from "../src/errors.js";
+import { createApp, DEFAULT_MAX_TOKENS, MAX_BODY_BYTES, MAX_TOKENS_CAP, type AppDeps } from "../src/server.js";
 import { Store } from "../src/store.js";
 import type { Upstream } from "../src/upstream.js";
 import { mockClient, newSigner, quietLog, tempDir } from "./helpers.js";
@@ -367,5 +368,46 @@ describe("well-known and health", () => {
     batcher.stop();
     expect(body.batchSeconds).toBe(300);
     expect(body.nextBatchInMs).toBeGreaterThan(299_000);
+  });
+});
+
+describe("request limits", () => {
+  it("refuses fields that could change the model or the cost, before calling upstream", async () => {
+    const { app } = await setup();
+    for (const extra of [{ models: ["other/model"] }, { plugins: [{ id: "web" }] }, { n: 5 }, { route: "fallback" }]) {
+      const res = await chat(app, extra);
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as any).error.message).toMatch(/isn't supported/);
+    }
+  });
+
+  it("caps max_tokens and needs real messages", async () => {
+    const { app } = await setup();
+    expect((await chat(app, { max_tokens: MAX_TOKENS_CAP + 1 })).status).toBe(400);
+    expect((await chat(app, { max_completion_tokens: 0 })).status).toBe(400);
+    expect((await chat(app, { messages: [] })).status).toBe(400);
+    expect((await chat(app, { messages: ["hi"] })).status).toBe(400);
+    expect((await chat(app, { max_tokens: MAX_TOKENS_CAP })).status).toBe(200);
+  });
+
+  it("refuses a body over the size limit with 413", async () => {
+    const { app } = await setup();
+    const res = await chat(app, { messages: [{ role: "user", content: "x".repeat(MAX_BODY_BYTES) }] });
+    expect(res.status).toBe(413);
+  });
+
+  it("sends security headers", async () => {
+    const { app } = await setup();
+    const res = await app.request("/health");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+});
+
+describe("publicError", () => {
+  it("strips URLs (our RPC URLs carry a token) and keeps one short line", () => {
+    const e = Object.assign(new Error("HTTP request failed.\n\nURL: https://rpc.example/key-abc123\nDetails: 401"), { shortMessage: "HTTP request failed. URL: https://rpc.example/key-abc123" });
+    const text = publicError(e, { error: () => {} });
+    expect(text).not.toContain("key-abc123");
+    expect(text).toBe("HTTP request failed. URL: <url>");
   });
 });

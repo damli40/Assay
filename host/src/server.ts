@@ -12,6 +12,8 @@ import {
   type HostSigner,
 } from "@assay/receipts";
 import { Hono, type Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { secureHeaders } from "hono/secure-headers";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JWK } from "jose";
 import { createPublicClient, http, isHex, type Address, type Hex } from "viem";
@@ -19,6 +21,7 @@ import { createBatcher, type Batcher } from "./batcher.js";
 import { anchorWriteAbi, makeClients, sendTx } from "./chain.js";
 import { CHAIN_ID, loadConfig, NETWORKS, readJwk } from "./config.js";
 import { mountGrades, type GradeDeps } from "./grades.js";
+import { publicError } from "./errors.js";
 import { Store } from "./store.js";
 import { openRouter, providerMatches, providerPin, type Upstream } from "./upstream.js";
 
@@ -44,6 +47,8 @@ function clientIp(c: Context): string {
 
 /// Sliding one-hour window. In memory, per process: resets on restart, enough for one host instance.
 function overLimit(hits: Map<string, number[]>, key: string, limit: number, t: number): boolean {
+  // Many one-off clients would otherwise grow the map forever: drop everyone idle for an hour.
+  if (hits.size > 10_000) for (const [k, v] of hits) if (!v.length || t - v[v.length - 1] >= HOUR) hits.delete(k);
   const recent = (hits.get(key) ?? []).filter((h) => t - h < HOUR);
   if (recent.length >= limit) return true;
   hits.set(key, [...recent, t]);
@@ -85,9 +90,35 @@ const publicPart = ({ kty, crv, x, y, kid }: JWK): JWK => ({ kty, crv, x, y, kid
 
 /// Used when a request sets neither max_tokens nor max_completion_tokens.
 export const DEFAULT_MAX_TOKENS = 1024;
+/// The most a client may ask for. Every token is paid by the host.
+export const MAX_TOKENS_CAP = 4096;
+/// Request bodies over this are refused before they're read.
+export const MAX_BODY_BYTES = 64 * 1024;
+/// The chat fields a client may set. Anything else is refused, not forwarded: OpenRouter's `models` and `route`
+/// could serve another model than the receipt names, `plugins` adds paid features, `n` multiplies the cost.
+export const ALLOWED_PARAMS = new Set([
+  "max_tokens", "max_completion_tokens", "temperature", "top_p", "top_k", "stop", "seed",
+  "presence_penalty", "frequency_penalty", "repetition_penalty", "tools", "tool_choice", "response_format",
+]);
+
+/// Why a chat body can't be served, or undefined when it can.
+export function chatBodyProblem(req: Record<string, unknown>): string | undefined {
+  for (const k of Object.keys(req)) {
+    if (k !== "messages" && k !== "model" && k !== "stream" && k !== "provider" && !ALLOWED_PARAMS.has(k)) return `field ${JSON.stringify(k.slice(0, 40))} isn't supported by this host`;
+  }
+  const msgs = req.messages as unknown[];
+  if (msgs.length === 0 || msgs.some((m) => !isObj(m) || typeof m.role !== "string")) return "messages must be a non-empty array of objects with a role";
+  for (const k of ["max_tokens", "max_completion_tokens"]) {
+    const v = req[k];
+    if (v !== undefined && !(Number.isSafeInteger(v) && (v as number) > 0 && (v as number) <= MAX_TOKENS_CAP)) return `${k} must be a whole number from 1 to ${MAX_TOKENS_CAP}`;
+  }
+  return undefined;
+}
 
 export function createApp(d: AppDeps): Hono {
   const app = new Hono();
+  app.use("*", secureHeaders());
+  app.use("*", bodyLimit({ maxSize: MAX_BODY_BYTES, onError: (c) => fail(c, 413, `request bodies are limited to ${MAX_BODY_BYTES / 1024} KB`) }));
   const now = d.now ?? Date.now;
   const chainId = d.chainId ?? CHAIN_ID;
   const agentIdStr = `erc8004:${chainId}:${d.agentId}`;
@@ -109,6 +140,8 @@ export function createApp(d: AppDeps): Hono {
     const req: unknown = await c.req.json().catch(() => undefined);
     if (!isObj(req) || !Array.isArray(req.messages)) return fail(c, 400, "body must be a JSON object with a messages array");
     if (req.stream) return fail(c, 400, "v0 is non-streaming: send stream false or omit it");
+    const problem = chatBodyProblem(req);
+    if (problem) return fail(c, 400, problem);
 
     // `provider` is the host's choice, not the client's, so it is neither forwarded nor committed.
     const { messages, model: _model, stream: _stream, provider: _provider, ...rest } = req;
@@ -239,7 +272,7 @@ export function createApp(d: AppDeps): Hono {
       const txHash = await d.relayCosign([d.agentId, hash, batch.proofs[hash], batch.root, auth, b.qx, b.qy]);
       return c.json({ txHash });
     } catch (e) {
-      return fail(c, 502, `co-sign relay failed: ${(e as Error).message}`);
+      return fail(c, 502, `co-sign relay failed: ${publicError(e)}`);
     }
   });
 
