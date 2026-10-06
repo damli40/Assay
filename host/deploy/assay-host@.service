@@ -11,6 +11,29 @@ EnvironmentFile=/etc/assay/host-%i.env
 ExecStart=/opt/assay/host/node_modules/.bin/tsx src/server.ts
 Restart=always
 RestartSec=5
+# Sandbox: the host reads its code, key and env, and writes only its receipt store.
+# If a restart fails, `journalctl -u assay-host@<net> -n 50` names the line; `systemd-analyze security assay-host@mainnet` scores it.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=-/opt/assay/host/data -/opt/assay/host/data-mainnet
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target
