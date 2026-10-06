@@ -1,0 +1,123 @@
+import { describe, expect, it } from "vitest";
+import path from "node:path";
+import { ConfigError, loadConfig } from "../src/config.js";
+
+const FOLDER = path.resolve(import.meta.dirname, "..");
+const SDK = path.resolve(import.meta.dirname, "../../../sdk");
+const HOME = "/Users/test/.mida-assay";
+
+function problem(env) {
+  try {
+    loadConfig(env);
+  } catch (e) {
+    return e;
+  }
+  throw new Error("loadConfig did not throw");
+}
+
+describe("loadConfig", () => {
+  it("refuses a missing MIDA_HOME", () => {
+    const e = problem({});
+    expect(e).toBeInstanceOf(ConfigError);
+    expect(e.exitCode).toBe(1);
+    expect(e.message).toBe(
+      "config: MIDA_HOME is missing or invalid (an absolute path). Nothing was done.",
+    );
+  });
+
+  it("refuses a relative MIDA_HOME", () => {
+    const e = problem({ MIDA_HOME: "relative/x" });
+    expect(e).toBeInstanceOf(ConfigError);
+    expect(e.message).toBe(
+      "config: MIDA_HOME is missing or invalid (an absolute path). Nothing was done.",
+    );
+  });
+
+  it("returns defaults with only MIDA_HOME set", () => {
+    expect(loadConfig({ MIDA_HOME: HOME })).toEqual({
+      midaHome: HOME,
+      writerAgent: "assay-writer",
+      readerAgent: "assay-reader",
+      projectDir: FOLDER,
+      host: "https://34-45-1-81.sslip.io",
+      receiptAnchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24",
+      trustedHosts: ["erc8004:10143:1962"],
+      chainId: 10143,
+      sdkDir: SDK,
+      rpcUrl: "https://testnet-rpc.monad.xyz",
+    });
+  });
+
+  it("refuses identical writer and reader names", () => {
+    const e = problem({
+      MIDA_HOME: HOME,
+      ASSAY_WRITER_AGENT: "assay-x",
+      ASSAY_READER_AGENT: "assay-x",
+    });
+    expect(e.message).toBe(
+      "config: ASSAY_READER_AGENT and ASSAY_WRITER_AGENT must be different agents (a record cannot vouch for itself). Nothing was done.",
+    );
+  });
+
+  it("refuses a malformed reader name", () => {
+    const e = problem({ MIDA_HOME: HOME, ASSAY_READER_AGENT: "Bad_Name" });
+    expect(e.message).toBe(
+      "config: ASSAY_READER_AGENT is missing or invalid (1–40 lowercase letters, digits or dashes). Nothing was done.",
+    );
+  });
+
+  it("refuses a malformed writer name", () => {
+    const e = problem({ MIDA_HOME: HOME, ASSAY_WRITER_AGENT: "Bad_Name" });
+    expect(e.message).toBe(
+      "config: ASSAY_WRITER_AGENT is missing or invalid (1–40 lowercase letters, digits or dashes). Nothing was done.",
+    );
+  });
+
+  it("refuses a non-address anchor, and checksums a valid one", () => {
+    const e = problem({ MIDA_HOME: HOME, ASSAY_RECEIPT_ANCHOR: "hello" });
+    expect(e.message).toBe(
+      "config: ASSAY_RECEIPT_ANCHOR is missing or invalid (a 0x address). Nothing was done.",
+    );
+    const cfg = loadConfig({
+      MIDA_HOME: HOME,
+      ASSAY_RECEIPT_ANCHOR: "0x63e4f42e6d254ed6aae735f9f4169bbfd12c1a24",
+    });
+    expect(cfg.receiptAnchor).toBe("0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24");
+  });
+
+  it("parses a comma-separated trusted-host list, trimming spaces", () => {
+    const cfg = loadConfig({
+      MIDA_HOME: HOME,
+      ASSAY_TRUSTED_HOSTS: "erc8004:10143:1962, erc8004:143:10278",
+    });
+    expect(cfg.trustedHosts).toEqual(["erc8004:10143:1962", "erc8004:143:10278"]);
+  });
+
+  it("refuses a trusted-host value that is not erc8004:<chainId>:<id>", () => {
+    const e = problem({ MIDA_HOME: HOME, ASSAY_TRUSTED_HOSTS: "1962" });
+    expect(e.message).toBe(
+      "config: ASSAY_TRUSTED_HOSTS is missing or invalid (comma-separated erc8004:<chainId>:<agentId> values). Nothing was done.",
+    );
+  });
+
+  it("refuses a non-numeric chain id", () => {
+    const e = problem({ MIDA_HOME: HOME, ASSAY_CHAIN_ID: "abc" });
+    expect(e.message).toBe(
+      "config: ASSAY_CHAIN_ID is missing or invalid (a whole number). Nothing was done.",
+    );
+    expect(loadConfig({ MIDA_HOME: HOME, ASSAY_CHAIN_ID: "143" }).chainId).toBe(143);
+  });
+
+  it("refuses a non-http(s) host and strips a trailing slash", () => {
+    const e = problem({ MIDA_HOME: HOME, ASSAY_HOST: "ftp://x" });
+    expect(e.message).toBe(
+      "config: ASSAY_HOST is missing or invalid (an http or https URL). Nothing was done.",
+    );
+    const cfg = loadConfig({ MIDA_HOME: HOME, ASSAY_HOST: "https://x.test/" });
+    expect(cfg.host).toBe("https://x.test");
+  });
+
+  it("never reads process.env when an env object is given", () => {
+    expect(problem({})).toBeInstanceOf(ConfigError);
+  });
+});
