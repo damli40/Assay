@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { AssaySdkError } from "../src/assay-sdk.js";
 import { UsageError, main, parseArgs } from "../src/cli.js";
 
@@ -128,5 +130,21 @@ describe("main", () => {
     });
     expect(code).toBe(2);
     expect(midaAgents).toEqual(["assay-reader", "assay-reader", "assay-writer"]);
+  });
+
+  it("run through a symlink still reaches main — usage line, exit 1", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mida-cli-link-"));
+    try {
+      const cliPath = fileURLToPath(new URL("../src/cli.js", import.meta.url));
+      const link = join(dir, "linked-cli.js");
+      await symlink(cliPath, link);
+      for (const invoked of [cliPath, link]) {
+        const r = spawnSync(process.execPath, [invoked, "bogus"], { encoding: "utf8" });
+        expect(r.status, `entry ${invoked}: stdout=${r.stdout} stderr=${r.stderr}`).toBe(1);
+        expect(r.stdout).toContain(USAGE);
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

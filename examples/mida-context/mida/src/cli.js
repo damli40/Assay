@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Mida } from "@mida-context/sdk";
 import { createPublicClient, http } from "viem";
@@ -128,5 +129,13 @@ export async function main(argv, env = process.env, deps = {}) {
   exit(code);
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+// Compare real paths: argv[1] may be a symlink to this file, and a string compare would leave
+// the entry point silent (exits 0, prints nothing).
+const isMain = (() => {
+  try {
+    return process.argv[1] !== undefined && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
 if (isMain) await main(process.argv.slice(2));
