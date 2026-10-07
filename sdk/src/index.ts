@@ -49,3 +49,4 @@ export {
 export { cosignerAddress, cosignerForAddress } from "./cosigner.js";
 export { assistantOutput } from "./output.js";
 export { checkRecord, type ContextRecord, type RecordPins, type Verdict } from "./record.js";
+export { assayAccountAbi, reputationAbi, sponsoredCallTypedData, randomNonce, delegationCode, type SponsoredCall } from "./sponsor.js";
