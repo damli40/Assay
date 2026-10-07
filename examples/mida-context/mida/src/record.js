@@ -73,7 +73,10 @@ export function buildRecord({ run, anchored, jwks, host, anchor, now }) {
       "assay: the receipt's host.agentId is not erc8004:<chainId>:<agentId>. Nothing was written.",
     );
   }
-  if (Number(m[1]) !== run.chainId) {
+  // The chain is read from the signed host id, never the run file — a run file that claims a
+  // different chain is refused; one that makes no claim still gets the signed chain.
+  const chainId = Number(m[1]);
+  if (run.chainId !== undefined && run.chainId !== chainId) {
     throw new RecordError(
       `assay: the receipt's host id names chain ${m[1]}, but the run file says chain ${run.chainId}. Nothing was written.`,
     );
@@ -81,7 +84,7 @@ export function buildRecord({ run, anchored, jwks, host, anchor, now }) {
   return {
     assayReceipt: 1,
     receiptHash: run.receiptHash,
-    chainId: run.chainId,
+    chainId,
     jws: anchored.jws,
     jwks,
     anchor: {

@@ -47,7 +47,7 @@ const anchoredFetch = (over = {}) => async (url) => {
 // The checkRecord stand-in emulates the real verdicts this test needs: a jwks that is not a
 // key list fails the signature check, and a root the fake chain has never seen fails anchoring.
 const assay = (calls = {}, over = {}) => ({
-  receiptHash: (b) => (JSON.stringify(b) === JSON.stringify(BODY) ? HASH : "0x" + "ff".repeat(32)),
+  receiptHash: (b) => (JSON.stringify(b) === JSON.stringify(over.jwsBody ?? BODY) ? HASH : "0x" + "ff".repeat(32)),
   commitResponse: (salt, output) => (salt === SALT && output === "OK" ? BODY.res.commit : "0x" + "ee".repeat(32)),
   commitRequest: (salt, messages, params) =>
     salt === SALT &&
@@ -330,6 +330,20 @@ describe("runWrite", () => {
     expect(await readdir(join(dir, "runs"))).toContain(`${HASH}.json`);
     const { result } = await write(dir);
     expect(result.exitCode).toBe(0);
+  });
+
+  it("refuses when the signed JWS names a chain the run file does not", async () => {
+    const BODY143 = { ...BODY, host: { ...BODY.host, agentId: "erc8004:143:1962" } };
+    const { result, calls, lines } = await write(dir, {
+      anchored: { jws: jwsFor(BODY143) },
+      jwsBody: BODY143,
+    });
+    expect(result.exitCode).toBe(2);
+    expect(lines.at(-1)).toBe(
+      "assay: the receipt's host id names chain 143, but the run file says chain 10143. Nothing was written.",
+    );
+    expect(calls.check).toBeUndefined();
+    expect(calls.remember).toBeUndefined();
   });
 
   it("refuses a run file from another chain", async () => {

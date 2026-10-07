@@ -154,6 +154,27 @@ describe("buildRecord", () => {
     expect(record.anchor.agentId).toBe(4242);
   });
 
+  it("the record's chainId is read from the signed JWS — a run file that disagrees is refused", () => {
+    const otherChain = { ...body, host: { ...body.host, agentId: "erc8004:143:1962" } };
+    const e = throws(() =>
+      buildRecord({
+        run,
+        anchored: { ...anchored(), jws: jwsFor(otherChain) },
+        jwks: fixture.jwks, host: HOST, anchor: ANCHOR,
+      }),
+    );
+    expect(e).toBeInstanceOf(RecordError);
+    expect(e.message).toBe(
+      "assay: the receipt's host id names chain 143, but the run file says chain 10143. Nothing was written.",
+    );
+  });
+
+  it("a run file without chainId still gets the signed chain — the JWS is the source", () => {
+    const { chainId, ...noChain } = run;
+    const record = buildRecord({ run: noChain, anchored: anchored(), jwks: fixture.jwks, host: HOST, anchor: ANCHOR });
+    expect(record.chainId).toBe(10143);
+  });
+
   it("throws when the anchored jws does not carry an erc8004 host id", () => {
     const bad = { ...anchored(), jws: jwsFor({ host: { agentId: "nope" } }) };
     const e = throws(() => buildRecord({ run, anchored: bad, jwks: fixture.jwks, host: HOST, anchor: ANCHOR }));
