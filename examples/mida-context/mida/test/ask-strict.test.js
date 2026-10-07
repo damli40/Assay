@@ -111,6 +111,7 @@ const commitFakes = (output, saltOk = () => true) => ({
     JSON.stringify(messages) === JSON.stringify(MESSAGES) && JSON.stringify(params) === JSON.stringify(BODY.req.params)
       ? BODY.req.commit
       : "0x" + "dd".repeat(32),
+  checkRecord: async () => ({ ok: true, reasons: [], checks: {}, body: BODY }),
 });
 
 describe("ask is strict about what it sends", () => {
@@ -221,6 +222,7 @@ describe("ask is strict about what it sends", () => {
       const wr = await runWrite({
         config: config(dir),
         assay: commitFakes(THOUGHT),
+        client: { fake: "viem client" },
         fetchImpl: anchoredFetch,
         mida: mida(calls),
         log: () => {},

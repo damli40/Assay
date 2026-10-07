@@ -203,6 +203,44 @@ describe("fetchReceipt", () => {
     expect(Object.hasOwn(got, "body")).toBe(false);
   });
 
+  for (const [name, body, detail] of [
+    ["signed", { status: "signed" }, `status "signed", not "anchored"`],
+    ["failed", { status: "failed" }, `status "failed", not "anchored"`],
+    [
+      "a missing status",
+      { jws: JWS, root: "0x" + "ab".repeat(32), proof: [], anchorTx: "0x" + "ef".repeat(32) },
+      `status null, not "anchored"`,
+    ],
+  ]) {
+    it(`refuses ${name} with exit 2 — only "anchored" counts`, async () => {
+      const fetchImpl = async () => res(200, body);
+      const e = await problem(fetchReceipt({ fetchImpl, host: HOST, receiptHash: HASH }));
+      expect(e).toBeInstanceOf(HostError);
+      expect(e.exitCode).toBe(2);
+      expect(e.message).toBe(
+        `assay: the host's answer for receipt 0x9a166cac… is not usable (${detail}). Nothing was written.`,
+      );
+    });
+  }
+
+  for (const [name, over, detail] of [
+    ["a non-hex root", { root: "not-hex" }, "no usable root"],
+    ["a proof that is not an array", { proof: "0xabc" }, "no usable proof"],
+    ["a missing anchorTx", { anchorTx: undefined }, "no usable anchorTx"],
+    ["a missing jws", { jws: undefined }, "no usable jws"],
+  ]) {
+    it(`refuses "anchored" with ${name} with exit 2`, async () => {
+      const body = { status: "anchored", jws: JWS, root: "0x" + "ab".repeat(32), proof: [], anchorTx: "0x" + "ef".repeat(32), ...over };
+      const fetchImpl = async () => res(200, body);
+      const e = await problem(fetchReceipt({ fetchImpl, host: HOST, receiptHash: HASH }));
+      expect(e).toBeInstanceOf(HostError);
+      expect(e.exitCode).toBe(2);
+      expect(e.message).toBe(
+        `assay: the host's answer for receipt 0x9a166cac… is not usable (${detail}). Nothing was written.`,
+      );
+    });
+  }
+
   it("refuses a 404 with exit 2", async () => {
     const fetchImpl = async () => res(404, { error: { message: "unknown receipt" } });
     const e = await problem(fetchReceipt({ fetchImpl, host: HOST, receiptHash: HASH }));

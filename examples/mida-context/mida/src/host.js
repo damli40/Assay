@@ -132,6 +132,23 @@ export async function fetchReceipt({ fetchImpl, host, receiptHash }) {
     throw unreachable(host, e, "written");
   }
   if (j?.status === "pending") return { status: "pending" };
+  // Only a complete "anchored" answer counts — "signed", "failed" or a missing field means the
+  // receipt is not usable for a record, and a true line beats a silent mis-parse.
+  const bad = [];
+  if (j?.status !== "anchored") {
+    bad.push(`status ${JSON.stringify(j?.status ?? null)}, not "anchored"`);
+  } else {
+    if (typeof j.jws !== "string" || j.jws === "") bad.push("no usable jws");
+    if (!BYTES32.test(j.root ?? "")) bad.push("no usable root");
+    if (!Array.isArray(j.proof)) bad.push("no usable proof");
+    if (typeof j.anchorTx !== "string" || j.anchorTx === "") bad.push("no usable anchorTx");
+  }
+  if (bad.length !== 0) {
+    throw new HostError(
+      `assay: the host's answer for receipt ${short(receiptHash)} is not usable (${bad.join("; ")}). Nothing was written.`,
+      2,
+    );
+  }
   return {
     status: "anchored",
     jws: j.jws,

@@ -1,12 +1,14 @@
 import { join } from "node:path";
 import { MidaSdkError, isMidaSdkError } from "@mida-context/sdk";
 import { RunFileError, fetchJwks, fetchReceipt, readRunFile } from "./host.js";
+import { checkOrRefuse } from "./reader.js";
 import {
   PartialListError,
   bodyFromJws,
   buildRecord,
   midaErrorLine,
   pickRecord,
+  toInteropRecord,
   walkItems,
 } from "./record.js";
 
@@ -16,7 +18,7 @@ const refuse = (message) => Object.assign(new Error(message), { name: "RefusalEr
 
 // spec section-5 step 2: everything the run file claims is re-derived before one record is
 // written, and the same receipt is never saved twice. Every refusal maps to one section-10 line.
-export async function runWrite({ config, assay, fetchImpl, mida, log, now, receiptHash, runFile }) {
+export async function runWrite({ config, assay, client, fetchImpl, mida, log, now, receiptHash, runFile }) {
   try {
     const run = await loadRun({ config, receiptHash, runFile });
     if (String(run.receiptHash).toLowerCase() !== String(receiptHash).toLowerCase()) {
@@ -93,6 +95,16 @@ export async function runWrite({ config, assay, fetchImpl, mida, log, now, recei
       anchor: config.receiptAnchor,
       now,
     });
+    // The record is only worth saving if ASSAY's own check accepts it — the same check the
+    // reader runs, chain read on. A record his check would refuse is never written.
+    await checkOrRefuse({
+      assay,
+      record: toInteropRecord(content),
+      config,
+      client,
+      tail: "Nothing was written.",
+    });
+    log(`assay: check passed for receipt ${short(run.receiptHash)} — the record is one the reader will accept`);
     const saved = await mida.remember({ namespace: "projects.current", kind: "EPISODE", content });
     if (saved.state === "pending") {
       log(
@@ -117,7 +129,7 @@ export async function runWrite({ config, assay, fetchImpl, mida, log, now, recei
     }
     if (Number.isInteger(e?.exitCode)) {
       log(e.message);
-      return { exitCode: e.exitCode, outcome: "refused" };
+      return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
     }
     throw e;
   }

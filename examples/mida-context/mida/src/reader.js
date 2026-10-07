@@ -19,15 +19,42 @@ const stamp = (writtenAt) => new Date(writtenAt).toISOString().replace(/\.\d{3}Z
 const refuse = (message, exitCode = 2, outcome = "refused") =>
   Object.assign(new Error(message), { name: "RefusalError", exitCode, outcome });
 
-// The reader's pins come from OUR config, never the record: the hosts we accept, and per chain
-// the ReceiptAnchor address and the RPC to read it over. The viem client is ours too — it is
-// what pins.chains[chainId].rpc would build anyway, so the record can never redirect the read.
-export function readerPins(config, client) {
+// The pins ASSAY's check reads come from OUR config, never the record: the hosts we accept and,
+// per chain, the ReceiptAnchor address and the RPC to read it over. The viem client is ours —
+// it is what pins.chains[chainId].rpc would build anyway — so the record can never redirect the
+// read. The chain read always runs; a no-chain check would accept a forged record.
+export function chainPins(config, client) {
   return {
     trustedHosts: config.trustedHosts,
     chains: { [config.chainId]: { anchor: config.receiptAnchor, rpc: config.rpcUrl } },
     client,
   };
+}
+
+// ASSAY's own checkRecord on the interop record, called by both the reader and the writer. A
+// throw out of his check (a chain or RPC failure) is exit 4 — never reported as ok — and the
+// line carries only the error's name, never its message, the URL's path or the request body.
+// `tail` is the caller's closing sentence ("Nothing was written." / "The context was not handed on.").
+export async function checkOrRefuse({ assay, record, config, client, tail }) {
+  let verdict;
+  try {
+    verdict = await assay.checkRecord(record, chainPins(config, client));
+  } catch (e) {
+    throw refuse(
+      `chain: could not read ReceiptAnchor at ${shortAddr(config.receiptAnchor)} over ${rpcHost(config.rpcUrl)} (${e?.name ?? "Error"}). ${tail}`,
+      4,
+      "chain",
+    );
+  }
+  if (verdict?.ok === true && Array.isArray(verdict.reasons) && verdict.reasons.length === 0) {
+    return verdict;
+  }
+  const reasons = Array.isArray(verdict?.reasons)
+    ? verdict.reasons.join("; ")
+    : "the check returned no reasons";
+  throw refuse(
+    `refused: ASSAY's check did not pass for receipt ${short(record.receiptHash)} — ${reasons}. ${tail}`,
+  );
 }
 
 // spec section-5 step 3: find the newest record the chain attributes to the writer, then run
@@ -47,29 +74,18 @@ export async function runRead({ config, assay, client, mida, log, receiptHash })
       `mida: record ${short(id)} written by ${author?.name ?? "unknown"} (${item.source}, ${stamp(writtenAt)}) holds receipt ${short(record.receiptHash)}`,
     );
 
-    let verdict;
-    try {
-      verdict = await assay.checkRecord(toInteropRecord(record), readerPins(config, client));
-    } catch (e) {
-      throw refuse(
-        `chain: could not read ReceiptAnchor at ${shortAddr(config.receiptAnchor)} over ${rpcHost(config.rpcUrl)} (${e?.name ?? "Error"}). The context was not handed on.`,
-        4,
-        "chain",
-      );
-    }
-    if (verdict?.ok === true && Array.isArray(verdict.reasons) && verdict.reasons.length === 0) {
-      const body = verdict.body ?? {};
-      log(
-        `accepted: host ${body?.host?.agentId} (trusted) served model ${body?.model}; the salt opens the commitments. Output: ${JSON.stringify(record.output)}`,
-      );
-      return { exitCode: 0, outcome: "accepted", output: record.output };
-    }
-    const reasons = Array.isArray(verdict?.reasons)
-      ? verdict.reasons.join("; ")
-      : "the check returned no reasons";
-    throw refuse(
-      `refused: ASSAY's check did not pass for receipt ${short(record.receiptHash)} — ${reasons}. The context was not handed on.`,
+    const verdict = await checkOrRefuse({
+      assay,
+      record: toInteropRecord(record),
+      config,
+      client,
+      tail: "The context was not handed on.",
+    });
+    const body = verdict.body ?? {};
+    log(
+      `accepted: host ${body?.host?.agentId} (trusted) served model ${body?.model}; the salt opens the commitments. Output: ${JSON.stringify(record.output)}`,
     );
+    return { exitCode: 0, outcome: "accepted", output: record.output };
   } catch (e) {
     if (e instanceof PartialListError) {
       log(

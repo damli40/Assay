@@ -85,9 +85,11 @@ export async function main(argv, env = process.env, deps = {}) {
       code = 0;
     } else if (args.command === "write") {
       const mida = createMida(config.writerAgent, config);
+      const client = createClient(config);
       const r = await runWrite({
         config,
         assay,
+        client,
         fetchImpl,
         mida,
         log,

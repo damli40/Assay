@@ -44,7 +44,9 @@ const anchoredFetch = (over = {}) => async (url) => {
   throw new Error(`unexpected url ${url}`);
 };
 
-const assay = () => ({
+// The checkRecord stand-in emulates the real verdicts this test needs: a jwks that is not a
+// key list fails the signature check, and a root the fake chain has never seen fails anchoring.
+const assay = (calls = {}, over = {}) => ({
   receiptHash: (b) => (JSON.stringify(b) === JSON.stringify(BODY) ? HASH : "0x" + "ff".repeat(32)),
   commitResponse: (salt, output) => (salt === SALT && output === "OK" ? BODY.res.commit : "0x" + "ee".repeat(32)),
   commitRequest: (salt, messages, params) =>
@@ -53,6 +55,18 @@ const assay = () => ({
     JSON.stringify(params) === JSON.stringify(BODY.req.params)
       ? BODY.req.commit
       : "0x" + "dd".repeat(32),
+  checkRecord: async (record, pins) => {
+    (calls.check ??= []).push({ record, pins });
+    if (over.checkThrows) throw over.checkThrows;
+    if (over.checkVerdict) return over.checkVerdict;
+    if (!Array.isArray(record.jwks?.keys)) {
+      return { ok: false, reasons: ["jws: fail", "kid: skipped"] };
+    }
+    if (!(over.knownRoots ?? new Set([ROOT])).has(record.anchor?.root)) {
+      return { ok: false, reasons: ["anchored: fail"] };
+    }
+    return { ok: true, reasons: [], checks: {}, body: BODY };
+  },
 });
 
 const config = (dir) => ({
@@ -110,9 +124,11 @@ const run = {
 const write = async (dir, over = {}) => {
   const calls = {};
   const lines = [];
+  const client = over.client ?? { fake: "viem client" };
   const result = await runWrite({
     config: config(dir),
-    assay: over.assay ?? assay(),
+    assay: over.assay ?? assay(calls, over),
+    client,
     fetchImpl: over.fetchImpl ?? anchoredFetch(over.anchored ?? {}),
     mida: over.mida ?? mida(over.pages, calls),
     log: (line) => lines.push(line),
@@ -120,7 +136,7 @@ const write = async (dir, over = {}) => {
     receiptHash: over.receiptHash ?? HASH,
     ...(over.runFile ? { runFile: over.runFile } : {}),
   });
-  return { result, calls, lines };
+  return { result, calls, lines, client };
 };
 
 let dir;
@@ -132,14 +148,29 @@ afterEach(async () => rm(dir, { recursive: true, force: true }));
 
 describe("runWrite", () => {
   it("saves one record and prints the spec section-3.3 lines", async () => {
-    const { result, calls, lines } = await write(dir);
+    const { result, calls, lines, client } = await write(dir);
     expect(result).toEqual({ exitCode: 0, outcome: "recorded" });
     expect(lines).toEqual([
       `assay: receipt 0x9a166cac… is anchored under host 1962 — root 0x8c89bd8a…, tx 0x41f73bca…`,
       "mida: assay-writer approved for this folder",
+      `assay: check passed for receipt 0x9a166cac… — the record is one the reader will accept`,
       `recorded: Mida record 0x547a8f2f… (anchored) in projects.current, author assay-writer — receipt 0x9a166cac…, salt and output inside the encrypted body`,
     ]);
     expect(calls.context).toHaveLength(1);
+    // ASSAY's checkRecord ran on the interop record with chain-enabled pins from our config
+    expect(calls.check).toHaveLength(1);
+    const [{ record: checked, pins }] = calls.check;
+    expect(Object.keys(checked)).toEqual([
+      "receiptHash", "chainId", "jws", "jwks", "anchor", "salt", "output", "messages", "source",
+    ]);
+    expect(Object.hasOwn(checked, "assayReceipt")).toBe(false);
+    expect(Object.hasOwn(checked, "savedAt")).toBe(false);
+    expect(pins).toEqual({
+      trustedHosts: ["erc8004:10143:1962"],
+      chains: { 10143: { anchor: ANCHOR, rpc: "https://testnet-rpc.monad.xyz" } },
+      client,
+    });
+    expect(Object.hasOwn(pins, "offline")).toBe(false);
     expect(calls.remember).toHaveLength(1);
     const [{ namespace, kind, content }] = calls.remember;
     expect(namespace).toBe("projects.current");
@@ -186,6 +217,65 @@ describe("runWrite", () => {
       `assay: receipt 0x9a166cac… is not anchored yet (the host says pending). Nothing was written. Try again in about 30 s.`,
     );
     expect(calls.context).toBeUndefined();
+    expect(calls.remember).toBeUndefined();
+  });
+
+  for (const status of ["signed", "failed", undefined]) {
+    it(`refuses a ${status ?? "missing"}-status receipt before Mida and the check`, async () => {
+      const { result, calls, lines } = await write(dir, { anchored: { status } });
+      expect(result.exitCode).toBe(2);
+      expect(lines.at(-1)).toBe(
+        `assay: the host's answer for receipt 0x9a166cac… is not usable (status ${status === undefined ? "null" : JSON.stringify(status)}, not "anchored"). Nothing was written.`,
+      );
+      expect(calls.context).toBeUndefined();
+      expect(calls.check).toBeUndefined();
+      expect(calls.remember).toBeUndefined();
+    });
+  }
+
+  it("a junk JWKS fails ASSAY's check — refused, nothing saved", async () => {
+    const fetchImpl = async (url) =>
+      url === `${HOST}/.well-known/jwks.json` ? res(200, { keys: "junk" }) : anchoredFetch()(url);
+    const { result, calls, lines } = await write(dir, { fetchImpl });
+    expect(result.exitCode).toBe(2);
+    expect(lines.at(-1)).toBe(
+      `refused: ASSAY's check did not pass for receipt 0x9a166cac… — jws: fail; kid: skipped. Nothing was written.`,
+    );
+    expect(calls.check).toHaveLength(1);
+    expect(calls.remember).toBeUndefined();
+  });
+
+  it("a root the chain does not know fails ASSAY's check — refused, nothing saved", async () => {
+    const { result, calls, lines } = await write(dir, { anchored: { root: "0x" + "77".repeat(32) } });
+    expect(result.exitCode).toBe(2);
+    expect(lines.at(-1)).toBe(
+      `refused: ASSAY's check did not pass for receipt 0x9a166cac… — anchored: fail. Nothing was written.`,
+    );
+    expect(calls.check).toHaveLength(1);
+    expect(calls.remember).toBeUndefined();
+  });
+
+  it("an ok verdict with non-empty reasons still refuses — nothing saved", async () => {
+    const { result, calls, lines } = await write(dir, {
+      checkVerdict: { ok: true, reasons: ["anchored: skipped"], body: BODY },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(lines.at(-1)).toBe(
+      `refused: ASSAY's check did not pass for receipt 0x9a166cac… — anchored: skipped. Nothing was written.`,
+    );
+    expect(calls.remember).toBeUndefined();
+  });
+
+  it("a throw out of checkRecord (a chain or RPC failure) exits 4 and saves nothing", async () => {
+    const err = new Error("readContract reverted with a body that must not leak");
+    err.name = "ContractFunctionExecutionError";
+    const { result, calls, lines } = await write(dir, { checkThrows: err });
+    expect(result.exitCode).toBe(4);
+    expect(result.outcome).toBe("chain");
+    expect(lines.at(-1)).toBe(
+      "chain: could not read ReceiptAnchor at 0x63e4…1a24 over testnet-rpc.monad.xyz (ContractFunctionExecutionError). Nothing was written.",
+    );
+    expect(lines.at(-1)).not.toContain("a body that must not leak");
     expect(calls.remember).toBeUndefined();
   });
 
