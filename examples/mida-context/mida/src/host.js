@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { bodyFromJws } from "./record.js";
 
 export class HostError extends Error {
   constructor(message, exitCode) {
@@ -81,11 +82,12 @@ export async function askHost({ assay, fetchImpl, host, prompt, now }) {
       2,
     );
   }
-  const { body, jws, hash } = result.receipt;
+  const { jws, hash } = result.receipt;
+  const body = bodyFromJws(jws, "saved");
   const m = AGENT_ID.exec(body?.host?.agentId ?? "");
   if (!m) {
     throw new HostError(
-      "assay: the receipt body's host.agentId is not erc8004:<chainId>:<agentId>. Nothing was saved.",
+      "assay: the receipt's host.agentId is not erc8004:<chainId>:<agentId>. Nothing was saved.",
       2,
     );
   }
@@ -93,7 +95,6 @@ export async function askHost({ assay, fetchImpl, host, prompt, now }) {
   return {
     receiptHash: hash,
     chainId: Number(m[1]),
-    body,
     jws,
     salt: result.salt,
     output,
@@ -133,7 +134,6 @@ export async function fetchReceipt({ fetchImpl, host, receiptHash }) {
   if (j?.status === "pending") return { status: "pending" };
   return {
     status: "anchored",
-    body: j.body,
     jws: j.jws,
     root: j.root,
     proof: j.proof,

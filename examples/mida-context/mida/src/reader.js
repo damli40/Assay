@@ -2,6 +2,7 @@ import { isMidaSdkError } from "@mida-context/sdk";
 import { checkLine, judge } from "./check.js";
 import {
   PartialListError,
+  bodyFromJws,
   midaErrorLine,
   readAssayRecord,
   toVerifyInput,
@@ -50,7 +51,7 @@ export async function runRead({ config, assay, client, mida, log, receiptHash })
     log(checkLine(result, { contract: config.receiptAnchor, agentId: record.anchor.agentId }));
     const verdict = judge(result, {
       trustedHosts: config.trustedHosts,
-      body: record.body,
+      body: bodyFromJws(record.jws, "handed on"),
       hasMessages: record.messages !== undefined,
       output: record.output,
     });

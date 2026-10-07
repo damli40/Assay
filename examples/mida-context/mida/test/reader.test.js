@@ -27,12 +27,14 @@ const config = {
   rpcUrl: "https://testnet-rpc.monad.xyz",
 };
 
+const jwsFor = (b) => `h.${Buffer.from(JSON.stringify(b)).toString("base64url")}.s`;
+const JWS = jwsFor(BODY);
+
 const content = (over = {}) => ({
   assayReceipt: 1,
-  chainId: 10143,
   receiptHash: HASH,
-  body: BODY,
-  jws: "a.b.c",
+  chainId: 10143,
+  jws: JWS,
   jwks: { keys: [{ kid: "kid1" }] },
   anchor: { contract: ANCHOR, agentId: 1962, root: "0x" + "11".repeat(32), proof: [], tx: "0x" + "22".repeat(32) },
   salt: SALT,
@@ -172,7 +174,7 @@ describe("runRead", () => {
       receiptHash: HASH,
     });
     expect(result.exitCode).toBe(0);
-    expect(calls.verify[0].body).toBe(BODY);
+    expect(calls.verify[0].body).toEqual(BODY);
   });
 
   it("a refused verdict hands no output onward", async () => {

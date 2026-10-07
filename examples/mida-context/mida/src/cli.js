@@ -6,6 +6,7 @@ import { monadTestnet } from "viem/chains";
 import { loadAssaySdk } from "./assay-sdk.js";
 import { loadConfig } from "./config.js";
 import { askHost, short, writeRunFile } from "./host.js";
+import { bodyFromJws } from "./record.js";
 import { runRead } from "./reader.js";
 import { runWrite } from "./writer.js";
 
@@ -63,8 +64,9 @@ export async function main(argv, env = process.env, deps = {}) {
     if (args.command === "ask") {
       const run = await askHost({ assay, fetchImpl, host: config.host, prompt: args.prompt });
       await writeRunFile(join(config.projectDir, "runs"), { host: config.host, ...run });
+      const body = bodyFromJws(run.jws, "saved");
       log(
-        `asked: receipt ${short(run.receiptHash)} from host ${run.body.host.agentId}, model ${run.body.model} — output ${JSON.stringify(run.output)} (${run.body.res.tokensIn} tokens in, ${run.body.res.tokensOut} out)`,
+        `asked: receipt ${short(run.receiptHash)} from host ${body.host.agentId}, model ${body.model} — output ${JSON.stringify(run.output)} (${body.res.tokensIn} tokens in, ${body.res.tokensOut} out)`,
       );
       log(
         `saved: runs/${short(run.receiptHash)}.json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write ${short(run.receiptHash)}`,

@@ -27,6 +27,9 @@ const BODY = {
 
 const res = (status, json) => ({ ok: status < 400, status, json: async () => json });
 
+const jwsFor = (b) => `h.${Buffer.from(JSON.stringify(b)).toString("base64url")}.s`;
+const JWS = jwsFor(BODY);
+
 async function problem(promise) {
   try {
     await promise;
@@ -37,8 +40,9 @@ async function problem(promise) {
 }
 
 describe("askHost", () => {
-  it("posts the prompt through assay.wrap and returns the run fields", async () => {
+  it("posts the prompt through assay.wrap and returns the run fields — body read from the JWS, not the receipt's body", async () => {
     const seen = { wrapCalls: 0 };
+    const wrongBody = { ...BODY, host: { ...BODY.host, agentId: "erc8004:9999:1" }, model: "wrong" };
     const assay = {
       wrap: () => {
         seen.wrapCalls += 1;
@@ -47,7 +51,7 @@ describe("askHost", () => {
           seen.init = init;
           return {
             json: { choices: [{ message: { content: "OK" } }] },
-            receipt: { body: BODY, jws: "a.b.c", hash: HASH },
+            receipt: { body: wrongBody, jws: JWS, hash: HASH },
             salt: SALT,
             outputCommitOk: true,
           };
@@ -71,14 +75,30 @@ describe("askHost", () => {
     expect(run).toEqual({
       receiptHash: HASH,
       chainId: 10143,
-      body: BODY,
-      jws: "a.b.c",
+      jws: JWS,
       salt: SALT,
       output: "OK",
       messages: [{ role: "user", content: "Say OK" }],
       params: { max_tokens: 64, temperature: 0 },
       askedAt: "2026-10-02T15:18:44.495Z",
     });
+    expect(Object.hasOwn(run, "body")).toBe(false);
+  });
+
+  it("refuses when the receipt's JWS payload is not decodable", async () => {
+    const assay = {
+      wrap: () => async () => ({
+        json: { choices: [{ message: { content: "OK" } }] },
+        receipt: { jws: "a.b.c", hash: HASH },
+        salt: SALT,
+        outputCommitOk: true,
+      }),
+      assistantOutput: (m) => m.content,
+    };
+    const e = await problem(askHost({ assay, fetchImpl: async () => ({}), host: HOST, prompt: "x" }));
+    expect(e.exitCode).toBe(2);
+    expect(e.message).toContain("JWS");
+    expect(e.message).toContain("Nothing was saved.");
   });
 
   it("refuses when the host's res.commit does not open with the salt", async () => {
@@ -161,25 +181,26 @@ describe("fetchReceipt", () => {
     expect(await fetchReceipt({ fetchImpl, host: HOST, receiptHash: HASH })).toEqual({ status: "pending" });
   });
 
-  it("returns the anchored shape", async () => {
+  it("returns the anchored shape without a body field — the body is decoded from the JWS", async () => {
     const anchored = {
       status: "anchored",
       body: BODY,
-      jws: "a.b.c",
+      jws: JWS,
       root: "0x" + "ab".repeat(32),
       proof: ["0x" + "cd".repeat(32)],
       anchorTx: "0x" + "ef".repeat(32),
       reproduce: { cast: "cast call …" },
     };
     const fetchImpl = async () => res(200, anchored);
-    expect(await fetchReceipt({ fetchImpl, host: HOST, receiptHash: HASH })).toEqual({
+    const got = await fetchReceipt({ fetchImpl, host: HOST, receiptHash: HASH });
+    expect(got).toEqual({
       status: "anchored",
-      body: BODY,
-      jws: "a.b.c",
+      jws: JWS,
       root: "0x" + "ab".repeat(32),
       proof: ["0x" + "cd".repeat(32)],
       anchorTx: "0x" + "ef".repeat(32),
     });
+    expect(Object.hasOwn(got, "body")).toBe(false);
   });
 
   it("refuses a 404 with exit 2", async () => {
@@ -218,8 +239,7 @@ describe("run files", () => {
     host: HOST,
     receiptHash: HASH,
     chainId: 10143,
-    body: BODY,
-    jws: "a.b.c",
+    jws: JWS,
     salt: SALT,
     output: "OK",
     messages: [{ role: "user", content: "Say OK" }],

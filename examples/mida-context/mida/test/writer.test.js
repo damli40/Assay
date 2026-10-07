@@ -27,6 +27,9 @@ const BODY = {
 };
 const JWKS = { keys: [{ kid: "kid1", kty: "EC" }] };
 
+const jwsFor = (b) => `h.${Buffer.from(JSON.stringify(b)).toString("base64url")}.s`;
+const JWS = jwsFor(BODY);
+
 const res = (status, body) => ({
   status,
   ok: status >= 200 && status < 300,
@@ -35,17 +38,19 @@ const res = (status, body) => ({
 
 const anchoredFetch = (over = {}) => async (url) => {
   if (url === `${HOST}/v1/receipts/${HASH}`) {
-    return res(200, { status: "anchored", body: BODY, jws: "a.b.c", root: ROOT, proof: [], anchorTx: TX, ...over });
+    return res(200, { status: "anchored", body: BODY, jws: JWS, root: ROOT, proof: [], anchorTx: TX, ...over });
   }
   if (url === `${HOST}/.well-known/jwks.json`) return res(200, JWKS);
   throw new Error(`unexpected url ${url}`);
 };
 
 const assay = () => ({
-  receiptHash: (body) => (body === BODY ? HASH : "0x" + "ff".repeat(32)),
+  receiptHash: (b) => (JSON.stringify(b) === JSON.stringify(BODY) ? HASH : "0x" + "ff".repeat(32)),
   commitResponse: (salt, output) => (salt === SALT && output === "OK" ? BODY.res.commit : "0x" + "ee".repeat(32)),
   commitRequest: (salt, messages, params) =>
-    salt === SALT && JSON.stringify(messages) === JSON.stringify(MESSAGES) && params === BODY.req.params
+    salt === SALT &&
+    JSON.stringify(messages) === JSON.stringify(MESSAGES) &&
+    JSON.stringify(params) === JSON.stringify(BODY.req.params)
       ? BODY.req.commit
       : "0x" + "dd".repeat(32),
 });
@@ -94,8 +99,7 @@ const item = (content, author, source, id) => ({
 const run = {
   receiptHash: HASH,
   chainId: 10143,
-  body: BODY,
-  jws: "a.b.c",
+  jws: JWS,
   salt: SALT,
   output: "OK",
   messages: MESSAGES,
@@ -141,15 +145,14 @@ describe("runWrite", () => {
     expect(namespace).toBe("projects.current");
     expect(kind).toBe("EPISODE");
     expect(Object.keys(content)).toEqual([
-      "assayReceipt", "chainId", "receiptHash", "body", "jws", "jwks",
+      "assayReceipt", "receiptHash", "chainId", "jws", "jwks",
       "anchor", "salt", "output", "messages", "source", "savedAt",
     ]);
     expect(content).toEqual({
       assayReceipt: 1,
-      chainId: 10143,
       receiptHash: HASH,
-      body: BODY,
-      jws: "a.b.c",
+      chainId: 10143,
+      jws: JWS,
       jwks: JWKS,
       anchor: { contract: ANCHOR, agentId: 1962, root: ROOT, proof: [], tx: TX },
       salt: SALT,
@@ -158,6 +161,22 @@ describe("runWrite", () => {
       source: `${HOST}/v1/receipts/${HASH}`,
       savedAt: new Date(NOW).toISOString(),
     });
+    expect(Object.hasOwn(content, "body")).toBe(false);
+    expect(Object.hasOwn(content, "type")).toBe(false);
+  });
+
+  it("refuses a run file without messages before any host call", async () => {
+    const { messages, ...noMsgs } = run;
+    await writeRunFile(join(dir, "runs"), { host: HOST, ...noMsgs });
+    let fetches = 0;
+    const { result, lines } = await write(dir, {
+      fetchImpl: async () => { fetches += 1; throw new Error("must not fetch"); },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(fetches).toBe(0);
+    expect(lines.at(-1)).toBe(
+      `write: the run file for 0x9a166cac… carries no messages; ASSAY's check cannot open req.commit without them. Nothing was written.`,
+    );
   });
 
   it("refuses a pending anchor before touching Mida", async () => {

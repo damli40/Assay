@@ -37,21 +37,51 @@ export function midaErrorLine(e, verb) {
   return line;
 }
 
-// The section-7.2 content: ASSAY's own interop file shape plus body, salt, output, messages,
-// savedAt — all of it inside the record's encrypted body. `anchor` is the configured
-// ReceiptAnchor address (the writer asserts the anchor it verified against). No `type` key.
+// The receipt's body lives inside the signed JWS payload, never in a separate field — any code
+// that needs the host id, model or commits decodes it here. `verb` is the caller's word for the
+// "Nothing was <verb>." tail of a refusal line.
+export function bodyFromJws(jws, verb = "done") {
+  const fail = (why) => new RecordError(`assay: the receipt's JWS ${why}. Nothing was ${verb}.`);
+  const parts = typeof jws === "string" ? jws.split(".") : [];
+  if (parts.length !== 3 || parts.some((p) => p === "")) {
+    throw fail("is not a compact three-part string");
+  }
+  let body;
+  try {
+    body = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+  } catch {
+    throw fail("payload is not base64url JSON");
+  }
+  if (!isObj(body)) throw fail("payload is not a JSON object");
+  return body;
+}
+
+// The interop record: ASSAY's own fixture fields (receiptHash … source) plus our marker
+// `assayReceipt` and `savedAt` — all of it inside the record's encrypted body. There is no
+// `body` field: the receipt body is read from the signed JWS payload by whoever needs it.
+// `anchor.contract` is the configured ReceiptAnchor address. No `type` key.
 export function buildRecord({ run, anchored, jwks, host, anchor, now }) {
-  const m = AGENT_ID.exec(anchored.body?.host?.agentId ?? "");
+  if (!Array.isArray(run.messages)) {
+    throw new RecordError(
+      "assay: the record would carry no messages — ASSAY's check cannot open req.commit without them. Nothing was written.",
+    );
+  }
+  const body = bodyFromJws(anchored.jws, "written");
+  const m = AGENT_ID.exec(body?.host?.agentId ?? "");
   if (!m) {
     throw new RecordError(
-      "assay: the receipt body's host.agentId is not erc8004:<chainId>:<agentId>. Nothing was written.",
+      "assay: the receipt's host.agentId is not erc8004:<chainId>:<agentId>. Nothing was written.",
+    );
+  }
+  if (Number(m[1]) !== run.chainId) {
+    throw new RecordError(
+      `assay: the receipt's host id names chain ${m[1]}, but the run file says chain ${run.chainId}. Nothing was written.`,
     );
   }
   return {
     assayReceipt: 1,
-    chainId: run.chainId,
     receiptHash: run.receiptHash,
-    body: anchored.body,
+    chainId: run.chainId,
     jws: anchored.jws,
     jwks,
     anchor: {
@@ -63,7 +93,7 @@ export function buildRecord({ run, anchored, jwks, host, anchor, now }) {
     },
     salt: run.salt,
     output: run.output,
-    ...(run.messages !== undefined ? { messages: run.messages } : {}),
+    messages: run.messages,
     source: `${host}/v1/receipts/${run.receiptHash}`,
     savedAt: new Date(now ? now() : Date.now()).toISOString(),
   };
@@ -127,7 +157,6 @@ export function parseRecord(item, config) {
     throw unusable(item, "chainId", `is ${c.chainId}, this reader checks chain ${config.chainId}`);
   }
   if (!BYTES32.test(c.receiptHash ?? "")) throw unusable(item, "receiptHash", "not 32-byte hex");
-  if (!isObj(c.body)) throw unusable(item, "body", "not an object");
   const jwsParts = typeof c.jws === "string" ? c.jws.split(".") : [];
   if (jwsParts.length !== 3 || jwsParts.some((p) => p === "")) {
     throw unusable(item, "jws", "not a three-part string");
@@ -143,26 +172,24 @@ export function parseRecord(item, config) {
       `read: record ${short(item.id)} names ReceiptAnchor ${a.contract}, but this reader checks ${config.receiptAnchor}. Nothing was handed on.`,
     );
   }
+  if (!Number.isInteger(a.agentId)) throw unusable(item, "anchor.agentId", "not a number");
   if (!BYTES32.test(a.root ?? "")) throw unusable(item, "anchor.root", "not 32-byte hex");
   if (!Array.isArray(a.proof) || !a.proof.every((p) => BYTES32.test(p))) {
     throw unusable(item, "anchor.proof", "not an array of 32-byte hex");
   }
   if (!BYTES32.test(c.salt ?? "")) throw unusable(item, "salt", "not 32-byte hex");
   if (typeof c.output !== "string") throw unusable(item, "output", "not a string");
-  if (c.messages !== undefined && !Array.isArray(c.messages)) {
-    throw unusable(item, "messages", "not an array");
-  }
+  if (!Array.isArray(c.messages)) throw unusable(item, "messages", "not an array");
   const record = {
     assayReceipt: 1,
-    chainId: c.chainId,
     receiptHash: c.receiptHash,
-    body: c.body,
+    chainId: c.chainId,
     jws: c.jws,
     jwks: c.jwks,
     anchor: { contract: a.contract, agentId: a.agentId, root: a.root, proof: a.proof, tx: a.tx },
     salt: c.salt,
     output: c.output,
-    ...(c.messages !== undefined ? { messages: c.messages } : {}),
+    messages: c.messages,
     source: c.source,
     savedAt: c.savedAt,
   };
@@ -170,10 +197,11 @@ export function parseRecord(item, config) {
 }
 
 // Exactly their VerifyInput: the chain client and contract come from config, never the record.
-// `params` is never set — their check takes it from the signed body.
+// The body is decoded from the signed JWS payload; `params` is never set — their check takes it
+// from that body.
 export function toVerifyInput(record, { client, anchor }) {
-  const input = {
-    body: record.body,
+  return {
+    body: bodyFromJws(record.jws, "handed on"),
     jws: record.jws,
     jwks: record.jwks,
     proof: record.anchor.proof,
@@ -181,9 +209,8 @@ export function toVerifyInput(record, { client, anchor }) {
     onchain: { client, anchor },
     salt: record.salt,
     output: record.output,
+    messages: record.messages,
   };
-  if (record.messages !== undefined) input.messages = record.messages;
-  return input;
 }
 
 // R4 + R5 as one call — the entry point ASSAY's own check can import: the allow-listed record

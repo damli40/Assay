@@ -3,6 +3,7 @@ import { MidaSdkError, isMidaSdkError } from "@mida-context/sdk";
 import { RunFileError, fetchJwks, fetchReceipt, readRunFile } from "./host.js";
 import {
   PartialListError,
+  bodyFromJws,
   buildRecord,
   midaErrorLine,
   pickRecord,
@@ -28,6 +29,11 @@ export async function runWrite({ config, assay, fetchImpl, mida, log, now, recei
         `write: receipt ${short(receiptHash)} is from chain ${run.chainId}; this folder is configured for chain ${config.chainId}. Nothing was written.`,
       );
     }
+    if (!Array.isArray(run.messages)) {
+      throw refuse(
+        `write: the run file for ${short(run.receiptHash)} carries no messages; ASSAY's check cannot open req.commit without them. Nothing was written.`,
+      );
+    }
 
     const anchored = await fetchReceipt({ fetchImpl, host: config.host, receiptHash: run.receiptHash });
     if (anchored.status === "pending") {
@@ -35,25 +41,23 @@ export async function runWrite({ config, assay, fetchImpl, mida, log, now, recei
         `assay: receipt ${short(run.receiptHash)} is not anchored yet (the host says pending). Nothing was written. Try again in about 30 s.`,
       );
     }
-    if (assay.receiptHash(anchored.body) !== run.receiptHash) {
+    const body = bodyFromJws(anchored.jws, "written");
+    if (assay.receiptHash(body) !== run.receiptHash) {
       throw refuse(
         `assay: the host returned a body that does not hash to ${short(run.receiptHash)}. Nothing was written.`,
       );
     }
-    const m = AGENT_ID.exec(anchored.body?.host?.agentId ?? "");
+    const m = AGENT_ID.exec(body?.host?.agentId ?? "");
     log(
-      `assay: receipt ${short(run.receiptHash)} is anchored under host ${m?.[2] ?? anchored.body?.host?.agentId} — root ${short(anchored.root)}, tx ${short(anchored.anchorTx)}`,
+      `assay: receipt ${short(run.receiptHash)} is anchored under host ${m?.[2] ?? body?.host?.agentId} — root ${short(anchored.root)}, tx ${short(anchored.anchorTx)}`,
     );
 
-    if (assay.commitResponse(run.salt, run.output) !== anchored.body.res.commit) {
+    if (assay.commitResponse(run.salt, run.output) !== body.res.commit) {
       throw refuse(
         `assay: the salt in the run file does not open res.commit for receipt ${short(run.receiptHash)}. Nothing was written.`,
       );
     }
-    if (
-      run.messages !== undefined &&
-      assay.commitRequest(run.salt, run.messages, anchored.body.req.params) !== anchored.body.req.commit
-    ) {
+    if (assay.commitRequest(run.salt, run.messages, body.req.params) !== body.req.commit) {
       throw refuse(
         `assay: the messages in the run file do not open req.commit for receipt ${short(run.receiptHash)}. Nothing was written.`,
       );
