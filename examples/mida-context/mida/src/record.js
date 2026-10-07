@@ -27,8 +27,16 @@ const isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 
 // Text that came out of a record, a receipt or another program must never start a new output
 // line: a refused record could otherwise print its own "accepted:" line. Every control
-// character and line separator becomes a space.
-export const oneLine = (s) => String(s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ");
+// character, line separator and text-direction mark becomes a space.
+export const oneLine = (s) =>
+  String(s).replace(
+    /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]+/g,
+    " ",
+  );
+
+// A refusal or error line: one line, and runs of spaces collapsed, so padding cannot push quoted
+// text onto a fresh screen row. Never used on the accepted line, whose output is shown as-is.
+export const refusalLine = (s) => oneLine(s).replace(/ {2,}/g, " ");
 
 // One refused/ unavailable Mida failure as the section-10 line. The SDK message's final full
 // stop is stripped before "Nothing was <verb>." is appended.
@@ -119,11 +127,14 @@ export function isWrittenBy(item, writerName) {
 
 // The newest item whose content marks it as a receipt record the writer wrote. Items arrive
 // most-recently-anchored first, so the first match in walk order is the newest.
-export function pickRecord(items, { writerName, receiptHash } = {}) {
+// A record that is not anchored yet has no author on chain, so only the writer's own
+// have-I-saved-this check (`allowPending`) may match one; the reader never does.
+export function pickRecord(items, { writerName, receiptHash, allowPending = false } = {}) {
   const want = typeof receiptHash === "string" ? receiptHash.toLowerCase() : undefined;
   for (const item of items ?? []) {
     const c = item?.content;
     if (!isObj(c) || c.assayReceipt !== 1) continue;
+    if (!allowPending && item?.state !== "anchored") continue;
     if (!isWrittenBy(item, writerName)) continue;
     if (want !== undefined && String(c.receiptHash ?? "").toLowerCase() !== want) continue;
     return item;

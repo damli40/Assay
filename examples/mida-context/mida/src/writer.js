@@ -9,6 +9,7 @@ import {
   midaErrorLine,
   oneLine,
   pickRecord,
+  refusalLine,
   toInteropRecord,
   walkItems,
 } from "./record.js";
@@ -86,8 +87,11 @@ export async function runWrite({ config, assay, client, fetchImpl, mida, log, no
     await walkItems(
       mida,
       (items) =>
-        (already = pickRecord(items, { writerName: config.writerAgent, receiptHash: run.receiptHash })) !=
-        null,
+        (already = pickRecord(items, {
+          writerName: config.writerAgent,
+          receiptHash: run.receiptHash,
+          allowPending: true,
+        })) != null,
     );
     if (already) {
       log(
@@ -133,11 +137,11 @@ export async function runWrite({ config, assay, client, fetchImpl, mida, log, no
       return { exitCode: 3, outcome: "partial" };
     }
     if (isMidaSdkError(e)) {
-      log(oneLine(midaErrorLine(e, "written")));
+      log(refusalLine(midaErrorLine(e, "written")));
       return { exitCode: 3, outcome: "mida" };
     }
     if (Number.isInteger(e?.exitCode)) {
-      log(oneLine(e.message));
+      log(refusalLine(e.message));
       return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
     }
     throw e;

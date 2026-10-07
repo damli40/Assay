@@ -5,6 +5,7 @@ import {
   midaErrorLine,
   oneLine,
   readAssayRecord,
+  refusalLine,
   toInteropRecord,
 } from "./record.js";
 
@@ -74,6 +75,13 @@ export async function checkOrRefuse({ assay, record, config, client, tail }) {
   try {
     verdict = await assay.checkRecord(record, chainPins(config, client));
   } catch (e) {
+    // Our viem client wraps every network failure in its own error classes, so a bare
+    // TypeError, RangeError or SyntaxError here means the check choked on the record itself.
+    if (e instanceof TypeError || e instanceof RangeError || e instanceof SyntaxError) {
+      throw refuse(
+        `refused: ASSAY's check could not process the record for receipt ${short(record.receiptHash)} (${e.name}). ${tail}`,
+      );
+    }
     throw refuse(
       `chain: could not read ReceiptAnchor at ${shortAddr(config.receiptAnchor)} over ${rpcHost(config.rpcUrl)} (${e?.name ?? "Error"}). ${tail}`,
       4,
@@ -130,11 +138,11 @@ export async function runRead({ config, assay, client, mida, log, receiptHash })
       return { exitCode: 3, outcome: "partial" };
     }
     if (isMidaSdkError(e)) {
-      log(oneLine(midaErrorLine(e, "checked")));
+      log(refusalLine(midaErrorLine(e, "checked")));
       return { exitCode: 3, outcome: "mida" };
     }
     if (Number.isInteger(e?.exitCode)) {
-      log(oneLine(e.message));
+      log(refusalLine(e.message));
       return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
     }
     throw e;

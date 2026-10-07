@@ -7,7 +7,7 @@ import { loadAssaySdk } from "./assay-sdk.js";
 import { loadConfig } from "./config.js";
 import { askHost, short, writeRunFile } from "./host.js";
 import { runExport } from "./exporter.js";
-import { bodyFromJws } from "./record.js";
+import { bodyFromJws, oneLine } from "./record.js";
 import { runRead } from "./reader.js";
 import { runWrite } from "./writer.js";
 
@@ -61,7 +61,10 @@ export function parseArgs(argv) {
 }
 
 export async function main(argv, env = process.env, deps = {}) {
-  const log = deps.log ?? ((line) => console.log(line));
+  // Every message leaves through here on one line: nothing a host, a record or another program
+  // sent can start an output line of its own.
+  const print = deps.log ?? ((line) => console.log(line));
+  const log = (line) => print(oneLine(line));
   const exit = deps.exit ?? ((code) => process.exit(code));
   const createMida =
     deps.createMida ??
@@ -88,7 +91,7 @@ export async function main(argv, env = process.env, deps = {}) {
         `asked: receipt ${short(run.receiptHash)} from host ${body.host.agentId}, model ${body.model} — output ${JSON.stringify(run.output)} (${body.res.tokensIn} tokens in, ${body.res.tokensOut} out)`,
       );
       log(
-        `saved: runs/${short(run.receiptHash)}.json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write ${run.receiptHash}`,
+        `saved: runs/${run.receiptHash}.json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write ${run.receiptHash}`,
       );
       code = 0;
     } else if (args.command === "write") {

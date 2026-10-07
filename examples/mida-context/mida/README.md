@@ -12,15 +12,14 @@ One small Node program in this folder, `examples/mida-context/mida/`, with three
 
 ```
 asked: receipt 0x9a166cac… from host erc8004:10143:1962, model gemma-4-31b-it — output "OK" (3 tokens in, 1 out)
-saved: runs/0x9a166cac….json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write 0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5
+saved: runs/0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5.json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write 0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5
 ```
 
 `write` prints what the host reports about the receipt, that the writer is approved, the result of ASSAY's check (chain read on), and the record it saved:
 
 ```
 assay: the host reports receipt 0x9a166cac… anchored under host 1962 — root 0x8c89bd8a…, tx 0x41f73bca…
-mida: midad: answering — pid 4242, up since 2026-10-09T10:00:00Z, queue 0
-assay-writer: approved for this folder
+mida: midad: answering — pid 4242, up since 2026-10-09T10:00:00Z, queue 0 — socket in .mida-assay assay-writer: approved for this folder
 assay: check passed for receipt 0x9a166cac… — the record is one the reader will accept
 recorded: Mida record 0x547a8f2f… (anchored) in projects.current, author assay-writer — receipt 0x9a166cac…, salt and output inside the encrypted body
 ```
@@ -36,7 +35,7 @@ accepted: host erc8004:10143:1962 (trusted) served model gemma-4-31b-it; the sal
 
 ```
 node --env-file=.env src/cli.js export
-# exported: <this folder>/exports/0x9a166cac….json — this file contains the salt; it must not be published unless the call was a test.
+# exported: <this folder>/exports/0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5.json — this file contains the salt; it must not be published unless the call was a test.
 # then, from the repository root:
 npx tsx examples/mida-context/check.mts examples/mida-context/mida/exports/<receiptHash>.json
 ```
@@ -45,7 +44,7 @@ npx tsx examples/mida-context/check.mts examples/mida-context/mida/exports/<rece
 
 About twenty minutes, once, all on Monad testnet. You need Node 22 or newer and the `mida` command (`npm install -g mida-context`). Every `mida` command starts with `MIDA_HOME=$HOME/.mida-assay`: without it, `mida` uses the everyday home and the revoke later would land there.
 
-0. **Install this folder's two dependencies** — inside `examples/mida-context/mida/`:
+0. **Install this folder's dependencies** — inside `examples/mida-context/mida/`:
 
    ```
    npm ci
@@ -117,9 +116,9 @@ In this order, stopping at the first refusal; the reader is the half ASSAY's own
 | R1 | Config is valid, the reader and writer are different agent names, and every trusted host is on the configured chain. | `.env` | exit 1 |
 | R2 | ASSAY's built SDK can be loaded. | `../../../sdk/dist/index.js` exists and imports | exit 1 |
 | R3 | The Mida service answers and the reader is approved; every page of `projects.current` arrives whole (no `partial`). | `mida.context()` | exit 3 |
-| R4 | A candidate exists: the newest item with `content.assayReceipt === 1` whose chain facts say the writer wrote it (`source === "AGENT_INFERRED"`, non-zero `author.id`, `author.name === ASSAY_WRITER_AGENT`). With `read <hash>` or `export <hash>`, the newest such item with that `receiptHash`. | the chain's author and source, never the content | exit 2 |
+| R4 | A candidate exists: the newest anchored item with `content.assayReceipt === 1` whose chain facts say the writer wrote it (`source === "AGENT_INFERRED"`, non-zero `author.id`, `author.name === ASSAY_WRITER_AGENT`). With `read <hash>` or `export <hash>`, the newest such item with that `receiptHash`. | the chain's author and source, never the content | exit 2 |
 | R5 | The record's fields are well-formed: `chainId` equals the configured chain, `anchor.contract` equals the configured `ReceiptAnchor` (case-insensitive), `receiptHash`, `root` and `salt` are 32-byte hex, `anchor.agentId` is a number, `proof` is an array of 32-byte hex, `jws` is a three-part string, `jwks.keys` is an array, `output` is a string, `messages` is an array. Only allow-listed fields are copied; a stray `body` key is dropped — the receipt body is always decoded from the signed JWS payload. | the record | exit 2 |
-| R6 | ASSAY's `checkRecord(record, pins)`: their own verifier — signature, receipt hash, key id, the Merkle batch, the on-chain anchor, and that our salt opens both commits — run with pins built from this folder's `.env` only: `trustedHosts`, and `chains[chainId]` = the configured ReceiptAnchor address and RPC. The output is handed on only when `verdict.ok === true` **and** `verdict.reasons` is empty — `ok` alone is not consulted. A throw (a chain or RPC failure) is never "ok". | `checkRecord` in their SDK | exit 2, ASSAY's reasons on one line; exit 4 on a chain/RPC failure |
+| R6 | ASSAY's `checkRecord(record, pins)`: their own verifier — signature, receipt hash, key id, the Merkle batch, the on-chain anchor, and that our salt opens both commits — run with pins built from this folder's `.env` only: `trustedHosts`, and `chains[chainId]` = the configured ReceiptAnchor address and RPC. The output is handed on only when `verdict.ok === true` **and** `verdict.reasons` is empty — `ok` alone is not consulted. A throw is never "ok": a chain or RPC failure exits 4, and a record the check cannot process exits 2. | `checkRecord` in their SDK | exit 2, ASSAY's reasons on one line; exit 4 on a chain/RPC failure |
 | Accept | Print the accepted line with the output text. | | exit 0 |
 
 The trusted-host list exists because anyone can register an ERC-8004 identity, set a host key and anchor their own receipts; such a receipt passes every cryptographic check `checkRecord` runs. The reader says which hosts it accepts in its own configuration — along with the contract address and the writer's name, which is why all three always come from config and never from the record.
@@ -134,7 +133,7 @@ One record in `projects.current`, kind `EPISODE`, written by `assay-writer`. Eve
 - `salt`, `output`, `messages` — the private half of the receipt and what it produced.
 - `source`, `savedAt` — where the receipt came from and when it was saved.
 
-`export` writes all of this minus the two Mida-side fields (`assayReceipt`, `savedAt`) — exactly the field set of ASSAY's published fixture, so `check.mts` reads it as-is. Text taken from a record is always printed on one line, so a refused record cannot print an `accepted:` line of its own.
+`export` writes all of this minus the two Mida-side fields (`assayReceipt`, `savedAt`) — exactly the field set of ASSAY's published fixture, so `check.mts` reads it as-is. Every message is printed on one line, whatever a record, a receipt or the host sent, so a refusal cannot print an `accepted:` line of its own. A script should still decide on the exit code, not on the text.
 
 What ASSAY's team can see: that a record exists, who wrote it and when, and the receipt's hash on their own side. What they cannot see: the record's content — there is no public field in a Mida record, so linking the anchored record to the receipt it holds needs the encrypted body, which only approved agents and the owner can read.
 

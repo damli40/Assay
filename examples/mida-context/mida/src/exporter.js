@@ -5,8 +5,8 @@ import { checkOrRefuse } from "./reader.js";
 import {
   PartialListError,
   midaErrorLine,
-  oneLine,
   readAssayRecord,
+  refusalLine,
   toInteropRecord,
 } from "./record.js";
 
@@ -48,11 +48,11 @@ export async function runExport({ config, assay, client, mida, log, receiptHash,
       return { exitCode: 3, outcome: "partial" };
     }
     if (isMidaSdkError(e)) {
-      log(oneLine(midaErrorLine(e, "exported")));
+      log(refusalLine(midaErrorLine(e, "exported")));
       return { exitCode: 3, outcome: "mida" };
     }
     if (Number.isInteger(e?.exitCode)) {
-      log(oneLine(e.message));
+      log(refusalLine(e.message));
       return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
     }
     throw e;
