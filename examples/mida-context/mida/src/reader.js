@@ -1,11 +1,9 @@
 import { isMidaSdkError } from "@mida-context/sdk";
-import { checkLine, judge } from "./check.js";
 import {
   PartialListError,
-  bodyFromJws,
   midaErrorLine,
   readAssayRecord,
-  toVerifyInput,
+  toInteropRecord,
 } from "./record.js";
 
 const short = (id) => (typeof id === "string" && id.length > 12 ? `${id.slice(0, 10)}…` : id);
@@ -21,9 +19,21 @@ const stamp = (writtenAt) => new Date(writtenAt).toISOString().replace(/\.\d{3}Z
 const refuse = (message, exitCode = 2, outcome = "refused") =>
   Object.assign(new Error(message), { name: "RefusalError", exitCode, outcome });
 
-// spec section-5 step 3: find the newest record the chain attributes to the writer, run their
-// check on it, and hand the output onward only when every applicable check passed and the host
-// is trusted. result.ok from their verifyReceipt is never read.
+// The reader's pins come from OUR config, never the record: the hosts we accept, and per chain
+// the ReceiptAnchor address and the RPC to read it over. The viem client is ours too — it is
+// what pins.chains[chainId].rpc would build anyway, so the record can never redirect the read.
+export function readerPins(config, client) {
+  return {
+    trustedHosts: config.trustedHosts,
+    chains: { [config.chainId]: { anchor: config.receiptAnchor, rpc: config.rpcUrl } },
+    client,
+  };
+}
+
+// spec section-5 step 3: find the newest record the chain attributes to the writer, then run
+// ASSAY's own checkRecord on it. The output is handed on only when verdict.ok === true AND
+// verdict.reasons is empty — anything else prints his reasons and exits 2. A throw out of his
+// check (a chain or RPC failure) exits 4 and is never reported as ok.
 export async function runRead({ config, assay, client, mida, log, receiptHash }) {
   try {
     const found = await readAssayRecord(mida, config, { receiptHash });
@@ -37,10 +47,9 @@ export async function runRead({ config, assay, client, mida, log, receiptHash })
       `mida: record ${short(id)} written by ${author?.name ?? "unknown"} (${item.source}, ${stamp(writtenAt)}) holds receipt ${short(record.receiptHash)}`,
     );
 
-    const input = toVerifyInput(record, { client, anchor: config.receiptAnchor });
-    let result;
+    let verdict;
     try {
-      result = await assay.verifyReceipt(input);
+      verdict = await assay.checkRecord(toInteropRecord(record), readerPins(config, client));
     } catch (e) {
       throw refuse(
         `chain: could not read ReceiptAnchor at ${shortAddr(config.receiptAnchor)} over ${rpcHost(config.rpcUrl)} (${e?.name ?? "Error"}). The context was not handed on.`,
@@ -48,16 +57,19 @@ export async function runRead({ config, assay, client, mida, log, receiptHash })
         "chain",
       );
     }
-    log(checkLine(result, { contract: config.receiptAnchor, agentId: record.anchor.agentId }));
-    const verdict = judge(result, {
-      trustedHosts: config.trustedHosts,
-      body: bodyFromJws(record.jws, "handed on"),
-      hasMessages: record.messages !== undefined,
-      output: record.output,
-    });
-    log(verdict.line);
-    if (verdict.kind === "accept") return { exitCode: 0, outcome: "accepted", output: record.output };
-    return { exitCode: 2, outcome: verdict.code };
+    if (verdict?.ok === true && Array.isArray(verdict.reasons) && verdict.reasons.length === 0) {
+      const body = verdict.body ?? {};
+      log(
+        `accepted: host ${body?.host?.agentId} (trusted) served model ${body?.model}; the salt opens the commitments. Output: ${JSON.stringify(record.output)}`,
+      );
+      return { exitCode: 0, outcome: "accepted", output: record.output };
+    }
+    const reasons = Array.isArray(verdict?.reasons)
+      ? verdict.reasons.join("; ")
+      : "the check returned no reasons";
+    throw refuse(
+      `refused: ASSAY's check did not pass for receipt ${short(record.receiptHash)} — ${reasons}. The context was not handed on.`,
+    );
   } catch (e) {
     if (e instanceof PartialListError) {
       log(

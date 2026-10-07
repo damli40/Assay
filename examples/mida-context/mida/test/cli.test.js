@@ -45,7 +45,7 @@ describe("main", () => {
   });
 
   const deps = (over = {}) => ({
-    loadAssaySdk: async () => ({ verifyReceipt: async () => ({ checks: {} }) }),
+    loadAssaySdk: async () => ({ checkRecord: async () => ({ ok: false, reasons: [] }) }),
     createMida: (agent) => {
       over.midaAgents?.push(agent);
       return {

@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { MidaSdkError } from "@mida-context/sdk";
 import { runRead } from "../src/reader.js";
 
@@ -18,6 +22,9 @@ const BODY = {
   nonce: "0x" + "44".repeat(16),
 };
 
+const jwsFor = (b) => `h.${Buffer.from(JSON.stringify(b)).toString("base64url")}.s`;
+const JWS = jwsFor(BODY);
+
 const config = {
   chainId: 10143,
   receiptAnchor: ANCHOR,
@@ -26,9 +33,6 @@ const config = {
   readerAgent: "assay-reader",
   rpcUrl: "https://testnet-rpc.monad.xyz",
 };
-
-const jwsFor = (b) => `h.${Buffer.from(JSON.stringify(b)).toString("base64url")}.s`;
-const JWS = jwsFor(BODY);
 
 const content = (over = {}) => ({
   assayReceipt: 1,
@@ -59,19 +63,19 @@ const writerItem = (c = content(), id = REC_ID) => ({
   proof: {},
 });
 
-const allPass = {
+const okVerdict = {
   ok: true,
-  receiptHash: HASH,
+  reasons: [],
   checks: {
     jws: "pass", hash: "pass", kid: "pass", merkle: "pass", anchored: "pass",
     outputCommit: "pass", promptCommit: "pass", cosigned: "skipped",
   },
-  reproduce: {},
+  body: BODY,
 };
 
-const read = async ({ pages, verifyResult = allPass, receiptHash } = {}) => {
+const read = async ({ pages, verdict = okVerdict, receiptHash } = {}) => {
   const lines = [];
-  const calls = { verify: [], context: [] };
+  const calls = { check: [], context: [] };
   const mida = {
     context: async (input) => {
       calls.context.push(input);
@@ -79,40 +83,46 @@ const read = async ({ pages, verifyResult = allPass, receiptHash } = {}) => {
       return pages.shift() ?? { items: [], cursor: null, otherTasks: [] };
     },
   };
+  const client = { readContract: async () => [] };
   const assay = {
-    verifyReceipt: async (input) => {
-      calls.verify.push(input);
-      if (verifyResult instanceof Error) throw verifyResult;
-      return verifyResult;
+    checkRecord: async (record, pins) => {
+      calls.check.push({ record, pins });
+      if (verdict instanceof Error) throw verdict;
+      return verdict;
     },
   };
   const result = await runRead({
     config,
     assay,
-    client: { readContract: async () => [] },
+    client,
     mida,
     log: (line) => lines.push(line),
     ...(receiptHash ? { receiptHash } : {}),
   });
-  return { result, lines, calls };
+  return { result, lines, calls, client };
 };
 
 describe("runRead", () => {
-  it("prints the three section-3.4 lines and hands their check the pinned input", async () => {
-    const { result, lines, calls } = await read({
+  it("hands ASSAY's checkRecord the interop record and pins built from our config", async () => {
+    const { result, lines, calls, client } = await read({
       pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
     });
     expect(result).toEqual({ exitCode: 0, outcome: "accepted", output: "OK" });
     expect(lines).toEqual([
       "mida: record 0x547a8f2f… written by assay-writer (AGENT_INFERRED, 2026-10-09T10:12:31Z) holds receipt 0x9a166cac…",
-      "assay: jws pass · hash pass · kid pass · merkle pass · anchored pass (host 1962 on 0x63e4…1a24) · outputCommit pass · promptCommit pass · cosigned skipped",
       'accepted: host erc8004:10143:1962 (trusted) served model gemma-4-31b-it; the salt opens the commitments. Output: "OK"',
     ]);
-    const [input] = calls.verify;
-    expect(input.onchain.anchor).toBe(ANCHOR);
-    expect(input.onchain.client).toBeDefined();
-    expect(Object.hasOwn(input, "params")).toBe(false);
-    expect(input.salt).toBe(SALT);
+    const [{ record, pins }] = calls.check;
+    expect(Object.keys(record)).toEqual([
+      "receiptHash", "chainId", "jws", "jwks", "anchor", "salt", "output", "messages", "source",
+    ]);
+    expect(Object.hasOwn(record, "assayReceipt")).toBe(false);
+    expect(Object.hasOwn(record, "savedAt")).toBe(false);
+    expect(pins).toEqual({
+      trustedHosts: config.trustedHosts,
+      chains: { 10143: { anchor: ANCHOR, rpc: config.rpcUrl } },
+      client,
+    });
   });
 
   it("a revoked reader stops on the context call, their check never runs", async () => {
@@ -122,7 +132,7 @@ describe("runRead", () => {
     expect(lines).toEqual([
       "mida: refused (revoked) — Mida: assay-reader's access was revoked by the owner — nothing was read. Nothing was checked.",
     ]);
-    expect(calls.verify).toHaveLength(0);
+    expect(calls.check).toHaveLength(0);
   });
 
   it("a partial page stops the run", async () => {
@@ -133,7 +143,7 @@ describe("runRead", () => {
     expect(lines.at(-1)).toBe(
       "mida: the record list came back incomplete (the store has not verified its newest rows yet). Nothing was checked. Run again in a minute.",
     );
-    expect(calls.verify).toHaveLength(0);
+    expect(calls.check).toHaveLength(0);
   });
 
   it("no matching record exits 2", async () => {
@@ -153,12 +163,12 @@ describe("runRead", () => {
     );
   });
 
-  it("a chain read failure exits 4 naming the contract, the rpc host and the error class", async () => {
+  it("a throw out of checkRecord (a chain or RPC failure) exits 4 and is never reported ok", async () => {
     const err = new Error("nope");
     err.name = "HttpRequestError";
     const { result, lines } = await read({
       pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
-      verifyResult: err,
+      verdict: err,
     });
     expect(result).toEqual({ exitCode: 4, outcome: "chain" });
     expect(lines.at(-1)).toBe(
@@ -174,19 +184,58 @@ describe("runRead", () => {
       receiptHash: HASH,
     });
     expect(result.exitCode).toBe(0);
-    expect(calls.verify[0].body).toEqual(BODY);
+    expect(calls.check[0].record.receiptHash).toBe(HASH);
   });
 
-  it("a refused verdict hands no output onward", async () => {
-    const skipped = { ...allPass, ok: true, checks: { ...allPass.checks, anchored: "skipped" } };
+  it("a refused verdict prints his reasons on one line and exits 2, no output onward", async () => {
     const { result, lines } = await read({
       pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
-      verifyResult: skipped,
+      verdict: { ok: false, reasons: ["merkle: fail", "kid: fail"] },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.output).toBeUndefined();
+    expect(lines.at(-1)).toBe(
+      "refused: ASSAY's check did not pass for receipt 0x9a166cac… — merkle: fail; kid: fail. The context was not handed on.",
+    );
+  });
+
+  it("ok true but reasons present still refuses — both conditions must hold", async () => {
+    const { result, lines } = await read({
+      pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
+      verdict: { ok: true, reasons: ["anchored: skipped"], body: BODY },
     });
     expect(result.exitCode).toBe(2);
     expect(result.output).toBeUndefined();
     expect(lines.at(-1)).toBe(
       "refused: ASSAY's check did not pass for receipt 0x9a166cac… — anchored: skipped. The context was not handed on.",
     );
+  });
+});
+
+const SDK_DIST = join(import.meta.dirname, "..", "..", "..", "..", "sdk", "dist", "index.js");
+const HIS_FIXTURE_URL = new URL(
+  "../../../../docs/interop/mida-records/0x401a4ec7d04bc50cea1534f918c8f649937dc0acf5928a1ca7b49943e893baae.json",
+  import.meta.url,
+);
+const sdkBuilt = existsSync(SDK_DIST);
+if (!sdkBuilt) {
+  console.log(
+    "test note: sdk/dist/index.js is not built — the real-checkRecord test is skipped. " +
+      "We never build ASSAY's SDK; the owner runs their build at the repository root.",
+  );
+}
+
+describe("ASSAY's real checkRecord", () => {
+  it.skipIf(!sdkBuilt)("accepts his published fixture offline through sdk/dist", async () => {
+    const sdk = await import(pathToFileURL(SDK_DIST).href);
+    const fixture = JSON.parse(await readFile(HIS_FIXTURE_URL, "utf8"));
+    const verdict = await sdk.checkRecord(fixture, {
+      trustedHosts: config.trustedHosts,
+      chains: { [config.chainId]: { anchor: config.receiptAnchor, rpc: config.rpcUrl } },
+      offline: true,
+    });
+    expect(verdict.ok).toBe(true);
+    expect(verdict.reasons).toEqual([]);
+    expect(verdict.body.host.agentId).toBe("erc8004:10143:1962");
   });
 });

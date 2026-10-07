@@ -196,20 +196,25 @@ export function parseRecord(item, config) {
   return { id: item.id, author: item.author, writtenAt: item.writtenAt, record };
 }
 
-// Exactly their VerifyInput: the chain client and contract come from config, never the record.
-// The body is decoded from the signed JWS payload; `params` is never set — their check takes it
-// from that body.
-export function toVerifyInput(record, { client, anchor }) {
+// The record stripped to ASSAY's interop field set — what their checkRecord reads and what
+// `export` writes. The marker and savedAt are ours; they never leave the Mida record.
+export function toInteropRecord(record) {
   return {
-    body: bodyFromJws(record.jws, "handed on"),
+    receiptHash: record.receiptHash,
+    chainId: record.chainId,
     jws: record.jws,
     jwks: record.jwks,
-    proof: record.anchor.proof,
-    root: record.anchor.root,
-    onchain: { client, anchor },
+    anchor: {
+      contract: record.anchor.contract,
+      agentId: record.anchor.agentId,
+      root: record.anchor.root,
+      proof: record.anchor.proof,
+      tx: record.anchor.tx,
+    },
     salt: record.salt,
     output: record.output,
     messages: record.messages,
+    source: record.source,
   };
 }
 

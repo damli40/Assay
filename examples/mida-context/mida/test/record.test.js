@@ -9,7 +9,7 @@ import {
   parseRecord,
   pickRecord,
   readAssayRecord,
-  toVerifyInput,
+  toInteropRecord,
 } from "../src/record.js";
 
 const FIXTURE_URL = new URL(
@@ -295,18 +295,18 @@ describe("parseRecord", () => {
   });
 });
 
-describe("toVerifyInput", () => {
-  const client = { readContract: async () => [1, 2n] };
-
-  it("hands exactly their VerifyInput, body decoded from the JWS, never params", () => {
+describe("toInteropRecord", () => {
+  it("strips a record to exactly his fixture's field set — no assayReceipt, no savedAt", () => {
     const { record } = parseRecord(item(goodContent(), writer, "AGENT_INFERRED"), CONFIG);
-    const input = toVerifyInput(record, { client, anchor: ANCHOR });
-    expect(Object.keys(input)).toEqual(["body", "jws", "jwks", "proof", "root", "onchain", "salt", "output", "messages"]);
-    expect(input.body).toEqual(body);
-    expect(input.onchain).toEqual({ client, anchor: ANCHOR });
-    expect(input.proof).toBe(record.anchor.proof);
-    expect(input.root).toBe(record.anchor.root);
-    expect(Object.hasOwn(input, "params")).toBe(false);
+    const out = toInteropRecord(record);
+    expect(Object.keys(out)).toEqual([
+      "receiptHash", "chainId", "jws", "jwks", "anchor", "salt", "output", "messages", "source",
+    ]);
+    expect(Object.keys(out.anchor)).toEqual(["contract", "agentId", "root", "proof", "tx"]);
+    expect(Object.hasOwn(out, "assayReceipt")).toBe(false);
+    expect(Object.hasOwn(out, "savedAt")).toBe(false);
+    expect(out.anchor).toEqual(record.anchor);
+    expect(out.source).toBe(record.source);
   });
 });
 
