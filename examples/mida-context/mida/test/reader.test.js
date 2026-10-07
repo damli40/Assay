@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { MidaSdkError } from "@mida-context/sdk";
-import { runRead } from "../src/reader.js";
+import { checkOrRefuse, runRead } from "../src/reader.js";
 
 const ANCHOR = "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24";
 const HASH = "0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5";
@@ -164,7 +164,7 @@ describe("runRead", () => {
   });
 
   it("a throw out of checkRecord (a chain or RPC failure) exits 4 and is never reported ok", async () => {
-    const err = new Error("nope");
+    const err = new Error("POST https://testnet-rpc.monad.xyz/rpc-path — body={\"method\":\"eth_call\",\"secret\":\"x\"}");
     err.name = "HttpRequestError";
     const { result, lines } = await read({
       pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
@@ -174,6 +174,10 @@ describe("runRead", () => {
     expect(lines.at(-1)).toBe(
       "chain: could not read ReceiptAnchor at 0x63e4…1a24 over testnet-rpc.monad.xyz (HttpRequestError). The context was not handed on.",
     );
+    // only the error's name and the RPC host — never the message, the URL path or the body
+    expect(lines.at(-1)).not.toContain("rpc-path");
+    expect(lines.at(-1)).not.toContain("body=");
+    expect(lines.at(-1)).not.toContain("secret");
   });
 
   it("read <hash> selects the matching record, not the newest unrelated one", async () => {
@@ -210,6 +214,42 @@ describe("runRead", () => {
       "refused: ASSAY's check did not pass for receipt 0x9a166cac… — anchored: skipped. The context was not handed on.",
     );
   });
+});
+
+// ASSAY's checkRecord throws — rather than returning a verdict — on these shapes, so the shared
+// boundary refuses them before his code runs: exit 2 and no chain call.
+describe("checkOrRefuse shape gate", () => {
+  const base = {
+    receiptHash: HASH,
+    chainId: 10143,
+    jws: JWS,
+    jwks: { keys: [{ kid: "kid1" }] },
+    anchor: { contract: ANCHOR, agentId: 1962, root: "0x" + "11".repeat(32), proof: [], tx: "0x" + "22".repeat(32) },
+    salt: SALT,
+    output: "OK",
+    messages: [{ role: "user", content: "Say OK" }],
+    source: `https://34-45-1-81.sslip.io/v1/receipts/${HASH}`,
+  };
+
+  for (const [name, record, detail] of [
+    ["a salt that is not 32-byte hex", { ...base, salt: "0x1234" }, "salt is not a 32-byte hex string"],
+    ["a non-hex proof entry", { ...base, anchor: { ...base.anchor, proof: ["0xZZ"] } }, "anchor.proof is not an array of 32-byte hex"],
+    ["a receiptHash that is not a string", { ...base, receiptHash: 5 }, "receiptHash is not a 32-byte hex string"],
+  ]) {
+    it(`refuses ${name} before any check call`, async () => {
+      let called = 0;
+      const e = await checkOrRefuse({
+        assay: { checkRecord: async () => { called += 1; return { ok: true, reasons: [] }; } },
+        record,
+        config,
+        client: { fake: "viem client" },
+        tail: "Nothing was checked.",
+      }).catch((err) => err);
+      expect(e?.exitCode).toBe(2);
+      expect(e.message).toBe(`check: the record is not usable for ASSAY's check (${detail}). Nothing was checked.`);
+      expect(called).toBe(0);
+    });
+  }
 });
 
 const SDK_DIST = join(import.meta.dirname, "..", "..", "..", "..", "sdk", "dist", "index.js");

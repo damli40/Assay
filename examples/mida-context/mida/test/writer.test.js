@@ -268,8 +268,18 @@ describe("runWrite", () => {
     expect(calls.remember).toBeUndefined();
   });
 
+  it("a non-hex proof entry refuses at the check boundary — no check call, nothing saved", async () => {
+    const { result, calls, lines } = await write(dir, { anchored: { proof: ["not-hex"] } });
+    expect(result.exitCode).toBe(2);
+    expect(lines.at(-1)).toBe(
+      "check: the record is not usable for ASSAY's check (anchor.proof is not an array of 32-byte hex). Nothing was written.",
+    );
+    expect(calls.check).toBeUndefined();
+    expect(calls.remember).toBeUndefined();
+  });
+
   it("a throw out of checkRecord (a chain or RPC failure) exits 4 and saves nothing", async () => {
-    const err = new Error("readContract reverted with a body that must not leak");
+    const err = new Error("POST https://testnet-rpc.monad.xyz/hidden-path — body={\"secret\":\"x\"}");
     err.name = "ContractFunctionExecutionError";
     const { result, calls, lines } = await write(dir, { checkThrows: err });
     expect(result.exitCode).toBe(4);
@@ -277,7 +287,28 @@ describe("runWrite", () => {
     expect(lines.at(-1)).toBe(
       "chain: could not read ReceiptAnchor at 0x63e4…1a24 over testnet-rpc.monad.xyz (ContractFunctionExecutionError). Nothing was written.",
     );
-    expect(lines.at(-1)).not.toContain("a body that must not leak");
+    // only the error's name and the RPC host — never the message, the URL path or the body
+    expect(lines.at(-1)).not.toContain("hidden-path");
+    expect(lines.at(-1)).not.toContain("body=");
+    expect(lines.at(-1)).not.toContain("secret");
+    expect(calls.remember).toBeUndefined();
+  });
+
+  it("refuses a run file whose salt is not 32-byte hex — before any host call", async () => {
+    await writeRunFile(join(dir, "runs"), { host: HOST, ...run, salt: "0x1234" });
+    let fetches = 0;
+    const { result, calls, lines } = await write(dir, {
+      fetchImpl: async () => {
+        fetches += 1;
+        throw new Error("must not fetch");
+      },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(fetches).toBe(0);
+    expect(lines.at(-1)).toBe(
+      "write: the salt in the run file for 0x9a166cac… is not 32-byte hex. Nothing was written.",
+    );
+    expect(calls.check).toBeUndefined();
     expect(calls.remember).toBeUndefined();
   });
 

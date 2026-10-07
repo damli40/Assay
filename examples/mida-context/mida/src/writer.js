@@ -13,6 +13,7 @@ import {
 } from "./record.js";
 
 const AGENT_ID = /^erc8004:(\d+):(\d+)$/;
+const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 const short = (id) => (typeof id === "string" && id.length > 12 ? `${id.slice(0, 10)}…` : id);
 const refuse = (message) => Object.assign(new Error(message), { name: "RefusalError", exitCode: 2 });
 
@@ -34,6 +35,11 @@ export async function runWrite({ config, assay, client, fetchImpl, mida, log, no
     if (!Array.isArray(run.messages)) {
       throw refuse(
         `write: the run file for ${short(run.receiptHash)} carries no messages; ASSAY's check cannot open req.commit without them. Nothing was written.`,
+      );
+    }
+    if (!BYTES32.test(run.salt ?? "")) {
+      throw refuse(
+        `write: the salt in the run file for ${short(receiptHash)} is not 32-byte hex. Nothing was written.`,
       );
     }
 

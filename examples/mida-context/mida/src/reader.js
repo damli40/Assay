@@ -16,8 +16,25 @@ const rpcHost = (rpcUrl) => {
   }
 };
 const stamp = (writtenAt) => new Date(writtenAt).toISOString().replace(/\.\d{3}Z$/, "Z");
+const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 const refuse = (message, exitCode = 2, outcome = "refused") =>
   Object.assign(new Error(message), { name: "RefusalError", exitCode, outcome });
+
+// The fields ASSAY's checkRecord throws on (instead of returning a verdict) — caught here so a
+// bad shape is a refusal, never a crash and never a chain read.
+const checkShape = (record) => {
+  if (typeof record?.receiptHash !== "string" || !BYTES32.test(record.receiptHash)) {
+    return "receiptHash is not a 32-byte hex string";
+  }
+  if (typeof record?.salt !== "string" || !BYTES32.test(record.salt)) {
+    return "salt is not a 32-byte hex string";
+  }
+  const proof = record?.anchor?.proof;
+  if (!Array.isArray(proof) || !proof.every((p) => typeof p === "string" && BYTES32.test(p))) {
+    return "anchor.proof is not an array of 32-byte hex";
+  }
+  return null;
+};
 
 // The pins ASSAY's check reads come from OUR config, never the record: the hosts we accept and,
 // per chain, the ReceiptAnchor address and the RPC to read it over. The viem client is ours —
@@ -36,6 +53,10 @@ export function chainPins(config, client) {
 // line carries only the error's name, never its message, the URL's path or the request body.
 // `tail` is the caller's closing sentence ("Nothing was written." / "The context was not handed on.").
 export async function checkOrRefuse({ assay, record, config, client, tail }) {
+  const why = checkShape(record);
+  if (why) {
+    throw refuse(`check: the record is not usable for ASSAY's check (${why}). ${tail}`);
+  }
   let verdict;
   try {
     verdict = await assay.checkRecord(record, chainPins(config, client));
