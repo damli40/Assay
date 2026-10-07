@@ -6,10 +6,11 @@ import { AssaySdkError } from "../src/assay-sdk.js";
 import { UsageError, main, parseArgs } from "../src/cli.js";
 
 const HASH = "0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5";
-const USAGE = 'usage: node --env-file=.env src/cli.js ask "<prompt>" | write <receiptHash> [--run-file <path>] | read [<receiptHash>]';
+const USAGE =
+  'usage: node --env-file=.env src/cli.js ask "<prompt>" | write <receiptHash> [--run-file <path>] | read [<receiptHash>] | export [<receiptHash>] --out <file>';
 
 describe("parseArgs", () => {
-  it("parses the three commands", () => {
+  it("parses the four commands", () => {
     expect(parseArgs(["ask", "Say OK"])).toEqual({ command: "ask", prompt: "Say OK" });
     expect(parseArgs(["write", HASH])).toEqual({ command: "write", receiptHash: HASH });
     expect(parseArgs(["write", HASH, "--run-file", "/x.json"])).toEqual({
@@ -19,10 +20,21 @@ describe("parseArgs", () => {
     });
     expect(parseArgs(["read"])).toEqual({ command: "read" });
     expect(parseArgs(["read", HASH])).toEqual({ command: "read", receiptHash: HASH });
+    expect(parseArgs(["export", "--out", "/x.json"])).toEqual({ command: "export", outFile: "/x.json" });
+    expect(parseArgs(["export", HASH, "--out", "/x.json"])).toEqual({
+      command: "export",
+      receiptHash: HASH,
+      outFile: "/x.json",
+    });
   });
 
   it("rejects bad shapes with the usage line, exit 1", () => {
-    for (const argv of [["ask"], ["write"], ["write", "0x12"], ["read", "0x12"], ["nope"], ["ask", "a", "b"], ["write", HASH, "--run-file"]]) {
+    for (const argv of [
+      ["ask"], ["write"], ["write", "0x12"], ["read", "0x12"], ["nope"], ["ask", "a", "b"],
+      ["write", HASH, "--run-file"],
+      ["export"], ["export", HASH], ["export", "--out"], ["export", "--out", ""],
+      ["export", "0x12", "--out", "/x.json"], ["export", HASH, "/x.json"], ["export", "--out", "/x.json", "extra"],
+    ]) {
       try {
         parseArgs(argv);
         throw new Error(`no throw for ${argv}`);
@@ -88,7 +100,7 @@ describe("main", () => {
     expect(midaAgents).toHaveLength(0);
   });
 
-  it("read uses the reader agent, write uses the writer agent", async () => {
+  it("read and export use the reader agent, write uses the writer agent", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mida-cli-"));
     const midaAgents = [];
     let code;
@@ -99,12 +111,19 @@ describe("main", () => {
     });
     expect(code).toBe(2);
     expect(midaAgents).toEqual(["assay-reader"]);
+    await main(["export", "--out", join(dir, "r.json")], env(dir), {
+      ...deps({ midaAgents }),
+      log: () => {},
+      exit: (c) => (code = c),
+    });
+    expect(code).toBe(2);
+    expect(midaAgents).toEqual(["assay-reader", "assay-reader"]);
     await main(["write", HASH], env(dir), {
       ...deps({ midaAgents }),
       log: () => {},
       exit: (c) => (code = c),
     });
     expect(code).toBe(2);
-    expect(midaAgents).toEqual(["assay-reader", "assay-writer"]);
+    expect(midaAgents).toEqual(["assay-reader", "assay-reader", "assay-writer"]);
   });
 });

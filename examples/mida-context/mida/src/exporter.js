@@ -1,0 +1,78 @@
+import { link, unlink, writeFile } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
+import { isMidaSdkError } from "@mida-context/sdk";
+import {
+  PartialListError,
+  midaErrorLine,
+  readAssayRecord,
+  toInteropRecord,
+} from "./record.js";
+
+const short = (id) => (typeof id === "string" && id.length > 12 ? `${id.slice(0, 10)}…` : id);
+const stamp = (writtenAt) => new Date(writtenAt).toISOString().replace(/\.\d{3}Z$/, "Z");
+const refuse = (message, exitCode = 2, outcome = "refused") =>
+  Object.assign(new Error(message), { name: "RefusalError", exitCode, outcome });
+
+// `export [<receiptHash>] --out <file>`: the same pick as `read` (the newest record the chain
+// attributes to the writer), written out in ASSAY's interop field set so his
+// examples/mida-context/check.mts can check it. The file holds the salt — mode 600, written
+// atomically through a hard link, never overwritten.
+export async function runExport({ config, mida, log, receiptHash, outFile }) {
+  try {
+    const found = await readAssayRecord(mida, config, { receiptHash });
+    if (!found) {
+      throw refuse(
+        `export: no record written by ${config.writerAgent} with assayReceipt 1 in projects.current. Nothing was exported.`,
+      );
+    }
+    const { item, id, author, writtenAt, record } = found;
+    log(
+      `mida: record ${short(id)} written by ${author?.name ?? "unknown"} (${item.source}, ${stamp(writtenAt)}) holds receipt ${short(record.receiptHash)}`,
+    );
+    await writeInteropFile(outFile, toInteropRecord(record));
+    log(
+      `exported: ${outFile} — this file contains the salt; it must not be published unless the call was a test.`,
+    );
+    return { exitCode: 0, outcome: "exported", file: outFile };
+  } catch (e) {
+    if (e instanceof PartialListError) {
+      log(
+        "mida: the record list came back incomplete (the store has not verified its newest rows yet). Nothing was exported. Run again in a minute.",
+      );
+      return { exitCode: 3, outcome: "partial" };
+    }
+    if (isMidaSdkError(e)) {
+      log(midaErrorLine(e, "exported"));
+      return { exitCode: 3, outcome: "mida" };
+    }
+    if (Number.isInteger(e?.exitCode)) {
+      log(e.message);
+      return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
+    }
+    throw e;
+  }
+}
+
+// Write through a same-directory temp file, then link() it into place: the target appears whole
+// or not at all, and link() refusing EEXIST means an existing file is never overwritten. The
+// mode comes from the temp file, which is 600.
+async function writeInteropFile(outFile, interop) {
+  const target = resolve(outFile);
+  const dir = dirname(target);
+  const tmp = join(dir, `.${basename(target)}.${process.pid}.tmp`);
+  try {
+    await writeFile(tmp, `${JSON.stringify(interop, null, 2)}\n`, { mode: 0o600 });
+  } catch (e) {
+    throw refuse(`export: could not write ${outFile} (${e?.code ?? e?.name ?? "Error"}). Nothing was exported.`);
+  }
+  try {
+    await link(tmp, target);
+  } catch (e) {
+    await unlink(tmp).catch(() => {});
+    if (e?.code === "EEXIST") {
+      throw refuse(`export: ${outFile} already exists — the file is never overwritten. Nothing was exported.`);
+    }
+    throw refuse(`export: could not write ${outFile} (${e?.code ?? e?.name ?? "Error"}). Nothing was exported.`);
+  }
+  await unlink(tmp);
+}

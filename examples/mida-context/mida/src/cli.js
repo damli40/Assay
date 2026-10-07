@@ -6,12 +6,13 @@ import { monadTestnet } from "viem/chains";
 import { loadAssaySdk } from "./assay-sdk.js";
 import { loadConfig } from "./config.js";
 import { askHost, short, writeRunFile } from "./host.js";
+import { runExport } from "./exporter.js";
 import { bodyFromJws } from "./record.js";
 import { runRead } from "./reader.js";
 import { runWrite } from "./writer.js";
 
 const USAGE =
-  'usage: node --env-file=.env src/cli.js ask "<prompt>" | write <receiptHash> [--run-file <path>] | read [<receiptHash>]';
+  'usage: node --env-file=.env src/cli.js ask "<prompt>" | write <receiptHash> [--run-file <path>] | read [<receiptHash>] | export [<receiptHash>] --out <file>';
 const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 export class UsageError extends Error {
@@ -40,6 +41,16 @@ export function parseArgs(argv) {
   if (cmd === "read") {
     if (rest.length === 0) return { command: "read" };
     if (rest.length === 1 && BYTES32.test(rest[0])) return { command: "read", receiptHash: rest[0] };
+    throw new UsageError();
+  }
+  if (cmd === "export") {
+    const [a, b, c] = rest;
+    if (rest.length === 2 && a === "--out" && b !== "" && b !== undefined) {
+      return { command: "export", outFile: b };
+    }
+    if (rest.length === 3 && BYTES32.test(a) && b === "--out" && c !== "" && c !== undefined) {
+      return { command: "export", receiptHash: a, outFile: c };
+    }
     throw new UsageError();
   }
   throw new UsageError();
@@ -82,6 +93,16 @@ export async function main(argv, env = process.env, deps = {}) {
         log,
         receiptHash: args.receiptHash,
         runFile: args.runFile,
+      });
+      code = r.exitCode;
+    } else if (args.command === "export") {
+      const mida = createMida(config.readerAgent, config);
+      const r = await runExport({
+        config,
+        mida,
+        log,
+        receiptHash: args.receiptHash,
+        outFile: args.outFile,
       });
       code = r.exitCode;
     } else {
