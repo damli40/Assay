@@ -49,3 +49,17 @@ export async function bumpActivity(
     cosigns: current.cosigns + (add.cosigns ?? 0),
   });
 }
+
+/// Postgres text and jsonb reject the NUL character, and one rejected write stops the whole indexer. The ERC-8004
+/// registries are shared, so strangers choose these strings: strip NUL and cap the length before storing them.
+export function clean(s: string, max = 2000): string {
+  return s.replace(/\u0000/g, "").slice(0, max);
+}
+
+/// The same for JSON from agent cards: every string inside, keys included, loses its NULs.
+export function cleanJson(v: unknown): unknown {
+  if (typeof v === "string") return clean(v, 4000);
+  if (Array.isArray(v)) return v.slice(0, 50).map(cleanJson);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).slice(0, 50).map(([k, x]) => [clean(k, 200), cleanJson(x)]));
+  return v;
+}

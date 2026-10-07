@@ -1,5 +1,5 @@
 import { indexer } from "envio";
-import { getOrCreateAgent } from "../common.js";
+import { clean, getOrCreateAgent } from "../common.js";
 
 const fields = { transaction: ["hash"], block: ["timestamp"] } as const;
 const feedbackId = (chainId: number, agentId: bigint, client: string, index: bigint) => `${chainId}-${agentId}-${client}-${index}`;
@@ -18,10 +18,10 @@ indexer.onEvent({ contract: "ReputationRegistry", event: "NewFeedback", fields }
     feedbackIndex: p.feedbackIndex,
     value: p.value,
     valueDecimals: Number(p.valueDecimals),
-    tag1: p.tag1,
-    tag2: p.tag2,
-    endpoint: p.endpoint,
-    feedbackURI: p.feedbackURI,
+    tag1: clean(p.tag1),
+    tag2: clean(p.tag2),
+    endpoint: clean(p.endpoint),
+    feedbackURI: clean(p.feedbackURI),
     feedbackHash: p.feedbackHash,
     receiptBacked: backed,
     cosign_id: backed ? cosign!.id : undefined,
@@ -59,5 +59,5 @@ indexer.onEvent({ contract: "ReputationRegistry", event: "ResponseAppended" }, a
   const f = await context.Feedback.get(feedbackId(event.chainId, p.agentId, p.clientAddress, p.feedbackIndex));
   const agent = await context.Agent.get(`${event.chainId}-${p.agentId}`);
   if (!f || !agent?.owner || agent.owner !== p.responder) return;
-  context.Feedback.set({ ...f, hostResponseURI: p.responseURI, hostResponseHash: p.responseHash });
+  context.Feedback.set({ ...f, hostResponseURI: clean(p.responseURI), hostResponseHash: p.responseHash });
 });

@@ -92,3 +92,19 @@ describe("Receipt-backed feedback (D26)", () => {
     expect(await ix.Feedback.getOrThrow(`10143-1962-${SIGNER}-1`)).toMatchObject({ hostResponseURI: "ipfs://reply" });
   });
 });
+
+// Postgres rejects NUL in text and jsonb, and a rejected write stops the indexer. Strangers write to the shared registries.
+describe("Strings from the shared ERC-8004 registries", () => {
+  it("are stored without NUL characters and with a length cap", async () => {
+    const nul = "evil\u0000uri";
+    const reg = { ...registered(0), params: { ...registered(0).params, agentURI: `data:,${nul}` } };
+    const fb = feedback(1, STRANGER, -1n);
+    const ix = await run([reg, { ...fb, params: { ...fb.params, tag2: nul, endpoint: "x".repeat(5000), feedbackURI: nul } }]);
+    const agent = await ix.Agent.getOrThrow("10143-1962");
+    expect(agent.agentURI).toBe("data:,eviluri");
+    const f = await ix.Feedback.getOrThrow(`10143-1962-${STRANGER}-1`);
+    expect(f.tag2).toBe("eviluri");
+    expect(f.feedbackURI).toBe("eviluri");
+    expect(f.endpoint).toHaveLength(2000);
+  });
+});
