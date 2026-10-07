@@ -39,6 +39,7 @@ export const CHAINS: Record<number, ChainConfig> = {
     creAttestor: "0xB4A1CB9e40aDa44570Ae790430C23876d460deDC",
     identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
     reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+    assayAccount: "0x4eaDaC20fc6842F360884a31cfA11411C664a2A1",
   },
   143: {
     name: "Monad mainnet",
@@ -55,6 +56,7 @@ export const CHAINS: Record<number, ChainConfig> = {
     creAttestor: "0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a",
     identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
     reputationRegistry: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+    assayAccount: "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91",
   },
 };
 

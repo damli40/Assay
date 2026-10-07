@@ -9,6 +9,7 @@ Deployed 5 Oct 2026 with Foundry 1.7.1, solc 0.8.30 and `evm_version = "osaka"`,
 | ReceiptAnchor | [`0x049A73755cA3508ef3Daa4752A3406f6e00CfB13`](https://monadvision.com/address/0x049A73755cA3508ef3Daa4752A3406f6e00CfB13) | [`0x293c2684…`](https://monadvision.com/tx/0x293c2684a3fefd2ae2deec1a432eee78c591d41eed848efe02f5a5c1b89d1545) | 110678733 |
 | VerifierRegistry | [`0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1`](https://monadvision.com/address/0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1) | [`0x8649c6ab…`](https://monadvision.com/tx/0x8649c6abab999a902feb4d8ba79b14b3b553dfd5374313ca8c6a88f8f6372dfe) | 110678737 |
 | CreAttestor | [`0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a`](https://monadvision.com/address/0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a) | [`0x7949a60e…`](https://monadvision.com/tx/0x7949a60e38f42352079e082e8b85fa2337023dde5d181b3096856268be68219e) | 110678745 |
+| AssayAccount (EIP-7702 delegate, 7 Oct) | [`0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91`](https://monadvision.com/address/0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91) | [`0x0ed03b80…`](https://monadvision.com/tx/0x0ed03b802f4b6a254445965401bd606d5ae0ed0ff4b98b41aab36b2c0ce057f2) | 111308700 |
 
 | Identity or action | Tx | Block |
 |---|---|---|
@@ -20,6 +21,8 @@ Deployed 5 Oct 2026 with Foundry 1.7.1, solc 0.8.30 and `evm_version = "osaka"`,
 | **First mainnet grade:** verifier 10279 grades host 10278 (Gemma 4 31B), 38/38 tool cases, against Google's own API (39/39). This is a plumbing check: the host relays Google's API and is graded against it, so it shows the grading loop works on mainnet, not host quality | [`0x1e0b1d63…`](https://monadvision.com/tx/0x1e0b1d63984ff0140e675c116003fd36968816ffbc30d6040fb2c2defb980d50) · reference [`0x2b4d727e…`](https://monadvision.com/tx/0x2b4d727e481678e8fa3847a644ca2505ae4299015e882e90e0f0eda898d43d82) | 5 Oct |
 | `CreAttestor.configure` for CRE simulations: the `MockKeystoneForwarder` `0x9eF6468C…784d` and the simulator's fixed workflow owner `0xaaaa…aaaa` and id `0x1111…1111` (read from the first broadcast's report header) | [`0xa5e81815…`](https://monadvision.com/tx/0xa5e8181547414df790dc6bd0faee730422a8538e608fbaab5f3035f98c90677c) | 111286605 |
 | **First CRE re-check onchain:** `grade-recheck` triggered on the grade above, fetched its evidence, matched the sha256, recounted 38/38 and recomputed the interval, then wrote `GradeAttested(agree=true)` through the forwarder | [`0x8ecc907a…`](https://monadvision.com/tx/0x8ecc907a7e9e2807090a5787e4e92af617a0b890177652c00847344dda6e4938) | 111286783 |
+
+`AssayAccount` is stateless and ownerless, verified on Sourcify (exact match) on both chains. A per-app requester key delegates to it with EIP-7702, and the host's relayer then pays the gas for its `cosignK` and its ERC-8004 feedback, so that address never holds MON. Its mainnet address equals the testnet VerifierRegistry address only because the same deployer was at the same nonce on both chains.
 
 What the CRE attestation means: every `cre workflow simulate --broadcast` stamps the same placeholder workflow owner and id, so this attestor accepts a simulated report from anyone running the workflow, and a later report for the same grade overwrites an earlier one. It shows that the workflow ran on this grade and that anyone can re-run it on the same transaction and get the same answer. It isn't a signature from a Chainlink DON; a deployed workflow would write to a new attestor pinned to its own owner.
 
@@ -34,6 +37,7 @@ Current deployment, 3 Oct 2026, with Foundry 1.7.1, solc 0.8.30 and `evm_version
 | ReceiptAnchor | [`0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24`](https://testnet.monadvision.com/address/0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24) | [`0x32d12f86…`](https://testnet.monadvision.com/tx/0x32d12f86ec3dca22d7b25ec33985eeda69f94e7299592728b16b2896715a1022) | 67461080 |
 | VerifierRegistry | [`0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91`](https://testnet.monadvision.com/address/0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91) | [`0x246d2ef1…`](https://testnet.monadvision.com/tx/0x246d2ef1d317d9ef4dc21318ef16a60f50bc1e4818685058228669f0b48abfd8) | 67461086 |
 | CreAttestor | [`0xB4A1CB9e40aDa44570Ae790430C23876d460deDC`](https://testnet.monadvision.com/address/0xB4A1CB9e40aDa44570Ae790430C23876d460deDC) | [`0x0d2dc7b2…`](https://testnet.monadvision.com/tx/0x0d2dc7b2fc51c718226a28bc2b0027a94d74409b1060f47b795d9582ab6bb00a) | 67462996 |
+| AssayAccount (EIP-7702 delegate, 7 Oct) | [`0x4eaDaC20fc6842F360884a31cfA11411C664a2A1`](https://testnet.monadvision.com/address/0x4eaDaC20fc6842F360884a31cfA11411C664a2A1) | [`0xf8844127…`](https://testnet.monadvision.com/tx/0xf8844127b363252cbefd3c867f3c8f6a68fdfea91db9bb543ee3ee6e213d1114) | 68954825 |
 
 ReceiptAnchor was deployed with `requireUV = true`. Both contracts point at the ERC-8004 IdentityRegistry at `0x8004A818BFB912233c491871b3d84c89A494BD9e`.
 
