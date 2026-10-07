@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AssaySdkError, loadAssaySdk } from "../src/assay-sdk.js";
+import { loadConfig } from "../src/config.js";
 
 async function problem(promise) {
   try {
@@ -12,6 +14,15 @@ async function problem(promise) {
   }
   throw new Error("did not reject");
 }
+
+describe("the default SDK path", () => {
+  it("resolves ../../../sdk from this folder to ASSAY's real sdk (src/record.ts on disk)", () => {
+    const { sdkDir } = loadConfig({ MIDA_HOME: "/Users/test/.mida-assay" });
+    expect(existsSync(join(sdkDir, "src", "record.ts"))).toBe(true);
+    expect(existsSync(join(sdkDir, "src", "index.ts"))).toBe(true);
+    expect(existsSync(join(sdkDir, "package.json"))).toBe(true);
+  });
+});
 
 describe("loadAssaySdk", () => {
   it("refuses a dir with no dist/index.js, naming the two owner commands", async () => {

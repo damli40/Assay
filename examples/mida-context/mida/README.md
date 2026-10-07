@@ -4,7 +4,7 @@
 
 ## What this is
 
-One small Node program in this folder, `integrations/mida/`, with three commands. `ask` sends one prompt through ASSAY's testnet host with a fresh salt and keeps the salt and the output in a private file. `write` runs as a Mida agent the owner approved and saves the receipt and its salt inside the encrypted body of one Mida record. `read` runs as a second, separately approved agent: it finds that record, hands it to ASSAY's own `verifyReceipt`, and refuses the context if the chain or the salt disagree. Nothing in ASSAY's SDK, host, contracts, web app or CI is changed.
+One small Node program in this folder, `examples/mida-context/mida/`, with three commands. `ask` sends one prompt through ASSAY's testnet host with a fresh salt and keeps the salt and the output in a private file. `write` runs as a Mida agent the owner approved and saves the receipt and its salt inside the encrypted body of one Mida record. `read` runs as a second, separately approved agent: it finds that record, hands it to ASSAY's own `verifyReceipt`, and refuses the context if the chain or the salt disagree. Nothing in ASSAY's SDK, host, contracts, web app or CI is changed.
 
 ## How it works
 
@@ -49,7 +49,7 @@ About twenty minutes, once, all on Monad testnet. Every `mida` command starts wi
    MIDA_HOME=$HOME/.mida-assay mida add-agent assay-reader
    ```
 
-3. **Approve both for this folder** — inside `integrations/mida/`, for each name:
+3. **Approve both for this folder** — inside `examples/mida-context/mida/`, for each name:
 
    ```
    MIDA_HOME=$HOME/.mida-assay mida request assay-writer
@@ -97,7 +97,7 @@ In this order, stopping at the first refusal; the reader is the half ASSAY's own
 | # | Rule | Source of truth | On failure |
 |---|---|---|---|
 | R1 | Config is valid, and the reader and writer are different agent names. | `.env` | exit 1 |
-| R2 | ASSAY's built SDK can be loaded. | `../../sdk/dist/index.js` exists and imports | exit 1 |
+| R2 | ASSAY's built SDK can be loaded. | `../../../sdk/dist/index.js` exists and imports | exit 1 |
 | R3 | The Mida service answers and the reader is approved; every page of `projects.current` arrives whole (no `partial`). | `mida.context()` | exit 3 |
 | R4 | A candidate exists: the newest item with `content.assayReceipt === 1` whose chain facts say the writer wrote it (`source === "AGENT_INFERRED"`, non-zero `author.id`, `author.name === ASSAY_WRITER_AGENT`). With `read <hash>`, the newest such item with that `receiptHash`. | the chain's author and source, never the content | exit 2 |
 | R5 | The record's fields are well-formed: `chainId` equals the configured chain, `anchor.contract` equals the configured `ReceiptAnchor` (case-insensitive), `receiptHash`, `root` and `salt` are 32-byte hex, `proof` is an array of 32-byte hex, `jws` is a three-part string, `jwks.keys` is an array, `body` is an object, `output` is a string. Only allow-listed fields are copied. | the record | exit 2 |
@@ -131,7 +131,7 @@ Monad testnet, not audited — on both sides. A receipt proves which host served
 
 - `src/cli.js` — the three commands and the wiring (config, their SDK, fetch, the viem client, the Mida handle).
 - `src/config.js` — environment to config, validated; reader and writer must differ.
-- `src/assay-sdk.js` — the bridge that loads `../../sdk/dist/index.js`; nothing of theirs is re-typed.
+- `src/assay-sdk.js` — the bridge that loads `../../../sdk/dist/index.js`; nothing of theirs is re-typed.
 - `src/host.js` — `ask` through their `wrap()`, fetching the anchored receipt and JWKS, and the private run file.
 - `src/record.js` — the record shape, the allow-list, the chain-facts filter and the page-walk.
 - `src/writer.js` — `write`: what the writer re-derives before it saves one record.

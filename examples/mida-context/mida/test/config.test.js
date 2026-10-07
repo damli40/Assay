@@ -3,7 +3,7 @@ import path from "node:path";
 import { ConfigError, loadConfig } from "../src/config.js";
 
 const FOLDER = path.resolve(import.meta.dirname, "..");
-const SDK = path.resolve(import.meta.dirname, "../../../sdk");
+const SDK = path.resolve(import.meta.dirname, "../../../../sdk");
 const HOME = "/Users/test/.mida-assay";
 
 function problem(env) {

@@ -14,7 +14,7 @@ const ERC8004_ID = /^erc8004:\d+:\d+$/;
 const WHOLE_NUMBER = /^\d+$/;
 
 const FOLDER = path.resolve(import.meta.dirname, "..");
-const SDK_DEFAULT = path.resolve(import.meta.dirname, "../../../sdk");
+const SDK_DEFAULT = path.resolve(import.meta.dirname, "../../../../sdk");
 
 const invalid = (key, expected) =>
   new ConfigError(`config: ${key} is missing or invalid (${expected}). Nothing was done.`);
