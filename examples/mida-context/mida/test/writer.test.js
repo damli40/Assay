@@ -36,8 +36,12 @@ const res = (status, body) => ({
   json: async () => body,
 });
 
-const anchoredFetch = (over = {}) => async (url) => {
+// The fake host answers the four states the real one can be in: pending, anchored, a signed
+// answer that never anchored, and an error (a thrown fetch or a non-ok HTTP status).
+const anchoredFetch = ({ error, ...over } = {}) => async (url) => {
   if (url === `${HOST}/v1/receipts/${HASH}`) {
+    if (error instanceof Error) throw error;
+    if (typeof error === "number") return res(error, { error: { message: "the host is down" } });
     return res(200, { status: "anchored", body: BODY, jws: JWS, root: ROOT, proof: [], anchorTx: TX, ...over });
   }
   if (url === `${HOST}/.well-known/jwks.json`) return res(200, JWKS);
@@ -84,8 +88,14 @@ const config = (dir) => ({
   sdkDir: "unused",
 });
 
+// The real status() joins a daemon line and the per-agent verdict line into one text —
+// the fake keeps that two-line shape so a consumer that prints it is exercised for real.
 const mida = (pages = [{ items: [], cursor: null, otherTasks: [] }], calls = {}) => ({
-  status: async () => ({ up: true, text: "assay-writer approved for this folder", agent: { verdict: "approved" } }),
+  status: async () => ({
+    up: true,
+    text: "midad: answering — pid 42, up since 2026-10-09T10:00:00Z, queue 0 — test socket\nassay-writer: approved for this folder",
+    agent: { verdict: "approved" },
+  }),
   context: async (input) => {
     (calls.context ??= []).push(input);
     if (pages instanceof Error) throw pages;
@@ -154,7 +164,7 @@ describe("runWrite", () => {
     expect(result).toEqual({ exitCode: 0, outcome: "recorded" });
     expect(lines).toEqual([
       `assay: receipt 0x9a166cac… is anchored under host 1962 — root 0x8c89bd8a…, tx 0x41f73bca…`,
-      "mida: assay-writer approved for this folder",
+      "mida: midad: answering — pid 42, up since 2026-10-09T10:00:00Z, queue 0 — test socket\nassay-writer: approved for this folder",
       `assay: check passed for receipt 0x9a166cac… — the record is one the reader will accept`,
       `recorded: Mida record 0x547a8f2f… (anchored) in projects.current, author assay-writer — receipt 0x9a166cac…, salt and output inside the encrypted body`,
     ]);
@@ -421,6 +431,17 @@ describe("runWrite", () => {
     expect(lines.at(-1)).toBe(
       `recorded: Mida record 0x547a8f2f… (pending) in projects.current — it anchors with the next batch.`,
     );
+  });
+
+  it("an HTTP error out of the fake host exits 4 — nothing saved", async () => {
+    const { result, calls, lines } = await write(dir, { anchored: { error: 503 } });
+    expect(result.exitCode).toBe(4);
+    expect(lines.at(-1)).toBe(
+      "assay: could not reach the host at 34-45-1-81.sslip.io (HTTP 503). Nothing was written.",
+    );
+    expect(calls.context).toBeUndefined();
+    expect(calls.check).toBeUndefined();
+    expect(calls.remember).toBeUndefined();
   });
 
   it("names only the host when it cannot be reached", async () => {

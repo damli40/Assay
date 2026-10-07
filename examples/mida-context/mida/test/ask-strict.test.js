@@ -84,8 +84,13 @@ const config = (dir) => ({
   sdkDir: "unused",
 });
 
+// The real status() text is two lines — a daemon line and the per-agent verdict line.
 const mida = (calls = {}) => ({
-  status: async () => ({ up: true, text: "assay-writer approved for this folder", agent: { verdict: "approved" } }),
+  status: async () => ({
+    up: true,
+    text: "midad: answering — pid 42, up since 2026-10-09T10:00:00Z, queue 0 — test socket\nassay-writer: approved for this folder",
+    agent: { verdict: "approved" },
+  }),
   context: async () => ({ items: [], cursor: null, otherTasks: [] }),
   remember: async (input) => {
     (calls.remember ??= []).push(input);

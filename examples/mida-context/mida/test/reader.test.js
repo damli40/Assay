@@ -181,13 +181,15 @@ describe("runRead", () => {
   });
 
   it("read <hash> selects the matching record, not the newest unrelated one", async () => {
-    const newest = writerItem(content({ receiptHash: HASH2 }), "0x" + "55".repeat(32));
-    const wanted = writerItem(content(), REC_ID);
+    // different outputs: if the newer unrelated record were picked, the output would prove it
+    const newest = writerItem(content({ receiptHash: HASH2, output: "the unrelated answer" }), "0x" + "55".repeat(32));
+    const wanted = writerItem(content({ output: "the wanted answer" }), REC_ID);
     const { result, calls } = await read({
       pages: [{ items: [newest, wanted], cursor: null, otherTasks: [] }],
       receiptHash: HASH,
     });
     expect(result.exitCode).toBe(0);
+    expect(result.output).toBe("the wanted answer");
     expect(calls.check[0].record.receiptHash).toBe(HASH);
   });
 

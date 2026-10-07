@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm, symlink } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,7 +67,10 @@ describe("main", () => {
       over.midaAgents?.push(agent);
       return {
         context: async () => ({ items: [], cursor: null, otherTasks: [] }),
-        status: async () => ({ up: true, text: "ok" }),
+        status: async () => ({
+          up: true,
+          text: "midad: answering — pid 42, up since 2026-10-09T10:00:00Z, queue 0 — test socket\nassay-writer: approved for this folder",
+        }),
         remember: async () => ({ id: "0x" + "11".repeat(32), state: "anchored" }),
       };
     },
@@ -130,6 +133,27 @@ describe("main", () => {
     });
     expect(code).toBe(2);
     expect(midaAgents).toEqual(["assay-reader", "assay-reader", "assay-writer"]);
+  });
+
+  it("a child process on an env parsed from the real .env.example prints usage, exit 1", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mida-cli-env-"));
+    try {
+      // the exact env the owner gets from copying .env.example — every optional key empty
+      const text = await readFile(new URL("../.env.example", import.meta.url), "utf8");
+      const env = {};
+      for (const line of text.split("\n")) {
+        const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
+        if (m) env[m[1]] = m[2];
+      }
+      env.MIDA_HOME = join(dir, "mida");
+      const cliPath = fileURLToPath(new URL("../src/cli.js", import.meta.url));
+      const r = spawnSync(process.execPath, [cliPath, "bogus"], { encoding: "utf8", env });
+      expect(r.status, `stdout=${r.stdout} stderr=${r.stderr}`).toBe(1);
+      expect(r.stdout).toContain(USAGE);
+      expect(r.stderr).toBe("");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("run through a symlink still reaches main — usage line, exit 1", async () => {
