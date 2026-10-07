@@ -1,25 +1,18 @@
-Initializing...
-Loading settings...
-! Using default private key for chain write simulation. To use your own key, set CRE_ETH_PRIVATE_KEY in your .env file or system environment.
-Checking RPC connectivity...
-Compiling workflow...
-✓ Workflow compiled
-✓ Simulation limits enabled
-  HTTP: req=120kb resp=250kb timeout=10s | ConfHTTP: req=125kb resp=500kb timeout=1m30s | Consensus obs=25kb | ChainWrite evm_report=50kb evm_gas=10000000 solana_report=265b solana_cu=300000 | WASM binary=100mb compressed=20mb
-  Binary hash: 9c1bbd250070b165a0d7286a53466ae852e2ab78d7941ef419700882c8db0d7a
-  Config hash: 3a65b1eb407d771e1d74d7acef14fb5e974279d8dc35d700239b82e01710d0e7
-Fetching transaction receipt for 0x1e0b1d63984ff0140e675c116003fd36968816ffbc30d6040fb2c2defb980d50...
-2026-10-07T15:27:52Z [SIMULATION] Simulator Initialized
-2026-10-07T15:27:52Z [SIMULATION] Running trigger trigger=evm:ChainSelector:8481857512324358265@1.0.0
-2026-10-07T15:27:52Z [USER LOG] grade verifier=0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7 hostKey=0x86cbfee7b8932227e5fa898eeb64b928ac8c4c61a9e65d575bc41622ac813234 38/38 ci=[9081,10000] evidence=0x60e51aa721cfb2bb2378c54d0a3abfb0ece4da6e6a8e8cb95161c7c0058e3ba2
-2026-10-07T15:27:52Z [USER LOG] recheck hashOk=true tag=erc8004:143:10278 38/38 ci=[9081,10000] agree=true
-2026-10-07T15:27:52Z [USER LOG] attested agree=true tx=0x0000000000000000000000000000000000000000000000000000000000000000
+### cre workflow simulate grade-recheck -T mainnet-settings --trigger-index 0 --evm-tx-hash 0x1e0b1d63984ff0140e675c116003fd36968816ffbc30d6040fb2c2defb980d50 --evm-event-index 0
+  Binary hash: 5acc45807f0c72206ee0855c232e61a9f61c8d47089789916a473c4f20a6e72a
+2026-10-07T19:17:49Z [USER LOG] grade verifier=0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7 hostKey=0x86cbfee7b8932227e5fa898eeb64b928ac8c4c61a9e65d575bc41622ac813234 38/38 ci=[9081,10000] evidence=0x60e51aa721cfb2bb2378c54d0a3abfb0ece4da6e6a8e8cb95161c7c0058e3ba2
+2026-10-07T19:17:57Z [USER LOG] recheck hashOk=true tag=erc8004:143:10278 38/38 ci=[9081,10000] agree=true
+2026-10-07T19:17:57Z [USER LOG] onchain state=current already attested (VerifierRegistry and CreAttestor at the finalized block)
+2026-10-07T19:17:57Z [USER LOG] not writing: already attested
 ✓ Workflow Simulation Result:
-"{\"agree\":true,\"tx\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}"
-2026-10-07T15:27:52Z [SIMULATION] Execution finished signal received
-2026-10-07T15:27:52Z [SIMULATION] Skipping WorkflowEngineV2
-╭──────────────────────────────────────────────────────╮
-│ Simulation complete! Ready to deploy your workflow?  │
-│                                                      │
-│ Run cre account access to request deployment access. │
-╰──────────────────────────────────────────────────────╯
+"{\"agree\":true,\"written\":false,\"reason\":\"already attested\"}"
+
+### cre workflow simulate grade-recheck -T mainnet-settings --trigger-index 0 --evm-tx-hash 0x2b4d727e481678e8fa3847a644ca2505ae4299015e882e90e0f0eda898d43d82 --evm-event-index 0
+  Binary hash: 5acc45807f0c72206ee0855c232e61a9f61c8d47089789916a473c4f20a6e72a
+2026-10-07T19:18:10Z [USER LOG] grade verifier=0x4BaC2Be288B5931886EeC4c555895CE6BcAB19e7 hostKey=0xd0fe1e8708e22bc3fe3b101f9ab21a41052eb11b27d4d994f91cccca881927c7 39/39 ci=[9103,10000] evidence=0x60e51aa721cfb2bb2378c54d0a3abfb0ece4da6e6a8e8cb95161c7c0058e3ba2
+2026-10-07T19:18:18Z [USER LOG] recheck hashOk=true tag=direct:generativelanguage.googleapis.com 39/39 ci=[9103,10000] agree=true
+2026-10-07T19:18:18Z [USER LOG] onchain state=current (VerifierRegistry and CreAttestor at the finalized block)
+2026-10-07T19:18:18Z [USER LOG] attested agree=true tx=0x0000000000000000000000000000000000000000000000000000000000000000
+✓ Workflow Simulation Result:
+"{\"agree\":true,\"written\":true,\"tx\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}"
+

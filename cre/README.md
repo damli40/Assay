@@ -132,6 +132,8 @@ cre workflow simulate grade-recheck -T mainnet-settings --non-interactive \
   --trigger-index 0 --evm-tx-hash 0x1e0b1d63984ff0140e675c116003fd36968816ffbc30d6040fb2c2defb980d50 --evm-event-index 0
 ```
 
+Before writing, the workflow reads the chain at the finalized block (EVM read capability): `VerifierRegistry.gradeOf` must return exactly the claimed grade as that verifier's latest, and `CreAttestor.attestations` must be empty for it. So it never attests a claim the registry doesn't hold (a forged log or replay payload), a grade a newer one replaced, or a grade it already attested. A rerun on an attested grade logs `not writing: already attested` and spends no gas.
+
 Forwarders, from `cre workflow supported-chains` (7 Oct):
 
 | Chain | KeystoneForwarder (deployed workflows) | MockKeystoneForwarder (`simulate --broadcast`) |
