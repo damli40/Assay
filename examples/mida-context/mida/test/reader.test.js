@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { MidaSdkError } from "@mida-context/sdk";
@@ -252,6 +252,23 @@ describe("checkOrRefuse shape gate", () => {
   }
 });
 
+// The one flag our production code must never pass: skipping the chain read would accept a
+// forged record signed by a key the record itself supplies. The matcher is proven by the last
+// assertion — this very test file contains the word.
+describe("the no-chain flag stays out of src/", () => {
+  it("no src/ file mentions it", async () => {
+    const srcDir = new URL("../src/", import.meta.url);
+    const files = (await readdir(srcDir)).filter((n) => n.endsWith(".js"));
+    expect(files.length).toBeGreaterThan(0);
+    for (const name of files) {
+      const text = await readFile(new URL(name, srcDir), "utf8");
+      expect(text, `${name} mentions the no-chain flag`).not.toMatch(/offline/i);
+    }
+    const self = await readFile(new URL(import.meta.url), "utf8");
+    expect(self).toMatch(/offline/i);
+  });
+});
+
 const SDK_DIST = join(import.meta.dirname, "..", "..", "..", "..", "sdk", "dist", "index.js");
 const HIS_FIXTURE_URL = new URL(
   "../../../../docs/interop/mida-records/0x401a4ec7d04bc50cea1534f918c8f649937dc0acf5928a1ca7b49943e893baae.json",
@@ -272,6 +289,9 @@ describe("ASSAY's real checkRecord", () => {
     const verdict = await sdk.checkRecord(fixture, {
       trustedHosts: config.trustedHosts,
       chains: { [config.chainId]: { anchor: config.receiptAnchor, rpc: config.rpcUrl } },
+      // offline is ONLY acceptable here: the fixture is a published, already-anchored record and
+      // this test proves our field set is the one his check accepts, without needing an RPC.
+      // Nothing under src/ may set it — skipping the chain read is how a forgery would pass.
       offline: true,
     });
     expect(verdict.ok).toBe(true);
