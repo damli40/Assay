@@ -23,6 +23,8 @@ export interface WriteRequest {
   abi: Abi;
   functionName: string;
   args: readonly unknown[];
+  /// EIP-7702: set when the relayer also installs a per-app account's delegation in the same tx.
+  authorizationList?: unknown[];
 }
 
 /// The subset of a viem wallet+public client the host uses, so tests can pass a plain object.
