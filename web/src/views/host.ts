@@ -13,7 +13,7 @@ const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 const card = (title: string, aside: string | Node | null, ...body: (Node | null)[]) =>
   h("section", { class: "card" }, h("div", { class: "card-head" }, h("h2", {}, title), typeof aside === "string" ? h("span", { class: "hint" }, aside) : aside), ...body);
 
-function tile(label: string, value: number, tone: string, sub?: string) {
+export function tile(label: string, value: number | string, tone: string, sub?: string) {
   return h("div", { class: `tile ${tone}` }, h("p", { class: "tile-label" }, label), h("p", { class: "tile-value" }, String(value)), sub ? h("p", { class: "hint" }, sub) : null);
 }
 
@@ -59,7 +59,7 @@ function activityChart(activity: HostProfile["activity"]) {
   return list;
 }
 
-function table(head: string[], rows: (Node | string)[][]) {
+export function table(head: string[], rows: (Node | string)[][]) {
   return h(
     "div",
     { class: "table-wrap" },

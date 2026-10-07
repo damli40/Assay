@@ -40,7 +40,7 @@ function choose(id: number) {
   setSelectedChainId(id);
   const go = () => {
     // An agent id lives on one chain, so a host profile becomes the picked network's own host.
-    if (location.hash.startsWith("#hosts/")) location.hash = "#hosts";
+    if (location.hash.startsWith("#hosts/")) location.hash = `#hosts/${CHAINS[id].referenceHost}?chain=${id}`;
     else if (linkChain) location.hash = location.hash.split("?")[0];
     location.reload();
   };

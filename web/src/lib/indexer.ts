@@ -124,3 +124,64 @@ export async function hostProfile(agentId: bigint, hostKey: Hex, url = INDEXER_U
     grades: d.Grade as HostProfile["grades"],
   };
 }
+
+export interface BoardEntry {
+  rank: number;
+  hostKey: string;
+  latestCiLowBps: number;
+  latestCiHighBps: number;
+  passRateBps: number;
+  gradeCount: number;
+  driftCount: number;
+  latestT: string;
+  latest_id: string;
+}
+export interface Board {
+  id: string;
+  chainId: number;
+  model: string;
+  verifier: { address: string; agentId: string | null };
+  hostCount: number;
+  leaderHostKey: string;
+  leaderCiLowBps: number;
+  updatedTimestamp: number;
+  entries: BoardEntry[];
+}
+export interface Drift {
+  id: string;
+  model: string;
+  hostKey: string;
+  dropBps: number;
+  previousCiLowBps: number;
+  ciHighBps: number;
+  timestamp: number;
+  stats_id: string;
+}
+export interface Attestation {
+  grade_id: string;
+  agree: boolean;
+  passed: number;
+  total: number;
+  txHash: string;
+}
+
+const BOARDS = `{
+  ModelLeaderboard(order_by: { hostCount: desc }) {
+    id model hostCount leaderHostKey leaderCiLowBps updatedTimestamp
+    verifier { address agentId }
+    entries(order_by: { rank: asc }) { rank hostKey latestCiLowBps latestCiHighBps passRateBps gradeCount driftCount latestT latest_id }
+  }
+  DriftEvent(order_by: { timestamp: desc }) { id model hostKey dropBps previousCiLowBps ciHighBps timestamp stats_id }
+  GradeAttestation { grade_id agree passed total txHash }
+}`;
+
+/// Every leaderboard on every chain in one call, with drift events and CRE attestations to join by id.
+export async function fetchBoards(url = INDEXER_URL, fetchFn: typeof fetch = fetch): Promise<{ boards: Board[]; drifts: Drift[]; attestations: Attestation[] }> {
+  const res = await fetchFn(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: BOARDS }) });
+  if (!res.ok) throw new Error(`Indexer: HTTP ${res.status}`);
+  const json = (await res.json()) as { data?: { ModelLeaderboard: Omit<Board, "chainId">[]; DriftEvent: Drift[]; GradeAttestation: Attestation[] }; errors?: { message: string }[] };
+  if (!json.data) throw new Error(`Indexer: ${json.errors?.[0]?.message ?? "no data"}`);
+  // Ids carry the chain: <chainId>-<verifier>-<model>.
+  const boards = json.data.ModelLeaderboard.map((b) => ({ ...b, chainId: Number(b.id.split("-")[0]) }));
+  return { boards, drifts: json.data.DriftEvent, attestations: json.data.GradeAttestation };
+}

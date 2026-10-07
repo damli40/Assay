@@ -275,6 +275,7 @@ pre {
 .k-violet { --c: var(--violet); }
 .k-pink { --c: var(--pink); }
 .k-lime { --c: var(--lime); }
+.k-coral { --c: var(--coral); }
 
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin: 0 0 var(--space-3); }
 .card-head h2 { margin: 0; }
@@ -438,3 +439,22 @@ tr:last-child td { border-bottom: 0; }
 .verifier-note { align-items: center; justify-content: space-between; margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
 .verifier-note .hint { margin: 0; flex: 1 1 260px; }
 .stamps.settled .stamp { animation: none; }
+
+/* Hosts leaderboard */
+.board-controls { gap: var(--space-4); align-items: flex-end; flex-wrap: wrap; }
+.board-controls .field { flex: 1 1 260px; margin: 0; }
+.board-table { margin: 0 0 var(--space-4); }
+.board-table td { vertical-align: middle; }
+.rank-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; clip-path: var(--octagon); background: var(--stone-2); color: var(--bone); font-weight: 700; font-size: var(--fs-small); }
+.rank-mark.top { background: var(--gold); color: var(--stone-0); }
+.band-cell { display: flex; align-items: center; gap: var(--space-3); min-width: 220px; }
+.band { position: relative; flex: 1; height: 12px; border-radius: var(--radius-pill); background: var(--stone-2); overflow: hidden; }
+.band-fill { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-pill); }
+.band-fill.tone-lime { background: var(--lime); }
+.band-fill.tone-coral { background: var(--coral); }
+.drifts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.drifts li { background: var(--stone-2); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); border-left: 3px solid var(--coral); }
+.host-cell a { font-weight: 600; }
+.host-cell .hint { margin: 2px 0 0; font-family: var(--font-mono); font-size: 12px; }
+.board-tie { margin: 0 0 var(--space-4); }
+.board .tile-value { white-space: nowrap; }

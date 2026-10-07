@@ -5,6 +5,7 @@ import { initReveal } from "./ui/motion.js";
 import { mountNetworkSwitch } from "./ui/network-switch.js";
 import { mountAsk } from "./views/ask.js";
 import { mountGrades } from "./views/grades.js";
+import { mountHosts } from "./views/hosts.js";
 import { mountHost } from "./views/host.js";
 import { mountReceipt } from "./views/receipt.js";
 import { mountVault } from "./views/vault.js";
@@ -37,8 +38,7 @@ function planned(root: HTMLElement, title: string, step: number) {
 /// Pages not built as their own view send people to the closest real one instead of a "coming soon" card.
 function redirect(route: Route): boolean {
   const [top, sub] = route.path;
-  if (top === "hosts" && sub === undefined) location.replace(`#hosts/${chainConfig(CHAIN_ID).referenceHost}`);
-  else if (top === "grades" && sub === "verifiers") location.replace("#grades");
+  if (top === "grades" && sub === "verifiers") location.replace("#grades");
   else if (top === "developers" && sub === undefined) location.href = QUICKSTART_URL;
   else return false;
   return true;
@@ -58,6 +58,7 @@ function draw(route: Route, focus: boolean) {
   else if (m.view === "planned") planned(main, m.title, m.step);
   else if (m.view === "receipt") mountReceipt(main, route);
   else if (m.view === "host") mountHost(main, route);
+  else if (m.view === "hosts") mountHosts(main, route);
   else if (m.view === "grades") mountGrades(main, route.params);
   else VIEWS[m.view](main);
   for (const a of document.querySelectorAll<HTMLAnchorElement>("[data-tab]")) {
