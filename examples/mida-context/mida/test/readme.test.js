@@ -14,6 +14,12 @@ describe("README wording", () => {
       "trusted",
       "forward-only",
       "is not consulted",
+      // the new contract
+      "checkRecord",
+      "export",
+      "revoke",
+      "ReceiptAnchor",
+      "RPC",
     ]) {
       expect(readme, `missing: ${needle}`).toContain(needle);
     }
@@ -26,6 +32,7 @@ describe("README wording", () => {
     expect(readme).not.toMatch(/\$\d/);
     expect(lower).not.toContain("delete");
     expect(lower).not.toContain(" free ");
+    expect(lower).not.toMatch(/\bintegrated\b/);
   });
 
   it("has the sections in order", () => {
