@@ -7,6 +7,7 @@ import { askHost, readRunFile, writeRunFile } from "../src/host.js";
 import { runWrite } from "../src/writer.js";
 import { runExport } from "../src/exporter.js";
 import { toInteropRecord } from "../src/record.js";
+import { loadConfig } from "../src/config.js";
 import { main, parseArgs } from "../src/cli.js";
 
 const HOST = "https://34-45-1-81.sslip.io";
@@ -73,6 +74,8 @@ const config = (dir) => ({
   writerAgent: "assay-writer",
   readerAgent: "assay-reader",
   projectDir: dir,
+  runsDir: join(dir, "runs"),
+  exportsDir: join(dir, "exports"),
   host: HOST,
   chainId: 10143,
   receiptAnchor: ANCHOR,
@@ -157,6 +160,8 @@ describe("ask is strict about what it sends", () => {
     try {
       await main(["ask", "Say OK"], { MIDA_HOME: join(dir, "mida"), MIDA_PROJECT: dir, ASSAY_SDK_DIR: "unused" }, {
         loadAssaySdk: async () => ({ wrap: realishWrap(seen, "OK"), assistantOutput: (m) => m.content }),
+        // runs/ and exports/ always default to the package folder — redirect them into tmp here
+        loadConfig: (env) => ({ ...loadConfig(env), runsDir: join(dir, "runs"), exportsDir: join(dir, "exports") }),
         fetchImpl: hostAnswer("OK"),
         log: (l) => lines.push(l),
         exit: (c) => (code = c),
@@ -183,6 +188,8 @@ describe("ask is strict about what it sends", () => {
     try {
       await main(["ask", "Say OK"], { MIDA_HOME: join(dir, "mida"), MIDA_PROJECT: dir, ASSAY_SDK_DIR: "unused" }, {
         loadAssaySdk: async () => ({ wrap: realishWrap(seen, "OK"), assistantOutput: (m) => m.content }),
+        // runs/ and exports/ always default to the package folder — redirect them into tmp here
+        loadConfig: (env) => ({ ...loadConfig(env), runsDir: join(dir, "runs"), exportsDir: join(dir, "exports") }),
         fetchImpl: hostAnswer("OK"),
         log: (l) => lines.push(l),
         exit: (c) => (code = c),

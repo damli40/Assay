@@ -31,6 +31,7 @@ const config = {
   writerAgent: "assay-writer",
   readerAgent: "assay-reader",
   rpcUrl: "https://testnet-rpc.monad.xyz",
+  exportsDir: "", // set per test run — see exportRun
 };
 
 const content = (over = {}) => ({
@@ -75,11 +76,11 @@ const exportRun = async ({ pages, receiptHash, outFile } = {}) => {
       pages instanceof Error ? Promise.reject(pages) : (pages.shift() ?? { items: [], cursor: null, otherTasks: [] }),
   };
   const result = await runExport({
-    config,
+    config: { ...config, exportsDir: join(dir, "exports") },
     mida,
     log: (line) => lines.push(line),
     ...(receiptHash ? { receiptHash } : {}),
-    outFile: outFile ?? join(dir, "record.json"),
+    ...(outFile !== undefined ? { outFile } : { outFile: join(dir, "record.json") }),
   });
   return { result, lines };
 };
@@ -191,5 +192,28 @@ describe("runExport", () => {
     const { result, lines } = await exportRun({ pages: [{ items: [bad], cursor: null, otherTasks: [] }] });
     expect(result.exitCode).toBe(2);
     expect(lines.at(-1)).toContain("is not a usable receipt record (salt:");
+  });
+
+  it("no --out writes exports/<receiptHash>.json under the configured folder, creating it", async () => {
+    const { result, lines } = await exportRun({
+      pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
+      outFile: null,
+    });
+    const out = join(dir, "exports", `${HASH}.json`);
+    expect(result).toEqual({ exitCode: 0, outcome: "exported", file: out });
+    expect(lines.at(-1)).toBe(
+      `exported: ${out} — this file contains the salt; it must not be published unless the call was a test.`,
+    );
+    expect(JSON.parse(await readFile(out, "utf8")).receiptHash).toBe(HASH);
+  });
+
+  it("a bare --out name lands in the exports folder", async () => {
+    const { result } = await exportRun({
+      pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
+      outFile: "record.json",
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.file).toBe(join(dir, "exports", "record.json"));
+    expect(JSON.parse(await readFile(result.file, "utf8")).receiptHash).toBe(HASH);
   });
 });

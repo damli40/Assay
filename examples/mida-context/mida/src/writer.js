@@ -136,7 +136,7 @@ export async function runWrite({ config, assay, client, fetchImpl, mida, log, no
 }
 
 async function loadRun({ config, receiptHash, runFile }) {
-  const path = runFile ?? join(config.projectDir, "runs", `${receiptHash}.json`);
+  const path = runFile ?? join(config.runsDir, `${receiptHash}.json`);
   try {
     return await readRunFile(path);
   } catch (e) {

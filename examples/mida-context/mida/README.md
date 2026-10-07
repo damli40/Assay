@@ -77,7 +77,7 @@ About twenty minutes, once, all on Monad testnet. Every `mida` command starts wi
 
    This writes `sdk/dist/` (gitignored) and nothing else; `git status` must stay clean.
 
-5. **`.env` in this folder** from `.env.example`. `MIDA_HOME` must be an absolute path — Node's `--env-file` does not expand `$HOME`, so write `MIDA_HOME=/Users/Admin/.mida-assay`. The rest can stay at defaults; they pin the hosts the reader trusts, the chain id, its ReceiptAnchor address and its RPC.
+5. **`.env` in this folder** from `.env.example`. `MIDA_HOME` must be an absolute path — Node's `--env-file` does not expand `$HOME`, so write `MIDA_HOME=/Users/Admin/.mida-assay`. The rest can stay at defaults; they pin the hosts the reader trusts, the chain id, its ReceiptAnchor address and its RPC. `MIDA_PROJECT` is only the folder Mida checks the approval in — `runs/` and `exports/` always live in THIS folder, and the `.gitignore` keeps them, `.env` and `.mida/` out of the repository.
 
 ## Run
 
@@ -86,7 +86,8 @@ node --env-file=.env src/cli.js ask "Say OK"
 # wait about 30 s for the host to anchor the receipt
 node --env-file=.env src/cli.js write 0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5   # the full hash `saved:` printed
 node --env-file=.env src/cli.js read                     # or: read 0x9a166cac…
-node --env-file=.env src/cli.js export --out /tmp/record.json   # or: export 0x9a166cac… --out /tmp/record.json
+node --env-file=.env src/cli.js export                   # writes exports/0x9a166cac….json in this folder
+# or: export 0x9a166cac… --out /tmp/record.json          # --out with a directory part is used as given
 ```
 
 Exit codes: 0 done · 1 a setup problem (config, usage, their SDK not built) · 2 a refusal by the ASSAY side or a bad input (the line says what to do) · 3 Mida refused or is unavailable · 4 a network problem (host or RPC). `write` again on the same receipt prints `already recorded …` and exits 0 — the same receipt is never saved twice. `export` refuses to overwrite an existing file.
@@ -149,7 +150,8 @@ The check is ASSAY's `checkRecord` (`sdk/src/record.ts`, exported from `sdk/src/
 - `src/reader.js` — `read`: find the writer's record, run their `checkRecord`, hand the output on or refuse.
 - `src/exporter.js` — `export`: the same pick, written out for their `check.mts`, mode 600, never overwritten.
 - `test/` — unit tests against fakes, plus three testnet fixtures copied verbatim from `docs/interop/assay-receipts/`; the real-`checkRecord` test reads his fixture from `docs/interop/mida-records/` and skips when `sdk/dist` is not built.
-- `runs/` — created at run time; holds the salts, mode 600, gitignored, never committed.
+- `runs/` — created at run time; holds the salts, mode 600, gitignored, never committed. Always this folder's `runs/`, wherever `MIDA_PROJECT` points.
+- `exports/` — where `export` writes by default (`exports/<receiptHash>.json`, or a bare `--out` name); gitignored, mode 600, never overwritten.
 
 ## Credits
 

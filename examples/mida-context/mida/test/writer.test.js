@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MidaSdkError } from "@mida-context/sdk";
@@ -73,7 +73,9 @@ const config = (dir) => ({
   midaHome: join(dir, "mida"),
   writerAgent: "assay-writer",
   readerAgent: "assay-reader",
-  projectDir: dir,
+  projectDir: join(dir, "elsewhere"),
+  runsDir: join(dir, "runs"),
+  exportsDir: join(dir, "exports"),
   host: HOST,
   chainId: 10143,
   receiptAnchor: ANCHOR,
@@ -289,6 +291,14 @@ describe("runWrite", () => {
     );
     expect(calls.context).toBeUndefined();
     expect(calls.remember).toBeUndefined();
+  });
+
+  it("finds the run file in runsDir, never under projectDir (MIDA_PROJECT)", async () => {
+    // config(dir) puts projectDir at <dir>/elsewhere while the run file sits in <dir>/runs —
+    // write finding it proves run files do not follow MIDA_PROJECT.
+    expect(await readdir(join(dir, "runs"))).toContain(`${HASH}.json`);
+    const { result } = await write(dir);
+    expect(result.exitCode).toBe(0);
   });
 
   it("refuses a run file from another chain", async () => {

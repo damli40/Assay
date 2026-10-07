@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Mida } from "@mida-context/sdk";
 import { createPublicClient, http } from "viem";
@@ -12,7 +11,7 @@ import { runRead } from "./reader.js";
 import { runWrite } from "./writer.js";
 
 const USAGE =
-  'usage: node --env-file=.env src/cli.js ask "<prompt>" | write <receiptHash> [--run-file <path>] | read [<receiptHash>] | export [<receiptHash>] --out <file>';
+  'usage: node --env-file=.env src/cli.js ask "<prompt>" | write <receiptHash> [--run-file <path>] | read [<receiptHash>] | export [<receiptHash>] [--out <file>]';
 const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 export class UsageError extends Error {
@@ -45,6 +44,10 @@ export function parseArgs(argv) {
   }
   if (cmd === "export") {
     const [a, b, c] = rest;
+    if (rest.length === 0) return { command: "export" };
+    if (rest.length === 1 && BYTES32.test(a)) {
+      return { command: "export", receiptHash: a };
+    }
     if (rest.length === 2 && a === "--out" && b !== "" && b !== undefined) {
       return { command: "export", outFile: b };
     }
@@ -74,7 +77,7 @@ export async function main(argv, env = process.env, deps = {}) {
     const assay = await (deps.loadAssaySdk ?? loadAssaySdk)(config.sdkDir);
     if (args.command === "ask") {
       const run = await askHost({ assay, fetchImpl, host: config.host, prompt: args.prompt });
-      await writeRunFile(join(config.projectDir, "runs"), { host: config.host, ...run });
+      await writeRunFile(config.runsDir, { host: config.host, ...run });
       const body = bodyFromJws(run.jws, "saved");
       log(
         `asked: receipt ${short(run.receiptHash)} from host ${body.host.agentId}, model ${body.model} — output ${JSON.stringify(run.output)} (${body.res.tokensIn} tokens in, ${body.res.tokensOut} out)`,

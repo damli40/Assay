@@ -96,6 +96,12 @@ export function loadConfig(env = {}) {
 
   const rpcUrl = httpUrl(env, "MONAD_RPC_URL", "https://testnet-rpc.monad.xyz");
 
+  // Run files and exports always live under THIS package folder: MIDA_PROJECT is only the
+  // approval folder Mida checks, not a place for our run files, so a stray value can never
+  // scatter the salt-carrying runs outside the gitignored runs/.
+  const runsDir = path.join(FOLDER, "runs");
+  const exportsDir = path.join(FOLDER, "exports");
+
   return {
     midaHome,
     writerAgent,
@@ -107,5 +113,7 @@ export function loadConfig(env = {}) {
     chainId,
     sdkDir,
     rpcUrl,
+    runsDir,
+    exportsDir,
   };
 }

@@ -1,5 +1,5 @@
-import { link, unlink, writeFile } from "node:fs/promises";
-import { basename, dirname, join, resolve } from "node:path";
+import { link, mkdir, unlink, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { isMidaSdkError } from "@mida-context/sdk";
 import {
   PartialListError,
@@ -29,11 +29,12 @@ export async function runExport({ config, mida, log, receiptHash, outFile }) {
     log(
       `mida: record ${short(id)} written by ${author?.name ?? "unknown"} (${item.source}, ${stamp(writtenAt)}) holds receipt ${short(record.receiptHash)}`,
     );
-    await writeInteropFile(outFile, toInteropRecord(record));
+    const target = await outPath(config.exportsDir, outFile, record.receiptHash);
+    await writeInteropFile(target, toInteropRecord(record));
     log(
-      `exported: ${outFile} — this file contains the salt; it must not be published unless the call was a test.`,
+      `exported: ${target} — this file contains the salt; it must not be published unless the call was a test.`,
     );
-    return { exitCode: 0, outcome: "exported", file: outFile };
+    return { exitCode: 0, outcome: "exported", file: target };
   } catch (e) {
     if (e instanceof PartialListError) {
       log(
@@ -51,6 +52,20 @@ export async function runExport({ config, mida, log, receiptHash, outFile }) {
     }
     throw e;
   }
+}
+
+// Where the export lands: no --out means exports/<receiptHash>.json, a bare name means
+// exports/<name> — both under the package's gitignored folder. An absolute path or one with a
+// directory part is used exactly as given.
+async function outPath(exportsDir, outFile, receiptHash) {
+  const target =
+    outFile === undefined || outFile === null || outFile === ""
+      ? join(exportsDir, `${receiptHash}.json`)
+      : isAbsolute(outFile) || outFile.includes("/") || outFile.includes("\\")
+        ? resolve(outFile)
+        : join(exportsDir, outFile);
+  if (dirname(target) === exportsDir) await mkdir(exportsDir, { recursive: true });
+  return target;
 }
 
 // Write through a same-directory temp file, then link() it into place: the target appears whole

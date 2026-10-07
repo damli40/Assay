@@ -46,7 +46,16 @@ describe("loadConfig", () => {
       chainId: 10143,
       sdkDir: SDK,
       rpcUrl: "https://testnet-rpc.monad.xyz",
+      runsDir: path.join(FOLDER, "runs"),
+      exportsDir: path.join(FOLDER, "exports"),
     });
+  });
+
+  it("runs/ and exports/ always live in this folder, even when MIDA_PROJECT points away", () => {
+    const cfg = loadConfig({ MIDA_HOME: HOME, MIDA_PROJECT: "/some/other/folder" });
+    expect(cfg.projectDir).toBe("/some/other/folder");
+    expect(cfg.runsDir).toBe(path.join(FOLDER, "runs"));
+    expect(cfg.exportsDir).toBe(path.join(FOLDER, "exports"));
   });
 
   it("loads the real .env.example with only MIDA_HOME filled in — empty means not set", async () => {
