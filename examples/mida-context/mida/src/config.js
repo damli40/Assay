@@ -71,7 +71,7 @@ export function loadConfig(env = {}) {
   }
 
   let trustedHosts = ["erc8004:10143:1962"];
-  if (env.ASSAY_TRUSTED_HOSTS !== undefined) {
+  if (env.ASSAY_TRUSTED_HOSTS) {
     const parts = env.ASSAY_TRUSTED_HOSTS.split(",").map((s) => s.trim()).filter(Boolean);
     if (parts.length === 0 || !parts.every((p) => ERC8004_ID.test(p))) {
       throw invalid("ASSAY_TRUSTED_HOSTS", "comma-separated erc8004:<chainId>:<agentId> values");

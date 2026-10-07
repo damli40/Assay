@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ConfigError, loadConfig } from "../src/config.js";
 
@@ -46,6 +47,20 @@ describe("loadConfig", () => {
       sdkDir: SDK,
       rpcUrl: "https://testnet-rpc.monad.xyz",
     });
+  });
+
+  it("loads the real .env.example with only MIDA_HOME filled in — empty means not set", async () => {
+    const text = await readFile(new URL("../.env.example", import.meta.url), "utf8");
+    const env = {};
+    for (const line of text.split("\n")) {
+      const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
+      if (m) env[m[1]] = m[2];
+    }
+    // the example ships every optional key as an empty value — each must read as "not set"
+    expect(env.ASSAY_TRUSTED_HOSTS).toBe("");
+    expect(env.ASSAY_CHAIN_ID).toBe("");
+    env.MIDA_HOME = HOME;
+    expect(loadConfig(env)).toEqual(loadConfig({ MIDA_HOME: HOME }));
   });
 
   it("refuses identical writer and reader names", () => {
