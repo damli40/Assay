@@ -12,6 +12,11 @@ contract MockIdentityRegistry is IIdentityRegistry {
         ownerOf[agentId] = msg.sender;
     }
 
+    /// For replaying real transactions, whose agent ids come from the live registry.
+    function setOwner(uint256 agentId, address owner) external {
+        ownerOf[agentId] = owner;
+    }
+
     function transfer(uint256 agentId, address to) external {
         require(ownerOf[agentId] == msg.sender, "not owner");
         ownerOf[agentId] = to;
