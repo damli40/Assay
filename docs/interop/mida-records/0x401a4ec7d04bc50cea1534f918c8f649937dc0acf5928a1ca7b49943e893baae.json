@@ -1,0 +1,36 @@
+{
+  "receiptHash": "0x401a4ec7d04bc50cea1534f918c8f649937dc0acf5928a1ca7b49943e893baae",
+  "chainId": 10143,
+  "network": "Monad testnet",
+  "jws": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjJKYzZXSlNqdk5TTDdqaWRfWGFWa0c0aVZPSUJyN0hTcWhrMUtpRjVxZzAifQ.eyJob3N0Ijp7ImFnZW50SWQiOiJlcmM4MDA0OjEwMTQzOjE5NjIiLCJhbGciOiJFUzI1NiIsImtleUlkIjoiMkpjNldKU2p2TlNMN2ppZF9YYVZrRzRpVk9JQnI3SFNxaGsxS2lGNXFnMCJ9LCJtb2RlbCI6ImdlbW1hLTQtMzFiLWl0Iiwibm9uY2UiOiIweDZlY2YwZjQ4NzhlZmFhNDI1NjQ2MTNjYTcwMmZkYmE1IiwicmVxIjp7ImNvbW1pdCI6IjB4ODI3YTUzOTFhZTFlMjFjYzMwYmI2YWNkY2FiMjI4ZGE0MTNlZDU3NDYyYTY1YjQ2ZmE1NTJjODNmYzQ5Y2Y0YiIsInBhcmFtcyI6eyJtYXhfdG9rZW5zIjo2NH19LCJyZXMiOnsiY29tbWl0IjoiMHg4NTQ5ODg2NGZjNTdmY2M4YmZjY2I5YWExODc4NTk2MjRlZjNkMzMxNDFiMTNlMjZhMWE5YWQxYTUwOTg1ZTI4IiwiZmluaXNoIjoic3RvcCIsInRva2Vuc0luIjozLCJ0b2tlbnNPdXQiOjF9LCJ0IjoxNzkxMzUyMzcyMTE4LCJ2IjoiYXNzYXktcmVjZWlwdC8wIn0.L9-emGQVQEw7BEtJuKso4DKpjw6QP07zoRXei8K1SMRZE5c_a8dz5VQ1jK67L2fQI_EURJWiQB9wdKg1axWDPA",
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bVK6Lx-8wq5USFPKiWJzjczOPLXAuxM6f9XcF16ZK6s",
+        "y": "Mm9U0dL2l3zaKvoBJdbd9z4L0nKrJ9WUQ-OMUQIbnWE",
+        "kid": "2Jc6WJSjvNSL7jid_XaVkG4iVOIBr7HSqhk1KiF5qg0",
+        "alg": "ES256",
+        "use": "sig"
+      }
+    ]
+  },
+  "anchor": {
+    "contract": "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24",
+    "agentId": 1962,
+    "root": "0x5b21d004b0cc1add2e83c19ad400c8b00ffa80c1b25763c1c841979f2b2d305b",
+    "proof": [],
+    "tx": "0x94658d2afcf57c3dcff9af926a90862ef6d8f4f0b573e7ec7a1686f0624801e2"
+  },
+  "salt": "0x421a0c26a0ca9ff7d098ceafef1cf876db6c8eba3da40a0b5e4e966c98ba9ef8",
+  "output": "<thought>The user says \"Say OK\".\nThe user wants me to respond with the specific word \"OK\".\nRespond with \"OK\".</thought>OK",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Say OK"
+    }
+  ],
+  "source": "https://34-45-1-81.sslip.io/v1/receipts/0x401a4ec7d04bc50cea1534f918c8f649937dc0acf5928a1ca7b49943e893baae",
+  "note": "Test fixture: the salt and output are published on purpose so CI can open the commits offline. Never publish the salt of a real receipt."
+}
