@@ -7,7 +7,7 @@ import { askHost, readRunFile, writeRunFile } from "../src/host.js";
 import { runWrite } from "../src/writer.js";
 import { runExport } from "../src/exporter.js";
 import { toInteropRecord } from "../src/record.js";
-import { main } from "../src/cli.js";
+import { main, parseArgs } from "../src/cli.js";
 
 const HOST = "https://34-45-1-81.sslip.io";
 const ANCHOR = "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24";
@@ -169,6 +169,30 @@ describe("ask is strict about what it sends", () => {
       expect(lines[0]).toBe(
         `asked: receipt ${HASH.slice(0, 10)}… from host erc8004:10143:1962, model gemma-4-31b-it — output "OK" (3 tokens in, 1 out)`,
       );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("the 'then run' line carries the full 64-hex hash, which write accepts", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ask-strict-"));
+    const seen = { salts: [] };
+    const lines = [];
+    let code;
+    try {
+      await main(["ask", "Say OK"], { MIDA_HOME: join(dir, "mida"), MIDA_PROJECT: dir, ASSAY_SDK_DIR: "unused" }, {
+        loadAssaySdk: async () => ({ wrap: realishWrap(seen, "OK"), assistantOutput: (m) => m.content }),
+        fetchImpl: hostAnswer("OK"),
+        log: (l) => lines.push(l),
+        exit: (c) => (code = c),
+      });
+      expect(code).toBe(0);
+      const then = lines.find((l) => l.includes("then run:"));
+      const m = /then run: write (0x[0-9a-fA-F]+)/.exec(then ?? "");
+      expect(m).not.toBeNull();
+      expect(m[1]).toBe(HASH);
+      expect(m[1]).toHaveLength(66);
+      expect(parseArgs(["write", m[1]])).toEqual({ command: "write", receiptHash: HASH });
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

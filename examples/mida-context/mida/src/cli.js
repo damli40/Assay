@@ -80,7 +80,7 @@ export async function main(argv, env = process.env, deps = {}) {
         `asked: receipt ${short(run.receiptHash)} from host ${body.host.agentId}, model ${body.model} — output ${JSON.stringify(run.output)} (${body.res.tokensIn} tokens in, ${body.res.tokensOut} out)`,
       );
       log(
-        `saved: runs/${short(run.receiptHash)}.json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write ${short(run.receiptHash)}`,
+        `saved: runs/${short(run.receiptHash)}.json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write ${run.receiptHash}`,
       );
       code = 0;
     } else if (args.command === "write") {

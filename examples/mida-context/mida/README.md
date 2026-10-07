@@ -12,7 +12,7 @@ One small Node program in this folder, `examples/mida-context/mida/`, with three
 
 ```
 asked: receipt 0x9a166cac… from host erc8004:10143:1962, model gemma-4-31b-it — output "OK" (3 tokens in, 1 out)
-saved: runs/0x9a166cac….json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write 0x9a166cac…
+saved: runs/0x9a166cac….json holds the salt and the output (mode 600; never commit it). The host anchors every ~30 s; then run: write 0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5
 ```
 
 `write` prints what the chain says about the receipt, that the writer is approved, and the record it saved:
@@ -84,7 +84,7 @@ About twenty minutes, once, all on Monad testnet. Every `mida` command starts wi
 ```
 node --env-file=.env src/cli.js ask "Say OK"
 # wait about 30 s for the host to anchor the receipt
-node --env-file=.env src/cli.js write 0x9a166cac…        # the hash `asked:` printed
+node --env-file=.env src/cli.js write 0x9a166cacb2ffe4784ad556f69b690b7cebf71150f737a5a3c324f9e98e7907e5   # the full hash `saved:` printed
 node --env-file=.env src/cli.js read                     # or: read 0x9a166cac…
 node --env-file=.env src/cli.js export --out /tmp/record.json   # or: export 0x9a166cac… --out /tmp/record.json
 ```
