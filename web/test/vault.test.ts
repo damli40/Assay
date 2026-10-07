@@ -110,3 +110,23 @@ describe("per-app requester identities", () => {
     expect(await recoverMessageAddress({ message: { raw: hexToBytes(h2) }, signature })).not.toBe(address);
   });
 });
+
+describe("sponsored feedback from a per-app key", () => {
+  it("signs the call and the 7702 authorization as the per-app address", async () => {
+    const { signSponsoredFeedback } = await import("../src/lib/vault.js");
+    const { sponsoredCallTypedData } = await import("@assay/receipts");
+    const { recoverTypedDataAddress } = await import("viem");
+    const { recoverAuthorizationAddress } = await import("viem/utils");
+    const prf = sha256(stringToBytes("app A"), "bytes");
+    const account = await requesterAddress(prf);
+    const impl = "0x00000000000000000000000000000000000A55A7";
+    const reputation = "0x8004B663056A597Dffe9eCcC1965A193B7388713";
+    const body = await signSponsoredFeedback(prf, { chainId: 10143, accountImpl: impl, reputation, agentId: 1962n, receiptHash: `0x${"a1".repeat(32)}`, value: -1, note: "wrong", nowSeconds: 1_800_000_000, delegationNonce: 0 });
+    expect(body.account).toBe(account);
+    const call = { target: reputation, data: body.call.data, nonce: BigInt(body.call.nonce), deadline: BigInt(body.call.deadline) } as const;
+    expect(await recoverTypedDataAddress({ ...sponsoredCallTypedData(10143, account, call), signature: body.call.signature })).toBe(account);
+    expect(await recoverAuthorizationAddress({ authorization: body.authorization! } as never)).toBe(account);
+    const later = await signSponsoredFeedback(prf, { chainId: 10143, accountImpl: impl, reputation, agentId: 1962n, receiptHash: `0x${"a1".repeat(32)}`, value: 1, note: "", nowSeconds: 1_800_000_000 });
+    expect(later.authorization).toBeUndefined();
+  });
+});

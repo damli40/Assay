@@ -125,6 +125,20 @@ Without `--broadcast` the write is a dry run and the log shows a zero tx hash. `
 
 The workflow ID changes when the workflow is redeployed with new code or config. `configure` runs only once, so a pinned ID means a new `CreAttestor` after every redeploy. Zero avoids that and still limits writers to our workflow owner.
 
+Monad mainnet is supported too (`-T mainnet-settings`, `config.mainnet.json`). It re-checks grades posted to the mainnet VerifierRegistry and writes to the mainnet `CreAttestor` `0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a`. A dry run on host 10278's real mainnet grade (tx `0x1e0b1d63…0d50`) recounts 38/38 and agrees: `docs/evidence/cre-simulate-mainnet.txt`.
+
+```bash
+cre workflow simulate grade-recheck -T mainnet-settings --non-interactive \
+  --trigger-index 0 --evm-tx-hash 0x1e0b1d63984ff0140e675c116003fd36968816ffbc30d6040fb2c2defb980d50 --evm-event-index 0
+```
+
+Forwarders, from `cre workflow supported-chains` (7 Oct):
+
+| Chain | KeystoneForwarder (deployed workflows) | MockKeystoneForwarder (`simulate --broadcast`) |
+|---|---|---|
+| monad-testnet | `0xF8344CFd5c43616a4366C34E3EEE75af79a74482` | `0xB9F79d863261869B234c481D1f9A7af84AeAd192` |
+| monad-mainnet | `0x76c9cf548b4179F8901cda1f8623568b58215E62` | `0x9eF6468C5f37b976E57d52054c693269479A784d` |
+
 The simulator uses a different forwarder: `MockKeystoneForwarder` `0xB9F79d863261869B234c481D1f9A7af84AeAd192` on Monad testnet. A `CreAttestor` configured for production rejects reports from it (`NotForwarder`). To show a broadcast simulation onchain, deploy a second attestor configured with the mock forwarder.
 
 ## Limits

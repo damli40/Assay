@@ -1,4 +1,5 @@
 import { S, createEffect, type Agent, type EvmOnEventContext } from "envio";
+import { clean, cleanJson } from "./common.js";
 
 const MAX_CARD_BYTES = 64 * 1024;
 
@@ -44,14 +45,14 @@ function decodeDataUri(uri: string): string | undefined {
   }
 }
 
-const text = (v: unknown) => (typeof v === "string" ? v.slice(0, 1000) : undefined);
+const text = (v: unknown) => (typeof v === "string" ? clean(v, 1000) : undefined);
 
 function parseCard(body: string) {
   try {
     const card: unknown = JSON.parse(body);
     if (typeof card !== "object" || card === null || Array.isArray(card)) return undefined;
     const c = card as Record<string, unknown>;
-    return { name: text(c.name), description: text(c.description), image: text(c.image), services: c.services ?? c.endpoints };
+    return { name: text(c.name), description: text(c.description), image: text(c.image), services: cleanJson(c.services ?? c.endpoints) };
   } catch {
     return undefined;
   }

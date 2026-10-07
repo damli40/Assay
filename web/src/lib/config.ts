@@ -17,6 +17,9 @@ export interface ChainConfig {
   verifierRegistry: Address;
   creAttestor: Address;
   identityRegistry: Address;
+  reputationRegistry: Address;
+  /// AssayAccount, the EIP-7702 delegate the host sponsors per-app keys through. Unset until deployed.
+  assayAccount?: Address;
 }
 
 /// Every chain Assay is deployed on. A receipt names its chain in host.agentId (erc8004:<chainId>:<id>).
@@ -35,6 +38,7 @@ export const CHAINS: Record<number, ChainConfig> = {
     verifierRegistry: "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91",
     creAttestor: "0xB4A1CB9e40aDa44570Ae790430C23876d460deDC",
     identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
   },
   143: {
     name: "Monad mainnet",
@@ -50,6 +54,7 @@ export const CHAINS: Record<number, ChainConfig> = {
     verifierRegistry: "0x0C8603041E7d425c4DCa041680C7AF4581dDa9a1",
     creAttestor: "0xAD9e30dcC63670E1e54f1f12468D16eC1bceDf7a",
     identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    reputationRegistry: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
   },
 };
 

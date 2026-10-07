@@ -15,6 +15,7 @@ export const NETWORKS = {
     name: "Monad Testnet",
     publicRpc: "https://testnet-rpc.monad.xyz",
     identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
     verifierRegistry: "0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91",
   },
   mainnet: {
@@ -22,9 +23,10 @@ export const NETWORKS = {
     name: "Monad",
     publicRpc: "https://rpc.monad.xyz",
     identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    reputationRegistry: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
     verifierRegistry: undefined,
   },
-} as const satisfies Record<string, { chainId: number; name: string; publicRpc: string; identityRegistry: string; verifierRegistry: string | undefined }>;
+} as const satisfies Record<string, { chainId: number; name: string; publicRpc: string; identityRegistry: string; reputationRegistry: string; verifierRegistry: string | undefined }>;
 export type Network = keyof typeof NETWORKS;
 export const DEFAULT_VERIFIER_REGISTRY = NETWORKS.testnet.verifierRegistry;
 const HOST_DIR = fileURLToPath(new URL("..", import.meta.url));
@@ -33,6 +35,9 @@ export interface Config {
   network: Network;
   chainId: number;
   identityRegistry: Address;
+  reputationRegistry: Address;
+  /// AssayAccount (EIP-7702 delegate). Set to sponsor feedback from per-app keys; optional.
+  accountImpl?: Address;
   openrouterApiKey: string;
   /// Full chat-completions URL. OpenRouter unless set, e.g. a lab's own OpenAI-compatible API.
   upstreamUrl: string;
@@ -63,7 +68,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   // testnet-only form, so mainnet never reads it: a leftover testnet RPC or address can't leak into a
   // mainnet host. Shared settings (keys, port, batching) are read plain on both networks.
   const suffix = `_${network.toUpperCase()}`;
-  const PER_NETWORK = new Set(["MONAD_RPC_URL", "MONAD_RPC_URL_2", "ANCHOR_ADDRESS", "HOST_AGENT_ID", "VERIFIER_REGISTRY"]);
+  const PER_NETWORK = new Set(["MONAD_RPC_URL", "MONAD_RPC_URL_2", "ANCHOR_ADDRESS", "HOST_AGENT_ID", "VERIFIER_REGISTRY", "ACCOUNT_IMPL"]);
   const get = (name: string) =>
     env[`${name}${suffix}`]?.trim() || (!PER_NETWORK.has(name) || network === "testnet" ? env[name]?.trim() : undefined) || undefined;
   const required = (name: string) => {
@@ -98,6 +103,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const verifierRegistry = get("VERIFIER_REGISTRY") ?? net.verifierRegistry ?? "";
   if (!isAddress(verifierRegistry)) errors.push(`VERIFIER_REGISTRY${suffix} must be a 0x address`);
 
+  const accountImpl = get("ACCOUNT_IMPL");
+  if (accountImpl && !isAddress(accountImpl)) errors.push(`ACCOUNT_IMPL${suffix} must be a 0x address`);
+
   const agentRaw = required("HOST_AGENT_ID");
   if (agentRaw && !/^[1-9]\d*$/.test(agentRaw)) errors.push("HOST_AGENT_ID must be a positive integer (the ERC-8004 agentId)");
 
@@ -109,6 +117,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     network,
     chainId: net.chainId,
     identityRegistry: net.identityRegistry as Address,
+    reputationRegistry: net.reputationRegistry as Address,
+    accountImpl: accountImpl as Address | undefined,
     openrouterApiKey,
     upstreamUrl: upstreamUrl ?? OPENROUTER_URL,
     upstreamModel,

@@ -1,6 +1,9 @@
-import { cosignerForAddress, receiptHash } from "@assay/receipts";
+import { cosignerForAddress, parseAgentId, receiptHash } from "@assay/receipts";
 import { recoverMessageAddress, type Hex } from "viem";
-import { copyButton, errorText, field, h, input, liveRegion, mono, section, textarea } from "../dom.js";
+import { copyButton, errorText, field, h, input, liveRegion, mono, section, shortHash, textarea } from "../dom.js";
+import { chainClient } from "../lib/chain.js";
+import { CHAIN_ID, chainConfig } from "../lib/config.js";
+import { fetchReceiptStatus, sponsorCosignK, sponsorFeedback } from "../lib/host.js";
 import { addToVault, createVaultPasskey, loadSealed, meraCredential, meraMessage, storeSealed, unlockVault, withPrf } from "../mera.js";
 import { parseReceipt, parseSalt, rememberReceipt, toBase64url } from "../lib/receipt.js";
 import {
@@ -11,6 +14,7 @@ import {
   revealLabel,
   sealDisclosure,
   signReceiptHash,
+  signSponsoredFeedback,
   type Disclosure,
   type Sealed,
   type VaultEntry,
@@ -197,6 +201,61 @@ function requesterCard() {
 
   const hash = field("Receipt hash to sign as app A", input("", { placeholder: "0x + 64 hex" }));
   const sigOut = h("div");
+  const chain = chainConfig(CHAIN_ID);
+  let lastSigned: { receiptHash: Hex; signature: Hex } | undefined;
+
+  // Sponsored: the host's relayer pays the gas, so app A's address never needs MON from a wallet that would link to you.
+  const submit = h("button", { type: "button", class: "secondary", disabled: true }, "Co-sign onchain (the host pays the gas)");
+  submit.addEventListener("click", async () => {
+    if (!lastSigned) return;
+    try {
+      status.say("Sending through the host's relayer…", "pending");
+      const { txHash } = await sponsorCosignK(chain.host, lastSigned.receiptHash, lastSigned.signature);
+      sigOut.append(h("p", {}, "Co-signed onchain: ", h("a", { href: `${chain.explorer}/tx/${txHash}`, target: "_blank", rel: "noopener" }, shortHash(txHash))));
+      status.say("Co-signed. App A's address paid nothing and holds nothing.", "ok");
+    } catch (e) {
+      status.say(errorText(e), "error");
+    }
+  });
+
+  const verdict = h("select", { id: "fb-value" }, h("option", { value: "-1" }, "Complaint: the answer was wrong or bad"), h("option", { value: "1" }, "Praise: the answer was good"));
+  const verdictRow = h("div", { class: "field" }, h("label", { for: "fb-value" }, "Feedback about the host that served this receipt"), verdict);
+  const note = field("Note (optional, public, 200 characters)", input("", { maxlength: "200" }));
+  const fileIt = h("button", { type: "button", class: "secondary" }, "File it from app A (the host pays the gas)");
+  fileIt.addEventListener("click", async () => {
+    try {
+      const rh = hash.input.value.trim() as Hex;
+      if (!/^0x[0-9a-fA-F]{64}$/.test(rh)) throw new Error("Receipt hash must be 0x + 64 hex.");
+      if (!chain.assayAccount) throw new Error(`Sponsored feedback isn't live on ${chain.name} yet.`);
+      const st = await fetchReceiptStatus(chain.host, rh);
+      if (st.status !== "anchored") throw new Error("The receipt isn't anchored yet. Try after the next batch.");
+      const label = requesterLabel(apps[0].input.value.trim());
+      const client = chainClient(chain.rpc);
+      status.say("Passkey prompt: deriving app A's address…", "pending");
+      const account = await withPrf(label, requesterAddress);
+      const code = await client.getCode({ address: account });
+      const delegationNonce = code && code !== "0x" ? undefined : await client.getTransactionCount({ address: account });
+      status.say("Passkey prompt: signing the feedback…", "pending");
+      const body = await withPrf(label, (prf) =>
+        signSponsoredFeedback(prf, {
+          chainId: CHAIN_ID,
+          accountImpl: chain.assayAccount!,
+          reputation: chain.reputationRegistry,
+          agentId: parseAgentId(st.body.host.agentId),
+          receiptHash: rh,
+          value: verdict.value === "1" ? 1 : -1,
+          note: note.input.value,
+          nowSeconds: Math.floor(Date.now() / 1000),
+          delegationNonce,
+        }),
+      );
+      const { txHash } = await sponsorFeedback(chain.host, body);
+      sigOut.append(h("p", {}, "Feedback filed on the ERC-8004 Reputation registry from ", mono(body.account), ": ", h("a", { href: `${chain.explorer}/tx/${txHash}`, target: "_blank", rel: "noopener" }, shortHash(txHash))));
+      status.say("Filed. It counts as receipt-backed because app A co-signed this receipt.", "ok");
+    } catch (e) {
+      status.say(meraMessage(e), "error");
+    }
+  });
   const sign = h("button", { type: "button", class: "secondary" }, "Sign for cosignK");
   sign.addEventListener("click", async () => {
     sigOut.replaceChildren();
@@ -214,6 +273,8 @@ function requesterCard() {
           h("dt", {}, "ecrecover"), h("dd", {}, recovered === address ? "recovers to the signer" : "MISMATCH"),
         ),
       );
+      lastSigned = { receiptHash: rh, signature };
+      submit.disabled = false;
       status.say("Signed. The key existed only for this one signature.", "ok");
     } catch (e) {
       status.say(meraMessage(e), "error");
@@ -230,7 +291,12 @@ function requesterCard() {
     derive,
     h("dl", { class: "kv" }, h("dt", {}, "App A"), outs[0], h("dt", {}, "App B"), outs[1]),
     hash.row,
-    sign,
+    h("div", { class: "row" }, sign, submit),
+    h("h3", {}, "Complain about the host, from app A"),
+    h("p", { class: "hint" }, "ERC-8004 feedback sent from app A's own address, citing this receipt. It only counts as receipt-backed when app A co-signed the receipt first. The host pays the gas through an EIP-7702 account, so the address never needs funding."),
+    verdictRow,
+    note.row,
+    fileIt,
     status.el,
     sigOut,
   );

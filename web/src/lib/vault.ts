@@ -1,10 +1,11 @@
 import { createSecp256k1SigningSession } from "@category-labs/mera";
 import { toViemAccount } from "@category-labs/mera/viem";
-import type { ReceiptBody } from "@assay/receipts";
+import { reputationAbi, sponsoredCallTypedData, randomNonce, type ReceiptBody } from "@assay/receipts";
 import { HDKey } from "@scure/bip32";
 import { entropyToMnemonic, mnemonicToSeedSync } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import { bytesToHex, hexToBytes, sha256, stringToBytes, type Address, type Hex } from "viem";
+import { bytesToHex, encodeFunctionData, hexToBytes, sha256, stringToBytes, type Address, type Hex } from "viem";
+import type { SponsoredFeedback } from "./host.js";
 
 // Three PRF namespaces, one primitive each: an encryption key, a signing identity, a disclosure key.
 export const VAULT_LABEL = "assay:vault:v1";
@@ -134,3 +135,23 @@ export const requesterAddress = (prf: Uint8Array): Promise<Address> => withReque
 /// EIP-191 over the raw 32-byte receipt hash, as ReceiptAnchor.cosignK recovers it.
 export const signReceiptHash = (prf: Uint8Array, receiptHash: Hex): Promise<{ address: Address; signature: Hex }> =>
   withRequester(prf, async (a) => ({ address: a.address, signature: await a.signMessage({ message: { raw: receiptHash } }) }));
+
+/// A complaint (or praise) about a host, filed from the per-app address with the host paying the gas.
+/// It cites the receipt by hash, so the indexer counts it as receipt-backed once this address has co-signed it.
+/// `delegationNonce` is the account's transaction count; pass it only when the account isn't delegated yet.
+export async function signSponsoredFeedback(
+  prf: Uint8Array,
+  o: { chainId: number; accountImpl: Address; reputation: Address; agentId: bigint; receiptHash: Hex; value: -1 | 1; note: string; nowSeconds: number; delegationNonce?: number },
+): Promise<SponsoredFeedback> {
+  const data = encodeFunctionData({ abi: reputationAbi, functionName: "giveFeedback", args: [o.agentId, BigInt(o.value), 0, "assay", "receipt", "", o.note.slice(0, 200), o.receiptHash] });
+  return withRequester(prf, async (a) => {
+    const call = { target: o.reputation, data, nonce: randomNonce(), deadline: BigInt(o.nowSeconds + 600) };
+    const signature = await a.signTypedData(sponsoredCallTypedData(o.chainId, a.address, call));
+    const auth = o.delegationNonce === undefined ? undefined : await a.signAuthorization!({ chainId: o.chainId, contractAddress: o.accountImpl, nonce: o.delegationNonce });
+    return {
+      account: a.address,
+      call: { data, nonce: call.nonce.toString(), deadline: call.deadline.toString(), signature },
+      ...(auth ? { authorization: { address: o.accountImpl, chainId: o.chainId, nonce: o.delegationNonce!, r: auth.r, s: auth.s, yParity: auth.yParity ?? 0 } } : {}),
+    };
+  });
+}

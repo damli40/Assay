@@ -83,3 +83,10 @@ describe("Agent cards", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("cleanJson", () => {
+  it("strips NUL from every string in an agent card's services, keys included", async () => {
+    const { cleanJson } = await import("../src/common.js");
+    expect(cleanJson([{ "na\u0000me": "a\u0000b", n: 1, nested: ["c\u0000"] }])).toEqual([{ name: "ab", n: 1, nested: ["c"] }]);
+  });
+});
