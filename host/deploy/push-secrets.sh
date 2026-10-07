@@ -8,7 +8,9 @@ DOMAIN=${2:?usage: push-secrets.sh <user@vm> <domain> [testnet|mainnet]}
 NET=${3:-testnet}
 case "$NET" in testnet) PORT=8787; DATA=data; URL="https://$DOMAIN" ;; mainnet) PORT=8788; DATA=data-mainnet; URL="https://$DOMAIN/mainnet" ;; *) echo "network must be testnet or mainnet"; exit 1 ;; esac
 SUFFIX="_${NET^^}"
-val() { grep "^$1=" .env | tail -1 | cut -d= -f2-; }
+# A missing key is empty, not an error: with pipefail a failed grep would stop the script silently.
+val() { { grep "^$1=" .env || true; } | tail -1 | cut -d= -f2-; }
+trap 'echo "push-secrets: failed at line $LINENO" >&2' ERR
 net() { local v; v=$(val "$1$SUFFIX"); [ -z "$v" ] && [ "$NET" = testnet ] && v=$(val "$1"); echo "$v"; }
 
 ENV_FILE=$(mktemp)
@@ -19,7 +21,7 @@ chmod 600 "$ENV_FILE"
   echo "UPSTREAM_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
   echo "UPSTREAM_API_KEY=$(val GEMINI_API_KEY)"
   echo "UPSTREAM_MODEL=gemma-4-31b-it"
-  for k in MONAD_RPC_URL ANCHOR_ADDRESS HOST_AGENT_ID VERIFIER_REGISTRY ACCOUNT_IMPL; do v=$(net $k); [ -n "$v" ] && echo "${k}_${NET^^}=$v"; done
+  for k in MONAD_RPC_URL ANCHOR_ADDRESS HOST_AGENT_ID VERIFIER_REGISTRY ACCOUNT_IMPL; do v=$(net $k); if [ -n "$v" ]; then echo "${k}_${NET^^}=$v"; fi; done
   # Shared settings may also be overridden per network (e.g. BATCH_SECONDS_MAINNET).
   for k in RELAYER_PRIVATE_KEY BATCH_SECONDS BATCH_MAX; do v=$(val "$k$SUFFIX"); [ -z "$v" ] && v=$(val $k); echo "$k=$v"; done | \
     # Every mainnet anchor costs real MON, so batch less often there unless told otherwise.
