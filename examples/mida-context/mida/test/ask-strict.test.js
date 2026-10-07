@@ -250,6 +250,8 @@ describe("ask is strict about what it sends", () => {
       const outFile = join(dir, "exported.json");
       const ex = await runExport({
         config: config(dir),
+        assay: { checkRecord: async () => ({ ok: true, reasons: [] }) },
+        client: {},
         mida: { context: async () => ({ items: [writerItem(content)], cursor: null, otherTasks: [] }) },
         log: () => {},
         outFile,

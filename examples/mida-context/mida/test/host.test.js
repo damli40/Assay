@@ -147,7 +147,7 @@ describe("askHost", () => {
     expect(e).toBeInstanceOf(HostError);
     expect(e.exitCode).toBe(4);
     expect(e.message).toBe(
-      "assay: could not reach the host at 34-45-1-81.sslip.io (TypeError). Nothing was asked.",
+      "assay: could not reach the host at 34-45-1-81.sslip.io (TypeError). Nothing was saved.",
     );
   });
 
@@ -167,7 +167,7 @@ describe("askHost", () => {
     expect(e).toBeInstanceOf(HostError);
     expect(e.exitCode).toBe(4);
     expect(e.message).toBe(
-      `assay: the host answered HTTP 429 and signed no receipt. Nothing was asked.\n${"y".repeat(120)}`,
+      `assay: the host answered HTTP 429 and signed no receipt. Nothing was saved.\n${"y".repeat(120)}`,
     );
   });
 });

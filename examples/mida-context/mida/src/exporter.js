@@ -1,9 +1,11 @@
 import { link, mkdir, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { isMidaSdkError } from "@mida-context/sdk";
+import { checkOrRefuse } from "./reader.js";
 import {
   PartialListError,
   midaErrorLine,
+  oneLine,
   readAssayRecord,
   toInteropRecord,
 } from "./record.js";
@@ -14,10 +16,11 @@ const refuse = (message, exitCode = 2, outcome = "refused") =>
   Object.assign(new Error(message), { name: "RefusalError", exitCode, outcome });
 
 // `export [<receiptHash>] --out <file>`: the same pick as `read` (the newest record the chain
-// attributes to the writer), written out in ASSAY's interop field set so his
-// examples/mida-context/check.mts can check it. The file holds the salt — mode 600, written
+// attributes to the writer), written out in ASSAY's interop field set so their
+// examples/mida-context/check.mts can check it. ASSAY's check runs first, chain read on, so a
+// record the reader would refuse is never written out. The file holds the salt — mode 600, written
 // atomically through a hard link, never overwritten.
-export async function runExport({ config, mida, log, receiptHash, outFile }) {
+export async function runExport({ config, assay, client, mida, log, receiptHash, outFile }) {
   try {
     const found = await readAssayRecord(mida, config, { receiptHash });
     if (!found) {
@@ -29,8 +32,10 @@ export async function runExport({ config, mida, log, receiptHash, outFile }) {
     log(
       `mida: record ${short(id)} written by ${author?.name ?? "unknown"} (${item.source}, ${stamp(writtenAt)}) holds receipt ${short(record.receiptHash)}`,
     );
+    const interop = toInteropRecord(record);
+    await checkOrRefuse({ assay, record: interop, config, client, tail: "Nothing was exported." });
     const target = await outPath(config.exportsDir, outFile, record.receiptHash);
-    await writeInteropFile(target, toInteropRecord(record));
+    await writeInteropFile(target, interop);
     log(
       `exported: ${target} — this file contains the salt; it must not be published unless the call was a test.`,
     );
@@ -43,11 +48,11 @@ export async function runExport({ config, mida, log, receiptHash, outFile }) {
       return { exitCode: 3, outcome: "partial" };
     }
     if (isMidaSdkError(e)) {
-      log(midaErrorLine(e, "exported"));
+      log(oneLine(midaErrorLine(e, "exported")));
       return { exitCode: 3, outcome: "mida" };
     }
     if (Number.isInteger(e?.exitCode)) {
-      log(e.message);
+      log(oneLine(e.message));
       return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
     }
     throw e;

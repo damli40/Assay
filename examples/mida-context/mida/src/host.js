@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { bodyFromJws } from "./record.js";
+import { bodyFromJws, oneLine } from "./record.js";
 
 export class HostError extends Error {
   constructor(message, exitCode) {
@@ -58,11 +58,11 @@ export async function askHost({ assay, fetchImpl, host, prompt, now }) {
     });
   } catch (e) {
     if (seen.res && seen.res.ok === false) {
-      const head = `assay: the host answered HTTP ${seen.res.status} and signed no receipt. Nothing was asked.`;
+      const head = `assay: the host answered HTTP ${seen.res.status} and signed no receipt. Nothing was saved.`;
       let detail = "";
       try {
         const j = await seen.res.json();
-        if (typeof j?.error?.message === "string") detail = j.error.message.slice(0, 120);
+        if (typeof j?.error?.message === "string") detail = oneLine(j.error.message.slice(0, 120));
       } catch {
         // A non-JSON refusal body is not quoted.
       }
@@ -74,7 +74,7 @@ export async function askHost({ assay, fetchImpl, host, prompt, now }) {
         4,
       );
     }
-    throw unreachable(host, e, "asked");
+    throw unreachable(host, e, "saved");
   }
   if (result.outputCommitOk !== true) {
     throw new HostError(

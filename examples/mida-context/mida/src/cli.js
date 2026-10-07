@@ -68,7 +68,11 @@ export async function main(argv, env = process.env, deps = {}) {
     ((agent, config) => new Mida({ agent, home: config.midaHome, project: config.projectDir }));
   const createClient =
     deps.createClient ??
-    ((config) => createPublicClient({ chain: monadTestnet, transport: http(config.rpcUrl) }));
+    ((config) =>
+      createPublicClient({
+        ...(config.chainId === monadTestnet.id ? { chain: monadTestnet } : {}),
+        transport: http(config.rpcUrl),
+      }));
   const fetchImpl = deps.fetchImpl ?? fetch;
 
   let code = 1;
@@ -103,8 +107,11 @@ export async function main(argv, env = process.env, deps = {}) {
       code = r.exitCode;
     } else if (args.command === "export") {
       const mida = createMida(config.readerAgent, config);
+      const client = createClient(config);
       const r = await runExport({
         config,
+        assay,
+        client,
         mida,
         log,
         receiptHash: args.receiptHash,

@@ -1,7 +1,9 @@
 import { isMidaSdkError } from "@mida-context/sdk";
 import {
   PartialListError,
+  bodyFromJws,
   midaErrorLine,
+  oneLine,
   readAssayRecord,
   toInteropRecord,
 } from "./record.js";
@@ -33,6 +35,17 @@ const checkShape = (record) => {
   if (!Array.isArray(proof) || !proof.every((p) => typeof p === "string" && BYTES32.test(p))) {
     return "anchor.proof is not an array of 32-byte hex";
   }
+  let body;
+  try {
+    body = bodyFromJws(record?.jws);
+  } catch {
+    return "the signed receipt is not readable";
+  }
+  for (const block of ["req", "res", "host"]) {
+    if (typeof body[block] !== "object" || body[block] === null || Array.isArray(body[block])) {
+      return `the signed receipt has no ${block} block`;
+    }
+  }
   return null;
 };
 
@@ -49,7 +62,7 @@ export function chainPins(config, client) {
 }
 
 // ASSAY's own checkRecord on the interop record, called by both the reader and the writer. A
-// throw out of his check (a chain or RPC failure) is exit 4 — never reported as ok — and the
+// throw out of that check (a chain or RPC failure) is exit 4 — never reported as ok — and the
 // line carries only the error's name, never its message, the URL's path or the request body.
 // `tail` is the caller's closing sentence ("Nothing was written." / "The context was not handed on.").
 export async function checkOrRefuse({ assay, record, config, client, tail }) {
@@ -80,7 +93,7 @@ export async function checkOrRefuse({ assay, record, config, client, tail }) {
 
 // spec section-5 step 3: find the newest record the chain attributes to the writer, then run
 // ASSAY's own checkRecord on it. The output is handed on only when verdict.ok === true AND
-// verdict.reasons is empty — anything else prints his reasons and exits 2. A throw out of his
+// verdict.reasons is empty — anything else prints ASSAY's reasons and exits 2. A throw out of that
 // check (a chain or RPC failure) exits 4 and is never reported as ok.
 export async function runRead({ config, assay, client, mida, log, receiptHash }) {
   try {
@@ -104,7 +117,9 @@ export async function runRead({ config, assay, client, mida, log, receiptHash })
     });
     const body = verdict.body ?? {};
     log(
-      `accepted: host ${body?.host?.agentId} (trusted) served model ${body?.model}; the salt opens the commitments. Output: ${JSON.stringify(record.output)}`,
+      oneLine(
+        `accepted: host ${body?.host?.agentId} (trusted) served model ${body?.model}; the salt opens the commitments. Output: ${JSON.stringify(record.output)}`,
+      ),
     );
     return { exitCode: 0, outcome: "accepted", output: record.output };
   } catch (e) {
@@ -115,11 +130,11 @@ export async function runRead({ config, assay, client, mida, log, receiptHash })
       return { exitCode: 3, outcome: "partial" };
     }
     if (isMidaSdkError(e)) {
-      log(midaErrorLine(e, "checked"));
+      log(oneLine(midaErrorLine(e, "checked")));
       return { exitCode: 3, outcome: "mida" };
     }
     if (Number.isInteger(e?.exitCode)) {
-      log(e.message);
+      log(oneLine(e.message));
       return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
     }
     throw e;

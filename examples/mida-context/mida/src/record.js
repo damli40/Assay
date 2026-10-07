@@ -25,6 +25,11 @@ const PAGE_LIMIT = 65_536;
 const short = (id) => (typeof id === "string" && id.length > 12 ? `${id.slice(0, 10)}…` : id);
 const isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 
+// Text that came out of a record, a receipt or another program must never start a new output
+// line: a refused record could otherwise print its own "accepted:" line. Every control
+// character and line separator becomes a space.
+export const oneLine = (s) => String(s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ");
+
 // One refused/ unavailable Mida failure as the section-10 line. The SDK message's final full
 // stop is stripped before "Nothing was <verb>." is appended.
 export function midaErrorLine(e, verb) {

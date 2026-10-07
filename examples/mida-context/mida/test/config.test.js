@@ -112,9 +112,9 @@ describe("loadConfig", () => {
   it("parses a comma-separated trusted-host list, trimming spaces", () => {
     const cfg = loadConfig({
       MIDA_HOME: HOME,
-      ASSAY_TRUSTED_HOSTS: "erc8004:10143:1962, erc8004:143:10278",
+      ASSAY_TRUSTED_HOSTS: "erc8004:10143:1962, erc8004:10143:10278",
     });
-    expect(cfg.trustedHosts).toEqual(["erc8004:10143:1962", "erc8004:143:10278"]);
+    expect(cfg.trustedHosts).toEqual(["erc8004:10143:1962", "erc8004:10143:10278"]);
   });
 
   it("refuses a trusted-host value that is not erc8004:<chainId>:<id>", () => {
@@ -129,7 +129,7 @@ describe("loadConfig", () => {
     expect(e.message).toBe(
       "config: ASSAY_CHAIN_ID is missing or invalid (a whole number). Nothing was done.",
     );
-    expect(loadConfig({ MIDA_HOME: HOME, ASSAY_CHAIN_ID: "143" }).chainId).toBe(143);
+    expect(loadConfig({ MIDA_HOME: HOME, ASSAY_CHAIN_ID: "10143" }).chainId).toBe(10143);
   });
 
   it("refuses a non-http(s) host and strips a trailing slash", () => {
@@ -143,5 +143,32 @@ describe("loadConfig", () => {
 
   it("never reads process.env when an env object is given", () => {
     expect(problem({})).toBeInstanceOf(ConfigError);
+  });
+
+  // review 2 M3: the chain id, the ReceiptAnchor address, the RPC and the trusted hosts are one
+  // setting. Changing only the chain id used to keep testnet's address and RPC, so a "mainnet"
+  // reader would have read testnet and said accepted.
+  it("refuses another chain id unless the anchor, the RPC and the trusted hosts are all given", () => {
+    const base = { MIDA_HOME: "/h", ASSAY_CHAIN_ID: "143" };
+    const full = {
+      ...base,
+      ASSAY_RECEIPT_ANCHOR: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24",
+      MONAD_RPC_URL: "https://rpc.example",
+      ASSAY_TRUSTED_HOSTS: "erc8004:143:7",
+    };
+    expect(loadConfig(full).chainId).toBe(143);
+    for (const missing of ["ASSAY_RECEIPT_ANCHOR", "MONAD_RPC_URL", "ASSAY_TRUSTED_HOSTS"]) {
+      const env = { ...full };
+      delete env[missing];
+      expect(() => loadConfig(env), missing).toThrow(
+        `config: ${missing} is missing or invalid (required when ASSAY_CHAIN_ID is not 10143: the testnet default is never reused on another chain). Nothing was done.`,
+      );
+    }
+  });
+
+  it("refuses a trusted host on a different chain than ASSAY_CHAIN_ID", () => {
+    expect(() => loadConfig({ MIDA_HOME: "/h", ASSAY_TRUSTED_HOSTS: "erc8004:1:5" })).toThrow(
+      "config: ASSAY_TRUSTED_HOSTS is missing or invalid (every host must be on chain 10143, the configured ASSAY_CHAIN_ID). Nothing was done.",
+    );
   });
 });

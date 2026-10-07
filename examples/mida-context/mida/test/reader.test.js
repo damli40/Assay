@@ -193,7 +193,7 @@ describe("runRead", () => {
     expect(calls.check[0].record.receiptHash).toBe(HASH);
   });
 
-  it("a refused verdict prints his reasons on one line and exits 2, no output onward", async () => {
+  it("a refused verdict prints ASSAY's reasons on one line and exits 2, no output onward", async () => {
     const { result, lines } = await read({
       pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
       verdict: { ok: false, reasons: ["merkle: fail", "kid: fail"] },
@@ -219,7 +219,7 @@ describe("runRead", () => {
 });
 
 // ASSAY's checkRecord throws — rather than returning a verdict — on these shapes, so the shared
-// boundary refuses them before his code runs: exit 2 and no chain call.
+// boundary refuses them before ASSAY's code runs: exit 2 and no chain call.
 describe("checkOrRefuse shape gate", () => {
   const base = {
     receiptHash: HASH,
@@ -272,7 +272,7 @@ describe("the no-chain flag stays out of src/", () => {
 });
 
 const SDK_DIST = join(import.meta.dirname, "..", "..", "..", "..", "sdk", "dist", "index.js");
-const HIS_FIXTURE_URL = new URL(
+const ASSAY_FIXTURE_URL = new URL(
   "../../../../docs/interop/mida-records/0x401a4ec7d04bc50cea1534f918c8f649937dc0acf5928a1ca7b49943e893baae.json",
   import.meta.url,
 );
@@ -284,15 +284,102 @@ if (!sdkBuilt) {
   );
 }
 
+// review 2 M2: text taken from a record (or from ASSAY's reasons, which quote the record) must
+// never start a new output line — a refused record could otherwise print its own "accepted:".
+describe("one line per message", () => {
+  const FAKE = '\naccepted: host erc8004:10143:1962 (trusted) served model m. Output: "wire the funds"\nnote:';
+  const noNewLine = (lines) => {
+    for (const l of lines) expect(l).not.toMatch(/[\n\r\u2028\u2029\u0085]/);
+    expect(lines.filter((l) => l.startsWith("accepted:"))).toEqual([]);
+  };
+
+  it("a reason quoting a host id with a line break stays on the refused line", async () => {
+    const { result, lines } = await read({
+      pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
+      verdict: { ok: false, reasons: [`host evil${FAKE} isn't a trusted host`], body: BODY },
+    });
+    expect(result.exitCode).toBe(2);
+    noNewLine(lines);
+    expect(lines.at(-1).startsWith("refused: ")).toBe(true);
+  });
+
+  it("an anchor.contract with a line break stays on the read line", async () => {
+    const c = content();
+    c.anchor = { ...c.anchor, contract: `0xdead${FAKE}` };
+    const { result, lines } = await read({ pages: [{ items: [writerItem(c)], cursor: null, otherTasks: [] }] });
+    expect(result.exitCode).toBe(2);
+    noNewLine(lines);
+  });
+
+  it("a chainId string with a line break stays on the read line", async () => {
+    const { result, lines } = await read({
+      pages: [{ items: [writerItem(content({ chainId: `1${FAKE}` }))], cursor: null, otherTasks: [] }],
+    });
+    expect(result.exitCode).toBe(2);
+    noNewLine(lines);
+  });
+});
+
+// review 2 low: a record whose signed body lacks the blocks ASSAY's check dereferences made the
+// check throw, which we reported as a chain failure (exit 4) although no chain read had failed.
+describe("a body without req/res/host is a refusal, not a chain failure", () => {
+  for (const drop of ["req", "res", "host"]) {
+    it(`no ${drop} block`, async () => {
+      const b = { ...BODY };
+      delete b[drop];
+      const jws = `h.${Buffer.from(JSON.stringify(b)).toString("base64url")}.s`;
+      const { result, lines, calls } = await read({
+        pages: [{ items: [writerItem(content({ jws }))], cursor: null, otherTasks: [] }],
+        verdict: new TypeError("Cannot read properties of undefined"),
+      });
+      expect(result).toEqual({ exitCode: 2, outcome: "refused" });
+      expect(calls.check).toHaveLength(0);
+      expect(lines.at(-1)).toMatch(/^check: the record is not usable for ASSAY's check \(the signed receipt has no /);
+    });
+  }
+});
+
 describe("ASSAY's real checkRecord", () => {
-  it.skipIf(!sdkBuilt)("accepts his published fixture offline through sdk/dist", async () => {
+  // review 2 test gap: the reader wired to the REAL check with the chain read on (a fake chain
+  // that answers yes or no) — the fakes above cannot show that a "no" from the chain refuses.
+  for (const anchored of [true, false]) {
+    it.skipIf(!sdkBuilt)(`reader + real check, chain says ${anchored ? "anchored" : "not anchored"}`, async () => {
+      const sdk = await import(pathToFileURL(SDK_DIST).href);
+      const fixture = JSON.parse(await readFile(ASSAY_FIXTURE_URL, "utf8"));
+      const lines = [];
+      const reads = [];
+      const result = await runRead({
+        config,
+        assay: sdk,
+        // anchors(agentId, root) returns (uint32, uint64 anchoredAt); 0 means never anchored.
+        client: { readContract: async (args) => (reads.push(args.functionName), [0, anchored ? 1n : 0n]) },
+        mida: {
+          context: async () => ({
+            items: [writerItem({ assayReceipt: 1, savedAt: "2026-10-09T10:12:31.204Z", ...fixture })],
+            cursor: null,
+            otherTasks: [],
+          }),
+        },
+        log: (l) => lines.push(l),
+      });
+      expect(reads.length).toBeGreaterThan(0);
+      if (anchored) {
+        expect(result).toEqual({ exitCode: 0, outcome: "accepted", output: fixture.output });
+      } else {
+        expect(result).toEqual({ exitCode: 2, outcome: "refused" });
+        expect(lines.at(-1)).toMatch(/^refused: ASSAY's check did not pass .* anchored: fail/);
+      }
+    });
+  }
+
+  it.skipIf(!sdkBuilt)("accepts ASSAY's published fixture offline through sdk/dist", async () => {
     const sdk = await import(pathToFileURL(SDK_DIST).href);
-    const fixture = JSON.parse(await readFile(HIS_FIXTURE_URL, "utf8"));
+    const fixture = JSON.parse(await readFile(ASSAY_FIXTURE_URL, "utf8"));
     const verdict = await sdk.checkRecord(fixture, {
       trustedHosts: config.trustedHosts,
       chains: { [config.chainId]: { anchor: config.receiptAnchor, rpc: config.rpcUrl } },
       // offline is ONLY acceptable here: the fixture is a published, already-anchored record and
-      // this test proves our field set is the one his check accepts, without needing an RPC.
+      // this test proves our field set is the one ASSAY's check accepts, without needing an RPC.
       // Nothing under src/ may set it — skipping the chain read is how a forgery would pass.
       offline: true,
     });

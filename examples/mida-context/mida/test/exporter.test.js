@@ -69,24 +69,78 @@ beforeEach(async () => {
 });
 afterEach(async () => rm(dir, { recursive: true, force: true }));
 
-const exportRun = async ({ pages, receiptHash, outFile } = {}) => {
+const okVerdict = { ok: true, reasons: [], body: BODY };
+
+const exportRun = async ({ pages, receiptHash, outFile, verdict = okVerdict } = {}) => {
   const lines = [];
+  const checks = [];
+  const assay = {
+    checkRecord: async (record, pins) => {
+      checks.push({ record, pins });
+      if (verdict instanceof Error) throw verdict;
+      return verdict;
+    },
+  };
+  const client = { readContract: async () => [] };
   const mida = {
     context: async () =>
       pages instanceof Error ? Promise.reject(pages) : (pages.shift() ?? { items: [], cursor: null, otherTasks: [] }),
   };
   const result = await runExport({
     config: { ...config, exportsDir: join(dir, "exports") },
+    assay,
+    client,
     mida,
     log: (line) => lines.push(line),
     ...(receiptHash ? { receiptHash } : {}),
     ...(outFile !== undefined ? { outFile } : { outFile: join(dir, "record.json") }),
   });
-  return { result, lines };
+  return { result, lines, checks, client };
 };
 
 describe("runExport", () => {
-  it("writes exactly his fixture's field set, mode 600, and prints the salt warning", async () => {
+  // review 2 M1: export hands a file to ASSAY's check.mts, so it must not hand on a record the
+  // reader would refuse — the same check, chain read on, runs before a byte is written.
+  it("runs ASSAY's check with our pins before writing", async () => {
+    const { result, checks, client } = await exportRun({
+      pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
+    });
+    expect(result.exitCode).toBe(0);
+    expect(checks).toHaveLength(1);
+    expect(checks[0].pins).toEqual({
+      trustedHosts: config.trustedHosts,
+      chains: { 10143: { anchor: ANCHOR, rpc: config.rpcUrl } },
+      client,
+    });
+    expect(Object.hasOwn(checks[0].pins, "offline")).toBe(false);
+  });
+
+  it("a record ASSAY's check refuses is not exported", async () => {
+    const out = join(dir, "record.json");
+    const { result, lines } = await exportRun({
+      pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
+      outFile: out,
+      verdict: { ok: false, reasons: ["anchored: fail"], body: BODY },
+    });
+    expect(result).toEqual({ exitCode: 2, outcome: "refused" });
+    expect(lines.at(-1)).toBe(
+      "refused: ASSAY's check did not pass for receipt 0x9a166cac… — anchored: fail. Nothing was exported.",
+    );
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it("a chain failure during the check exports nothing and exits 4", async () => {
+    const boom = Object.assign(new Error("secret-url-and-body"), { name: "HttpRequestError" });
+    const { result, lines } = await exportRun({
+      pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],
+      verdict: boom,
+    });
+    expect(result).toEqual({ exitCode: 4, outcome: "chain" });
+    expect(lines.join("\n")).not.toMatch(/secret/);
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it("writes exactly ASSAY's fixture field set, mode 600, and prints the salt warning", async () => {
     const out = join(dir, "record.json");
     const { result, lines } = await exportRun({
       pages: [{ items: [writerItem()], cursor: null, otherTasks: [] }],

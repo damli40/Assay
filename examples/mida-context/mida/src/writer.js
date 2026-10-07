@@ -7,6 +7,7 @@ import {
   bodyFromJws,
   buildRecord,
   midaErrorLine,
+  oneLine,
   pickRecord,
   toInteropRecord,
   walkItems,
@@ -57,7 +58,9 @@ export async function runWrite({ config, assay, client, fetchImpl, mida, log, no
     }
     const m = AGENT_ID.exec(body?.host?.agentId ?? "");
     log(
-      `assay: receipt ${short(run.receiptHash)} is anchored under host ${m?.[2] ?? body?.host?.agentId} — root ${short(anchored.root)}, tx ${short(anchored.anchorTx)}`,
+      oneLine(
+        `assay: the host reports receipt ${short(run.receiptHash)} anchored under host ${m?.[2] ?? body?.host?.agentId} — root ${short(anchored.root)}, tx ${short(anchored.anchorTx)}`,
+      ),
     );
 
     if (assay.commitResponse(run.salt, run.output) !== body.res.commit) {
@@ -102,7 +105,7 @@ export async function runWrite({ config, assay, client, fetchImpl, mida, log, no
       now,
     });
     // The record is only worth saving if ASSAY's own check accepts it — the same check the
-    // reader runs, chain read on. A record his check would refuse is never written.
+    // reader runs, chain read on. A record that check would refuse is never written.
     await checkOrRefuse({
       assay,
       record: toInteropRecord(content),
@@ -130,11 +133,11 @@ export async function runWrite({ config, assay, client, fetchImpl, mida, log, no
       return { exitCode: 3, outcome: "partial" };
     }
     if (isMidaSdkError(e)) {
-      log(midaErrorLine(e, "written"));
+      log(oneLine(midaErrorLine(e, "written")));
       return { exitCode: 3, outcome: "mida" };
     }
     if (Number.isInteger(e?.exitCode)) {
-      log(e.message);
+      log(oneLine(e.message));
       return { exitCode: e.exitCode, outcome: e.outcome ?? "refused" };
     }
     throw e;

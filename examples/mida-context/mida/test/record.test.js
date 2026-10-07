@@ -17,12 +17,12 @@ const FIXTURE_URL = new URL(
   import.meta.url,
 );
 // ASSAY's published interop record — read at test time, never copied into our files.
-const HIS_FIXTURE_URL = new URL(
+const ASSAY_FIXTURE_URL = new URL(
   "../../../../docs/interop/mida-records/0x401a4ec7d04bc50cea1534f918c8f649937dc0acf5928a1ca7b49943e893baae.json",
   import.meta.url,
 );
 const fixture = JSON.parse(await readFile(FIXTURE_URL, "utf8"));
-const hisFixture = JSON.parse(await readFile(HIS_FIXTURE_URL, "utf8"));
+const hisFixture = JSON.parse(await readFile(ASSAY_FIXTURE_URL, "utf8"));
 const body = bodyFromJws(fixture.jws);
 
 const jwsFor = (b) => `h.${Buffer.from(JSON.stringify(b)).toString("base64url")}.s`;
@@ -317,7 +317,7 @@ describe("parseRecord", () => {
 });
 
 describe("toInteropRecord", () => {
-  it("strips a record to exactly his fixture's field set — no assayReceipt, no savedAt", () => {
+  it("strips a record to exactly ASSAY's fixture field set — no assayReceipt, no savedAt", () => {
     const { record } = parseRecord(item(goodContent(), writer, "AGENT_INFERRED"), CONFIG);
     const out = toInteropRecord(record);
     expect(Object.keys(out)).toEqual([

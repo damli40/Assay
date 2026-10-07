@@ -163,7 +163,7 @@ describe("runWrite", () => {
     const { result, calls, lines, client } = await write(dir);
     expect(result).toEqual({ exitCode: 0, outcome: "recorded" });
     expect(lines).toEqual([
-      `assay: receipt 0x9a166cac… is anchored under host 1962 — root 0x8c89bd8a…, tx 0x41f73bca…`,
+      `assay: the host reports receipt 0x9a166cac… anchored under host 1962 — root 0x8c89bd8a…, tx 0x41f73bca…`,
       "mida: midad: answering — pid 42, up since 2026-10-09T10:00:00Z, queue 0 — test socket\nassay-writer: approved for this folder",
       `assay: check passed for receipt 0x9a166cac… — the record is one the reader will accept`,
       `recorded: Mida record 0x547a8f2f… (anchored) in projects.current, author assay-writer — receipt 0x9a166cac…, salt and output inside the encrypted body`,
