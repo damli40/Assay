@@ -38,6 +38,27 @@ export interface BatchReceipts {
 }
 export const fetchBatch = (base: string, root: Hex) => getJson<BatchReceipts>(hostUrl(base, `/v1/batches/${root}`));
 
+/// POST /v1/sponsor/cosignk: the host pays the gas for a per-app key's cosignK.
+export const sponsorCosignK = (base: string, receiptHash: Hex, signature: Hex) =>
+  getJson<{ txHash: Hex; signer: Hex }>(hostUrl(base, "/v1/sponsor/cosignk"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ receiptHash, signature }),
+  });
+
+export interface SponsoredFeedback {
+  account: Hex;
+  call: { data: Hex; nonce: string; deadline: string; signature: Hex };
+  authorization?: { address: Hex; chainId: number; nonce: number; r: Hex; s: Hex; yParity: number };
+}
+/// POST /v1/sponsor/feedback: ERC-8004 feedback sent from the per-app address, gas paid by the host.
+export const sponsorFeedback = (base: string, body: SponsoredFeedback) =>
+  getJson<{ txHash: Hex; account: Hex }>(hostUrl(base, "/v1/sponsor/feedback"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
 /// POST /v1/cosign. Indexes are bigints in the SDK; JSON carries them as decimal strings.
 export function relayCosign(base: string, receiptHash: Hex, qx: Hex, qy: Hex, auth: WebAuthnAuth) {
   const body = { receiptHash, qx, qy, auth: { ...auth, challengeIndex: auth.challengeIndex.toString(), typeIndex: auth.typeIndex.toString() } };
