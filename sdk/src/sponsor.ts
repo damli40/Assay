@@ -30,9 +30,9 @@ export function sponsoredCallTypedData(chainId: number, account: Address, call: 
         { name: "nonce", type: "uint256" },
         { name: "deadline", type: "uint256" },
       ],
-    },
+    } as const,
     primaryType: "Call" as const,
-    message: call,
+    message: { ...call },
   };
 }
 
