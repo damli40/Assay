@@ -1,12 +1,12 @@
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
-import { getConnInfo } from "@hono/node-server/conninfo";
 import {
   assistantOutput,
   buildReceipt,
   commitRequest,
   commitResponse,
   createHostSigner,
+  receiptAnchorAbi,
   receiptHash,
   type ContractReader,
   type HostSigner,
@@ -16,12 +16,14 @@ import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JWK } from "jose";
-import { createPublicClient, http, isHex, type Address, type Hex } from "viem";
+import { createPublicClient, http, isHex, type Address, type Hex, type PublicClient } from "viem";
 import { createBatcher, type Batcher } from "./batcher.js";
-import { anchorWriteAbi, makeClients, sendTx } from "./chain.js";
+import { anchorWriteAbi, makeClients, sendTx, type WriteRequest } from "./chain.js";
 import { CHAIN_ID, loadConfig, NETWORKS, readJwk } from "./config.js";
 import { mountGrades, type GradeDeps } from "./grades.js";
+import { mountSponsor, type SponsorDeps } from "./sponsor.js";
 import { publicError } from "./errors.js";
+import { clientIp, overLimit } from "./limits.js";
 import { Store } from "./store.js";
 import { openRouter, providerMatches, providerPin, type Upstream } from "./upstream.js";
 
@@ -30,30 +32,7 @@ export const COSIGN_LIMIT = 10;
 /// Chat requests per client per hour, and for the whole host per hour. Every receipt eventually costs an anchor.
 export const CHAT_LIMIT = 120;
 export const CHAT_LIMIT_GLOBAL = 1200;
-const HOUR = 3_600_000;
 
-/// The client behind the proxies. Caddy (same machine) and Vercel forward it; directly connected callers are taken as-is.
-/// Forwarded headers can be forged by anyone calling the VM directly, so the global limit is the hard bound.
-function clientIp(c: Context): string {
-  let remote = "unknown";
-  try {
-    remote = getConnInfo(c).remote.address ?? "unknown";
-  } catch {
-    // No socket (in-process requests, tests): fall back to the forwarded headers below.
-  }
-  if (remote !== "unknown" && !/^(127\.|::1$|::ffff:127\.)/.test(remote)) return remote;
-  return c.req.header("x-real-ip") ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? remote;
-}
-
-/// Sliding one-hour window. In memory, per process: resets on restart, enough for one host instance.
-function overLimit(hits: Map<string, number[]>, key: string, limit: number, t: number): boolean {
-  // Many one-off clients would otherwise grow the map forever: drop everyone idle for an hour.
-  if (hits.size > 10_000) for (const [k, v] of hits) if (!v.length || t - v[v.length - 1] >= HOUR) hits.delete(k);
-  const recent = (hits.get(key) ?? []).filter((h) => t - h < HOUR);
-  if (recent.length >= limit) return true;
-  hits.set(key, [...recent, t]);
-  return false;
-}
 const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 export interface AppDeps {
@@ -80,6 +59,8 @@ export interface AppDeps {
   relayCosign: (args: readonly unknown[]) => Promise<Hex>;
   /// Enables GET /v1/grade, read straight from VerifierRegistry.
   grades?: GradeDeps;
+  /// Enables POST /v1/sponsor/*: the relayer pays gas for per-app keys.
+  sponsor?: Omit<SponsorDeps, "store" | "chainId" | "agentId" | "anchor" | "now">;
   now?: () => number;
 }
 
@@ -278,6 +259,7 @@ export function createApp(d: AppDeps): Hono {
 
   app.get("/health", (c) => c.json({ ok: true, model: d.model, kid: d.signer.kid, pending: d.store.pending().length, ...d.batcher?.schedule?.() }));
   if (d.grades) mountGrades(app, d.grades);
+  if (d.sponsor) mountSponsor(app, { ...d.sponsor, store: d.store, chainId, agentId: d.agentId, anchor: d.anchor, now });
 
   return app;
 }
@@ -317,6 +299,14 @@ async function main() {
     relayCosign: (args) => sendTx(clients, { address: cfg.anchorAddress, abi: anchorWriteAbi, functionName: "cosign", args }),
     // The wallet clients extend publicActions, so they can read contracts too.
     grades: { reader: clients[0] as unknown as ContractReader, registry: cfg.verifierRegistry },
+    sponsor: {
+      reputation: cfg.reputationRegistry,
+      accountImpl: cfg.accountImpl,
+      code: (address) => (clients[0] as unknown as PublicClient).getCode({ address }),
+      cosignedK: async (hash, signer) =>
+        (await (clients[0] as unknown as ContractReader).readContract({ address: cfg.anchorAddress, abi: receiptAnchorAbi, functionName: "cosignedK", args: [hash, signer] })) as boolean,
+      send: (req) => sendTx(clients, req as WriteRequest),
+    },
   });
 
   // Refuse to start on the wrong chain: a mainnet host pointed at a testnet RPC would sign anchors nobody can verify.
