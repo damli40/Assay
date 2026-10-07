@@ -103,7 +103,7 @@ export function onReplay(runtime: Runtime<Config>, payload: HTTPPayload): string
 }
 
 function evmClient(config: Config) {
-	const network = getNetwork({ chainFamily: 'evm', chainSelectorName: config.chainSelectorName, isTestnet: true })
+	const network = getNetwork({ chainFamily: 'evm', chainSelectorName: config.chainSelectorName, isTestnet: !config.chainSelectorName.endsWith('-mainnet') })
 	if (!network) throw new Error(`unknown chain ${config.chainSelectorName}`)
 	return new cre.capabilities.EVMClient(network.chainSelector.selector)
 }
