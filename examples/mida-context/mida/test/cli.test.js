@@ -89,7 +89,7 @@ describe("main", () => {
       ...deps({ midaAgents }),
       loadAssaySdk: async () => {
         throw new AssaySdkError(
-          "assay: the ASSAY SDK is not built at unused-sdk/dist. At the repository root run: corepack pnpm install --frozen-lockfile && corepack pnpm --filter @assay/receipts build. Nothing was done.",
+          "assay: the ASSAY SDK is not built at unused-sdk/dist. At the repository root run: npx --yes pnpm@10.20.0 install --frozen-lockfile && npx --yes pnpm@10.20.0 --filter @assay/receipts build. Nothing was done.",
         );
       },
       log: (l) => lines.push(l),

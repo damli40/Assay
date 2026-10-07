@@ -31,7 +31,7 @@ describe("loadAssaySdk", () => {
     expect(e).toBeInstanceOf(AssaySdkError);
     expect(e.exitCode).toBe(1);
     expect(e.message).toBe(
-      `assay: the ASSAY SDK is not built at ${dir}/dist. At the repository root run: corepack pnpm install --frozen-lockfile && corepack pnpm --filter @assay/receipts build. Nothing was done.`,
+      `assay: the ASSAY SDK is not built at ${dir}/dist. At the repository root run: npx --yes pnpm@10.20.0 install --frozen-lockfile && npx --yes pnpm@10.20.0 --filter @assay/receipts build. Nothing was done.`,
     );
   });
 

@@ -72,7 +72,7 @@ About twenty minutes, once, all on Monad testnet. Every `mida` command starts wi
 4. **Build ASSAY's SDK once, with their own tools, at the repository root** (this is the one place pnpm is used, by the owner, for their package — this folder uses npm):
 
    ```
-   cd <the repository root> && corepack pnpm install --frozen-lockfile && corepack pnpm --filter @assay/receipts build
+   cd <the repository root> && npx --yes pnpm@10.20.0 install --frozen-lockfile && npx --yes pnpm@10.20.0 --filter @assay/receipts build
    ```
 
    This writes `sdk/dist/` (gitignored) and nothing else; `git status` must stay clean.
