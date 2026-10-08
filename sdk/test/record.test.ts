@@ -1,14 +1,18 @@
 import { readFileSync } from "node:fs";
+import { calculateJwkThumbprint, CompactSign, exportJWK, generateKeyPair, type JWK } from "jose";
 import { describe, expect, it } from "vitest";
 import { checkRecord, type ContextRecord, type ContractReader, type RecordPins } from "../src/index.js";
 
 // A real testnet receipt with its salt and output, published on purpose so CI can open the commits offline.
 const FIXTURE = new URL("../../docs/interop/mida-records/0x401a4ec7d04bc50cea1534f918c8f649937dc0acf5928a1ca7b49943e893baae.json", import.meta.url);
 const record = (): ContextRecord => JSON.parse(readFileSync(FIXTURE, "utf8"));
+// The host's kid is its key's RFC 7638 thumbprint, so the fixture's kid doubles as the pin.
+const HOST_KEY = (JSON.parse(readFileSync(FIXTURE, "utf8")).jwks.keys as JWK[])[0].kid!;
 const PINS: RecordPins = {
   trustedHosts: ["erc8004:10143:1962"],
   chains: { 10143: { anchor: "0x63e4F42E6d254ed6aAE735F9F4169BbFd12c1a24", rpc: "http://unused" } },
   offline: true,
+  pinnedKeys: [HOST_KEY],
 };
 /// `anchors(agentId, root)` answers (count, anchoredAt); 0 means never anchored.
 const chain = (anchoredAt: bigint): ContractReader => ({ readContract: async () => [1, anchoredAt] });
@@ -51,5 +55,25 @@ describe("checkRecord (Mida context)", () => {
   it("refuses a proof for another receipt", async () => {
     const v = await checkRecord({ ...record(), anchor: { ...record().anchor, proof: [`0x${"cd".repeat(32)}`] } }, PINS);
     expect(v.reasons).toContain("merkle: fail");
+  });
+
+  it("offline, refuses a record re-signed with a made-up key that copies the host's kid (found by Mida)", async () => {
+    const real = record();
+    const [, payload] = real.jws.split(".");
+    const { publicKey, privateKey } = await generateKeyPair("ES256");
+    const jws = await new CompactSign(Buffer.from(payload, "base64url")).setProtectedHeader({ alg: "ES256", kid: HOST_KEY }).sign(privateKey);
+    const forged = { ...real, jws, jwks: { keys: [{ ...(await exportJWK(publicKey)), kid: HOST_KEY, alg: "ES256" }] } };
+    const v = await checkRecord(forged, PINS);
+    expect(v.ok).toBe(false);
+    expect(v.reasons[0]).toMatch(/isn't one this reader pinned/);
+    expect(await calculateJwkThumbprint(forged.jwks.keys[0] as JWK)).not.toBe(HOST_KEY);
+  });
+
+  it("offline without pinned keys refuses outright, and says the chain was not read", async () => {
+    const v = await checkRecord(record(), { ...PINS, pinnedKeys: undefined });
+    expect(v.ok).toBe(false);
+    expect(v.reasons[0]).toMatch(/offline: nothing ties the signing key/);
+    expect((await checkRecord(record(), PINS)).onchain).toBe(false);
+    expect((await checkRecord(record(), { ...PINS, offline: false, client: chain(1n) })).onchain).toBe(true);
   });
 });

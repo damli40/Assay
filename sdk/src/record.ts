@@ -1,4 +1,4 @@
-import { base64url } from "jose";
+import { base64url, calculateJwkThumbprint, decodeProtectedHeader, type JWK } from "jose";
 import { createPublicClient, http, isHex, sha256, stringToBytes, type Address, type Hex } from "viem";
 import type { ReceiptBody } from "./receipt.js";
 import { verifyReceipt, type Checks, type ContractReader } from "./verify.js";
@@ -18,6 +18,8 @@ export interface ContextRecord {
 export interface Verdict {
   ok: boolean;
   reasons: string[];
+  /// True only when ReceiptAnchor was read: the one check that ties the signing key to the host.
+  onchain?: boolean;
   checks?: Checks;
   body?: ReceiptBody;
 }
@@ -30,8 +32,11 @@ const REQUIRED: (keyof Checks)[] = ["jws", "hash", "kid", "merkle", "outputCommi
 export interface RecordPins {
   trustedHosts: string[];
   chains: Record<number, { anchor: Address; rpc: string }>;
-  /// Skip the chain read (CI). Every other check still runs.
+  /// Skip the chain read (CI). The record supplies its own JWKS, so offline the signing key must be one
+  /// listed in `pinnedKeys`, or a record signed with any key would pass.
   offline?: boolean;
+  /// RFC 7638 thumbprints of host keys the reader trusts (Assay hosts use them as their kid). Required offline.
+  pinnedKeys?: string[];
   /// Injected reader for tests; otherwise a client on the pinned RPC.
   client?: ContractReader;
 }
@@ -62,6 +67,22 @@ export async function checkRecord(record: ContextRecord, pins: RecordPins): Prom
   if (!trusted.includes(body.host?.agentId)) return fail(`host ${body.host?.agentId} isn't a trusted host`);
   if (body.host.agentId !== `erc8004:${r.chainId}:${r.anchor.agentId}`) return fail("the record's chainId and agentId don't match the host the receipt names");
 
+  // Which key actually signed: the record's JWKS entry named by the JWS header, by its thumbprint (not its kid string).
+  let signingKey: string | undefined;
+  try {
+    const kid = decodeProtectedHeader(r.jws).kid;
+    const jwk = (r.jwks?.keys as JWK[] | undefined)?.find((k) => k.kid === kid);
+    signingKey = jwk ? await calculateJwkThumbprint(jwk) : undefined;
+  } catch {
+    signingKey = undefined;
+  }
+  if (pins.offline && !pins.pinnedKeys?.length) {
+    return fail("offline: nothing ties the signing key to the host without the chain read; pin the host's key (pinnedKeys) or read the chain");
+  }
+  if (pins.pinnedKeys?.length && (!signingKey || !pins.pinnedKeys.includes(signingKey))) {
+    return fail(`the signing key ${signingKey ?? "(not in the record's JWKS)"} isn't one this reader pinned`);
+  }
+
   const client = pins.offline ? undefined : (pins.client ?? (createPublicClient({ transport: http(chain.rpc) }) as unknown as ContractReader));
   const result = await verifyReceipt({
     body,
@@ -76,5 +97,5 @@ export async function checkRecord(record: ContextRecord, pins: RecordPins): Prom
   });
   const required = client ? [...REQUIRED, "anchored" as const] : REQUIRED;
   const reasons = required.filter((k) => result.checks[k] !== "pass").map((k) => `${k}: ${result.checks[k]}`);
-  return { ok: reasons.length === 0, reasons, checks: result.checks, body };
+  return { ok: reasons.length === 0, reasons, checks: result.checks, body, onchain: !!client };
 }
